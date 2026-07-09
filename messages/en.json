@@ -41,6 +41,143 @@
     "empty": "No results found.",
     "navigation": "Navigation"
   },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "description": "Sign in to your account",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "No account yet?",
+      "register": "Sign up",
+      "orContinueWith": "or continue with",
+      "passkey": "Sign in with passkey",
+      "error": "Sign-in failed. Check your email and password."
+    },
+    "register": {
+      "title": "Sign up",
+      "description": "Create your account",
+      "name": "Name",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Create account",
+      "hasAccount": "Already have an account?",
+      "login": "Sign in",
+      "error": "Registration failed.",
+      "closed": "Registration is currently closed. Please contact the administrator."
+    },
+    "twoFactor": {
+      "title": "Two-factor authentication",
+      "description": "Enter the 6-digit code from your authenticator app",
+      "code": "Code",
+      "submit": "Verify",
+      "trustDevice": "Trust this device",
+      "error": "Invalid code."
+    },
+    "logout": "Sign out",
+    "profile": "Profile"
+  },
+  "admin": {
+    "title": "Administration",
+    "nav": {
+      "users": "Users",
+      "auth": "Sign-in & SSO",
+      "email": "Email",
+      "branding": "Branding"
+    },
+    "users": {
+      "title": "Users",
+      "description": "Manage accounts, change roles, ban users",
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "created": "Created",
+      "actions": "Actions",
+      "roleAdmin": "Admin",
+      "roleUser": "User",
+      "active": "Active",
+      "banned": "Banned",
+      "makeAdmin": "Make admin",
+      "makeUser": "Make user",
+      "ban": "Ban",
+      "unban": "Unban",
+      "delete": "Delete",
+      "deleteConfirm": "Permanently delete this user and all associated data?",
+      "updated": "User updated."
+    },
+    "auth": {
+      "title": "Sign-in & SSO",
+      "description": "Configure registration, social login and OIDC providers",
+      "registrationMode": "Registration",
+      "registrationOpen": "Open — anyone can sign up",
+      "registrationClosed": "Closed — only admins create accounts",
+      "github": "GitHub login",
+      "google": "Google login",
+      "clientId": "Client ID",
+      "clientSecret": "Client secret",
+      "enabled": "Enabled",
+      "oidcTitle": "OIDC providers",
+      "oidcDescription": "Keycloak, Authentik, Zitadel, Authelia or any other OIDC-compatible provider",
+      "providerId": "Provider ID (URL slug)",
+      "displayName": "Display name",
+      "discoveryUrl": "Discovery URL (.well-known/openid-configuration)",
+      "addProvider": "Add provider",
+      "removeProvider": "Remove",
+      "redirectHint": "Redirect URL for this provider",
+      "saved": "Settings saved."
+    },
+    "email": {
+      "title": "Email (SMTP)",
+      "description": "Used for password resets, verification and reminders",
+      "host": "Host",
+      "port": "Port",
+      "secure": "TLS/SSL (implicit)",
+      "user": "Username",
+      "pass": "Password",
+      "from": "Sender (From)",
+      "sendTest": "Send test email",
+      "testSent": "Test email sent.",
+      "testFailed": "Sending failed: {error}",
+      "notConfigured": "SMTP is not configured yet.",
+      "saved": "SMTP settings saved."
+    },
+    "branding": {
+      "title": "Branding",
+      "description": "Name and appearance of this instance",
+      "appName": "App name",
+      "saved": "Branding saved."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "security": {
+      "title": "Security",
+      "description": "Password, two-factor authentication and passkeys",
+      "changePassword": "Change password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "passwordChanged": "Password changed.",
+      "twoFactor": "Two-factor authentication (TOTP)",
+      "twoFactorEnabled": "2FA is enabled",
+      "twoFactorDisabled": "2FA is disabled",
+      "enable": "Enable",
+      "disable": "Disable",
+      "scanQr": "Scan the QR code with your authenticator app and confirm with a code.",
+      "verifyCode": "Verify code",
+      "twoFactorNowEnabled": "2FA enabled.",
+      "twoFactorNowDisabled": "2FA disabled.",
+      "backupCodes": "Backup codes (store them safely!)",
+      "passkeys": "Passkeys",
+      "addPasskey": "Add passkey",
+      "passkeyName": "Name (e.g. laptop)",
+      "passkeyAdded": "Passkey added.",
+      "passkeyDeleted": "Passkey removed.",
+      "noPasskeys": "No passkeys registered yet.",
+      "passwordRequired": "Password required"
+    }
+  },
   "home": {
     "title": "Welcome to StudyHelper",
     "description": "The open-source app for your entire studies: planning, learning materials, AI support and exam preparation — self-hosted and offline-capable."

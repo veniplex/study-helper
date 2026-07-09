@@ -41,6 +41,143 @@
     "empty": "Keine Ergebnisse gefunden.",
     "navigation": "Navigation"
   },
+  "auth": {
+    "login": {
+      "title": "Anmelden",
+      "description": "Melde dich bei deinem Konto an",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "submit": "Anmelden",
+      "forgotPassword": "Passwort vergessen?",
+      "noAccount": "Noch kein Konto?",
+      "register": "Registrieren",
+      "orContinueWith": "oder weiter mit",
+      "passkey": "Mit Passkey anmelden",
+      "error": "Anmeldung fehlgeschlagen. Prüfe E-Mail und Passwort."
+    },
+    "register": {
+      "title": "Registrieren",
+      "description": "Erstelle dein Konto",
+      "name": "Name",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "submit": "Konto erstellen",
+      "hasAccount": "Bereits ein Konto?",
+      "login": "Anmelden",
+      "error": "Registrierung fehlgeschlagen.",
+      "closed": "Die Registrierung ist derzeit geschlossen. Wende dich an den Administrator."
+    },
+    "twoFactor": {
+      "title": "Zwei-Faktor-Authentifizierung",
+      "description": "Gib den 6-stelligen Code aus deiner Authenticator-App ein",
+      "code": "Code",
+      "submit": "Bestätigen",
+      "trustDevice": "Diesem Gerät vertrauen",
+      "error": "Ungültiger Code."
+    },
+    "logout": "Abmelden",
+    "profile": "Profil"
+  },
+  "admin": {
+    "title": "Administration",
+    "nav": {
+      "users": "Benutzer",
+      "auth": "Anmeldung & SSO",
+      "email": "E-Mail",
+      "branding": "Branding"
+    },
+    "users": {
+      "title": "Benutzer",
+      "description": "Konten verwalten, Rollen ändern, Benutzer sperren",
+      "name": "Name",
+      "email": "E-Mail",
+      "role": "Rolle",
+      "status": "Status",
+      "created": "Erstellt",
+      "actions": "Aktionen",
+      "roleAdmin": "Admin",
+      "roleUser": "Benutzer",
+      "active": "Aktiv",
+      "banned": "Gesperrt",
+      "makeAdmin": "Zum Admin machen",
+      "makeUser": "Zum Benutzer machen",
+      "ban": "Sperren",
+      "unban": "Entsperren",
+      "delete": "Löschen",
+      "deleteConfirm": "Benutzer und alle zugehörigen Daten unwiderruflich löschen?",
+      "updated": "Benutzer aktualisiert."
+    },
+    "auth": {
+      "title": "Anmeldung & SSO",
+      "description": "Registrierung, Social Login und OIDC-Provider konfigurieren",
+      "registrationMode": "Registrierung",
+      "registrationOpen": "Offen — jeder kann sich registrieren",
+      "registrationClosed": "Geschlossen — nur Admins legen Konten an",
+      "github": "GitHub Login",
+      "google": "Google Login",
+      "clientId": "Client-ID",
+      "clientSecret": "Client-Secret",
+      "enabled": "Aktiviert",
+      "oidcTitle": "OIDC-Provider",
+      "oidcDescription": "Keycloak, Authentik, Zitadel, Authelia oder andere OIDC-kompatible Provider",
+      "providerId": "Provider-ID (URL-Slug)",
+      "displayName": "Anzeigename",
+      "discoveryUrl": "Discovery-URL (.well-known/openid-configuration)",
+      "addProvider": "Provider hinzufügen",
+      "removeProvider": "Entfernen",
+      "redirectHint": "Redirect-URL für diesen Provider",
+      "saved": "Einstellungen gespeichert."
+    },
+    "email": {
+      "title": "E-Mail (SMTP)",
+      "description": "Für Passwort-Zurücksetzen, Verifizierung und Erinnerungen",
+      "host": "Host",
+      "port": "Port",
+      "secure": "TLS/SSL (implizit)",
+      "user": "Benutzername",
+      "pass": "Passwort",
+      "from": "Absender (From)",
+      "sendTest": "Test-E-Mail senden",
+      "testSent": "Test-E-Mail versendet.",
+      "testFailed": "Versand fehlgeschlagen: {error}",
+      "notConfigured": "SMTP ist noch nicht konfiguriert.",
+      "saved": "SMTP-Einstellungen gespeichert."
+    },
+    "branding": {
+      "title": "Branding",
+      "description": "Name und Erscheinungsbild der Instanz",
+      "appName": "App-Name",
+      "saved": "Branding gespeichert."
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "security": {
+      "title": "Sicherheit",
+      "description": "Passwort, Zwei-Faktor-Authentifizierung und Passkeys",
+      "changePassword": "Passwort ändern",
+      "currentPassword": "Aktuelles Passwort",
+      "newPassword": "Neues Passwort",
+      "passwordChanged": "Passwort geändert.",
+      "twoFactor": "Zwei-Faktor-Authentifizierung (TOTP)",
+      "twoFactorEnabled": "2FA ist aktiviert",
+      "twoFactorDisabled": "2FA ist deaktiviert",
+      "enable": "Aktivieren",
+      "disable": "Deaktivieren",
+      "scanQr": "Scanne den QR-Code mit deiner Authenticator-App und bestätige mit einem Code.",
+      "verifyCode": "Code bestätigen",
+      "twoFactorNowEnabled": "2FA aktiviert.",
+      "twoFactorNowDisabled": "2FA deaktiviert.",
+      "backupCodes": "Backup-Codes (sicher aufbewahren!)",
+      "passkeys": "Passkeys",
+      "addPasskey": "Passkey hinzufügen",
+      "passkeyName": "Name (z. B. Laptop)",
+      "passkeyAdded": "Passkey hinzugefügt.",
+      "passkeyDeleted": "Passkey entfernt.",
+      "noPasskeys": "Noch keine Passkeys registriert.",
+      "passwordRequired": "Passwort erforderlich"
+    }
+  },
   "home": {
     "title": "Willkommen bei StudyHelper",
     "description": "Die Open-Source-App für dein gesamtes Studium: Planung, Lernmaterialien, KI-Unterstützung und Prüfungsvorbereitung — self-hosted und offline-fähig."
