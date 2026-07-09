@@ -178,6 +178,134 @@
       "passwordRequired": "Passwort erforderlich"
     }
   },
+  "studies": {
+    "title": "Studium",
+    "empty": "Noch keine Studiengänge. Lege deinen ersten an!",
+    "newProgram": "Studiengang anlegen",
+    "editProgram": "Studiengang bearbeiten",
+    "program": {
+      "name": "Name",
+      "degreeType": "Abschluss (z. B. B.Sc.)",
+      "institution": "Hochschule",
+      "targetEcts": "Ziel-ECTS",
+      "gradingSystem": "Notensystem",
+      "gradingGerman": "Deutsch (1,0–5,0)",
+      "gradingPoints": "Punkte",
+      "gradingPassfail": "Bestanden / Nicht bestanden"
+    },
+    "stats": {
+      "ects": "ECTS",
+      "average": "Schnitt",
+      "modules": "Module",
+      "semesters": "Semester"
+    },
+    "newSemester": "Semester anlegen",
+    "editSemester": "Semester bearbeiten",
+    "semester": {
+      "name": "Bezeichnung (z. B. WS 2026/27)",
+      "startDate": "Beginn",
+      "endDate": "Ende",
+      "empty": "Noch keine Semester."
+    },
+    "newModule": "Modul anlegen",
+    "editModule": "Modul bearbeiten",
+    "module": {
+      "name": "Name",
+      "code": "Kürzel",
+      "ects": "ECTS",
+      "instructor": "Dozent:in",
+      "examType": "Prüfungsform",
+      "status": "Status",
+      "statusPlanned": "Geplant",
+      "statusActive": "Laufend",
+      "statusPassed": "Bestanden",
+      "statusFailed": "Nicht bestanden",
+      "notes": "Notizen",
+      "grade": "Note",
+      "empty": "Noch keine Module in diesem Semester."
+    },
+    "grades": {
+      "title": "Noten",
+      "value": "Note",
+      "weight": "Gewichtung",
+      "attempt": "Versuch",
+      "date": "Datum",
+      "note": "Anmerkung",
+      "add": "Note hinzufügen",
+      "empty": "Noch keine Noten erfasst.",
+      "final": "Modulnote"
+    },
+    "resources": {
+      "title": "Externe Ressourcen",
+      "description": "Moodle, Fileshares, Discord & Co. — alles zu diesem Modul an einem Ort",
+      "type": "Typ",
+      "name": "Name",
+      "url": "URL",
+      "username": "Benutzername (optional)",
+      "note": "Notiz (verschlüsselt gespeichert)",
+      "add": "Ressource hinzufügen",
+      "empty": "Noch keine Ressourcen verknüpft.",
+      "open": "Öffnen",
+      "types": {
+        "moodle": "Moodle",
+        "ilias": "ILIAS",
+        "fileshare": "Fileshare",
+        "discord": "Discord",
+        "teams": "Teams",
+        "website": "Website",
+        "other": "Sonstiges"
+      }
+    },
+    "deleteConfirm": "Wirklich löschen? Alle enthaltenen Daten gehen verloren.",
+    "created": "Angelegt.",
+    "updated": "Gespeichert.",
+    "deleted": "Gelöscht."
+  },
+  "calendar": {
+    "title": "Kalender",
+    "newEvent": "Termin anlegen",
+    "editEvent": "Termin bearbeiten",
+    "empty": "Keine anstehenden Termine.",
+    "past": "Vergangene Termine",
+    "event": {
+      "title": "Titel",
+      "type": "Typ",
+      "typeExam": "Prüfung",
+      "typeDeadline": "Abgabe / Deadline",
+      "typeLecture": "Vorlesung",
+      "typeOther": "Sonstiges",
+      "startsAt": "Beginn",
+      "endsAt": "Ende (optional)",
+      "location": "Ort (optional)",
+      "notes": "Notizen",
+      "module": "Modul (optional)",
+      "noModule": "Kein Modul",
+      "reminders": "Erinnerungen",
+      "reminderOptions": {
+        "10080": "7 Tage vorher",
+        "1440": "1 Tag vorher",
+        "60": "1 Stunde vorher"
+      }
+    },
+    "ics": {
+      "title": "Kalender-Abo (ICS)",
+      "description": "Abonniere deine Termine in Google/Apple/Outlook-Kalender über diese private URL.",
+      "generate": "Feed-URL erzeugen",
+      "regenerate": "URL neu erzeugen (alte wird ungültig)",
+      "copied": "URL kopiert."
+    },
+    "in": "in {distance}",
+    "today": "Heute"
+  },
+  "dashboard": {
+    "greeting": "Hallo {name}!",
+    "upcoming": "Nächste Termine",
+    "noUpcoming": "Keine anstehenden Termine.",
+    "programs": "Studiengänge",
+    "quickActions": "Schnellzugriff",
+    "viewCalendar": "Zum Kalender",
+    "viewStudies": "Zum Studium"
+  },
   "home": {
     "title": "Willkommen bei StudyHelper",
     "description": "Die Open-Source-App für dein gesamtes Studium: Planung, Lernmaterialien, KI-Unterstützung und Prüfungsvorbereitung — self-hosted und offline-fähig."

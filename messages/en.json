@@ -178,6 +178,134 @@
       "passwordRequired": "Password required"
     }
   },
+  "studies": {
+    "title": "Studies",
+    "empty": "No degree programs yet. Create your first one!",
+    "newProgram": "Create degree program",
+    "editProgram": "Edit degree program",
+    "program": {
+      "name": "Name",
+      "degreeType": "Degree (e.g. B.Sc.)",
+      "institution": "Institution",
+      "targetEcts": "Target ECTS",
+      "gradingSystem": "Grading system",
+      "gradingGerman": "German (1.0–5.0)",
+      "gradingPoints": "Points",
+      "gradingPassfail": "Pass / Fail"
+    },
+    "stats": {
+      "ects": "ECTS",
+      "average": "Average",
+      "modules": "Modules",
+      "semesters": "Semesters"
+    },
+    "newSemester": "Add semester",
+    "editSemester": "Edit semester",
+    "semester": {
+      "name": "Label (e.g. Fall 2026)",
+      "startDate": "Start",
+      "endDate": "End",
+      "empty": "No semesters yet."
+    },
+    "newModule": "Add module",
+    "editModule": "Edit module",
+    "module": {
+      "name": "Name",
+      "code": "Code",
+      "ects": "ECTS",
+      "instructor": "Instructor",
+      "examType": "Exam type",
+      "status": "Status",
+      "statusPlanned": "Planned",
+      "statusActive": "Active",
+      "statusPassed": "Passed",
+      "statusFailed": "Failed",
+      "notes": "Notes",
+      "grade": "Grade",
+      "empty": "No modules in this semester yet."
+    },
+    "grades": {
+      "title": "Grades",
+      "value": "Grade",
+      "weight": "Weight",
+      "attempt": "Attempt",
+      "date": "Date",
+      "note": "Note",
+      "add": "Add grade",
+      "empty": "No grades recorded yet.",
+      "final": "Module grade"
+    },
+    "resources": {
+      "title": "External resources",
+      "description": "Moodle, fileshares, Discord & co. — everything for this module in one place",
+      "type": "Type",
+      "name": "Name",
+      "url": "URL",
+      "username": "Username (optional)",
+      "note": "Note (stored encrypted)",
+      "add": "Add resource",
+      "empty": "No resources linked yet.",
+      "open": "Open",
+      "types": {
+        "moodle": "Moodle",
+        "ilias": "ILIAS",
+        "fileshare": "Fileshare",
+        "discord": "Discord",
+        "teams": "Teams",
+        "website": "Website",
+        "other": "Other"
+      }
+    },
+    "deleteConfirm": "Really delete? All contained data will be lost.",
+    "created": "Created.",
+    "updated": "Saved.",
+    "deleted": "Deleted."
+  },
+  "calendar": {
+    "title": "Calendar",
+    "newEvent": "Add event",
+    "editEvent": "Edit event",
+    "empty": "No upcoming events.",
+    "past": "Past events",
+    "event": {
+      "title": "Title",
+      "type": "Type",
+      "typeExam": "Exam",
+      "typeDeadline": "Deadline",
+      "typeLecture": "Lecture",
+      "typeOther": "Other",
+      "startsAt": "Start",
+      "endsAt": "End (optional)",
+      "location": "Location (optional)",
+      "notes": "Notes",
+      "module": "Module (optional)",
+      "noModule": "No module",
+      "reminders": "Reminders",
+      "reminderOptions": {
+        "10080": "7 days before",
+        "1440": "1 day before",
+        "60": "1 hour before"
+      }
+    },
+    "ics": {
+      "title": "Calendar subscription (ICS)",
+      "description": "Subscribe to your events in Google/Apple/Outlook calendar via this private URL.",
+      "generate": "Generate feed URL",
+      "regenerate": "Regenerate URL (old one becomes invalid)",
+      "copied": "URL copied."
+    },
+    "in": "in {distance}",
+    "today": "Today"
+  },
+  "dashboard": {
+    "greeting": "Hello {name}!",
+    "upcoming": "Upcoming events",
+    "noUpcoming": "No upcoming events.",
+    "programs": "Degree programs",
+    "quickActions": "Quick actions",
+    "viewCalendar": "Open calendar",
+    "viewStudies": "Open studies"
+  },
   "home": {
     "title": "Welcome to StudyHelper",
     "description": "The open-source app for your entire studies: planning, learning materials, AI support and exam preparation — self-hosted and offline-capable."

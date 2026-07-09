@@ -15,6 +15,20 @@
       "when": 1783615078164,
       "tag": "0001_burly_gressill",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783616108076,
+      "tag": "0002_mute_saracen",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783628961285,
+      "tag": "0003_smiling_deathbird",
+      "breakpoints": true
     }
   ]
 }
