@@ -83,6 +83,7 @@
     "nav": {
       "users": "Users",
       "auth": "Sign-in & SSO",
+      "ai": "AI",
       "email": "Email",
       "branding": "Branding"
     },
@@ -128,6 +129,31 @@
       "redirectHint": "Redirect URL for this provider",
       "saved": "Settings saved."
     },
+    "ai": {
+      "title": "AI providers",
+      "description": "Configure commercial APIs and self-hosted models (Ollama, OpenAI-compatible)",
+      "addProvider": "Add provider",
+      "removeProvider": "Remove",
+      "providerId": "Provider ID (URL slug)",
+      "type": "Type",
+      "name": "Display name",
+      "apiKey": "API key",
+      "apiKeyOptional": "API key (optional, e.g. for Ollama)",
+      "baseUrl": "Base URL (optional)",
+      "baseUrlRequired": "Base URL",
+      "models": "Chat models (comma-separated)",
+      "embeddingModel": "Embedding model (optional, for RAG)",
+      "defaultModel": "Default model",
+      "defaultEmbeddingModel": "Default embedding model (RAG)",
+      "noModels": "No models configured yet",
+      "monthlyLimit": "Monthly token limit per user (0 = unlimited)",
+      "saved": "AI settings saved.",
+      "usage": "Token usage (30 days)",
+      "usageUser": "User",
+      "usageInput": "Input tokens",
+      "usageOutput": "Output tokens",
+      "usageEmpty": "No usage yet."
+    },
     "email": {
       "title": "Email (SMTP)",
       "description": "Used for password resets, verification and reminders",
@@ -153,6 +179,22 @@
   },
   "settings": {
     "title": "Settings",
+    "aiKeys": {
+      "title": "Your AI API keys (BYOK)",
+      "description": "Your own keys take precedence over centrally configured ones. Stored encrypted.",
+      "placeholder": "Enter API key",
+      "active": "Own key active",
+      "save": "Save",
+      "saved": "Key saved.",
+      "deleted": "Key removed."
+    },
+    "usage": {
+      "title": "Your token usage (30 days)",
+      "input": "Input",
+      "output": "Output",
+      "limit": "Limit",
+      "unlimited": "unlimited"
+    },
     "security": {
       "title": "Security",
       "description": "Password, two-factor authentication and passkeys",
@@ -334,6 +376,18 @@
     "materials": "Materials",
     "events": "Events",
     "noResults": "No results."
+  },
+  "ai": {
+    "title": "AI Assistant",
+    "newChat": "New chat",
+    "noConversations": "No conversations yet.",
+    "notConfigured": "No AI providers are configured yet.",
+    "configureNow": "Configure now in the admin panel",
+    "emptyChat": "Ask anything about your studies.",
+    "placeholder": "Type a message … (Enter to send)",
+    "thinking": "Thinking …",
+    "error": "Error",
+    "noModel": "No model available"
   },
   "home": {
     "title": "Welcome to StudyHelper",

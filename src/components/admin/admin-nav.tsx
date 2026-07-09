@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 const items = [
   { key: "users", href: "/admin" },
   { key: "auth", href: "/admin/auth" },
+  { key: "ai", href: "/admin/ai" },
   { key: "email", href: "/admin/email" },
   { key: "branding", href: "/admin/branding" },
 ] as const

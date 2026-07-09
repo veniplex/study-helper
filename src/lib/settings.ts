@@ -44,6 +44,45 @@ export const uploadsSchema = z.object({
   maxUploadMb: z.number().int().min(1).max(10240).default(200),
 })
 
+export const aiProviderTypeSchema = z.enum([
+  "anthropic",
+  "openai",
+  "google",
+  "mistral",
+  "groq",
+  "ollama",
+  "openai-compatible",
+])
+
+export const aiProviderSchema = z.object({
+  /** Stable id used in model refs, e.g. "anthropic" or "my-ollama" */
+  id: z
+    .string()
+    .min(1)
+    .regex(/^[a-z0-9-]+$/),
+  type: aiProviderTypeSchema,
+  name: z.string().min(1),
+  apiKey: z.string().optional(),
+  baseUrl: z.string().url().optional(),
+  /** Chat model ids the admin enables, e.g. ["claude-sonnet-5"] */
+  models: z.array(z.string().min(1)).default([]),
+  /** Embedding model id (for RAG), optional */
+  embeddingModel: z.string().optional(),
+})
+
+export const aiSettingsSchema = z.object({
+  providers: z.array(aiProviderSchema).default([]),
+  /** "providerId:modelId" */
+  defaultModel: z.string().optional(),
+  /** "providerId:embeddingModelId" used for RAG */
+  defaultEmbeddingModel: z.string().optional(),
+  /** Monthly token limit per user (input+output). 0 = unlimited */
+  monthlyTokenLimitPerUser: z.number().int().min(0).default(0),
+})
+
+export type AiSettings = z.infer<typeof aiSettingsSchema>
+export type AiProvider = z.infer<typeof aiProviderSchema>
+
 const settingsSchemas = {
   "auth.registrationMode": registrationModeSchema,
   "auth.socialProviders": socialProvidersSchema,
@@ -51,13 +90,14 @@ const settingsSchemas = {
   smtp: smtpSchema,
   branding: brandingSchema,
   uploads: uploadsSchema,
+  ai: aiSettingsSchema,
 } as const
 
 export type SettingKey = keyof typeof settingsSchemas
 export type SettingValue<K extends SettingKey> = z.infer<(typeof settingsSchemas)[K]>
 
 /** Settings whose values are encrypted at rest because they contain credentials. */
-const SECRET_KEYS: SettingKey[] = ["auth.socialProviders", "auth.oidcProviders", "smtp"]
+const SECRET_KEYS: SettingKey[] = ["auth.socialProviders", "auth.oidcProviders", "smtp", "ai"]
 
 const defaults: { [K in SettingKey]: SettingValue<K> } = {
   "auth.registrationMode": "open",
@@ -66,6 +106,7 @@ const defaults: { [K in SettingKey]: SettingValue<K> } = {
   smtp: undefined as never, // no default — unset means email disabled
   branding: { appName: "StudyHelper" },
   uploads: { maxUploadMb: 200 },
+  ai: { providers: [], monthlyTokenLimitPerUser: 0 },
 }
 
 // ---- Store -----------------------------------------------------------------

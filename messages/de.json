@@ -83,6 +83,7 @@
     "nav": {
       "users": "Benutzer",
       "auth": "Anmeldung & SSO",
+      "ai": "KI",
       "email": "E-Mail",
       "branding": "Branding"
     },
@@ -128,6 +129,31 @@
       "redirectHint": "Redirect-URL für diesen Provider",
       "saved": "Einstellungen gespeichert."
     },
+    "ai": {
+      "title": "KI-Provider",
+      "description": "Kommerzielle APIs und self-hosted Modelle (Ollama, OpenAI-kompatibel) konfigurieren",
+      "addProvider": "Provider hinzufügen",
+      "removeProvider": "Entfernen",
+      "providerId": "Provider-ID (URL-Slug)",
+      "type": "Typ",
+      "name": "Anzeigename",
+      "apiKey": "API-Key",
+      "apiKeyOptional": "API-Key (optional, z. B. bei Ollama)",
+      "baseUrl": "Base-URL (optional)",
+      "baseUrlRequired": "Base-URL",
+      "models": "Chat-Modelle (kommagetrennt)",
+      "embeddingModel": "Embedding-Modell (optional, für RAG)",
+      "defaultModel": "Standard-Modell",
+      "defaultEmbeddingModel": "Standard-Embedding-Modell (RAG)",
+      "noModels": "Noch keine Modelle konfiguriert",
+      "monthlyLimit": "Monatliches Token-Limit pro User (0 = unbegrenzt)",
+      "saved": "KI-Einstellungen gespeichert.",
+      "usage": "Token-Verbrauch (30 Tage)",
+      "usageUser": "Benutzer",
+      "usageInput": "Input-Tokens",
+      "usageOutput": "Output-Tokens",
+      "usageEmpty": "Noch kein Verbrauch."
+    },
     "email": {
       "title": "E-Mail (SMTP)",
       "description": "Für Passwort-Zurücksetzen, Verifizierung und Erinnerungen",
@@ -153,6 +179,22 @@
   },
   "settings": {
     "title": "Einstellungen",
+    "aiKeys": {
+      "title": "Eigene KI-API-Keys (BYOK)",
+      "description": "Eigene Keys haben Vorrang vor den zentral konfigurierten. Verschlüsselt gespeichert.",
+      "placeholder": "API-Key eingeben",
+      "active": "Eigener Key aktiv",
+      "save": "Speichern",
+      "saved": "Key gespeichert.",
+      "deleted": "Key entfernt."
+    },
+    "usage": {
+      "title": "Dein Token-Verbrauch (30 Tage)",
+      "input": "Input",
+      "output": "Output",
+      "limit": "Limit",
+      "unlimited": "unbegrenzt"
+    },
     "security": {
       "title": "Sicherheit",
       "description": "Passwort, Zwei-Faktor-Authentifizierung und Passkeys",
@@ -334,6 +376,18 @@
     "materials": "Materialien",
     "events": "Termine",
     "noResults": "Keine Treffer."
+  },
+  "ai": {
+    "title": "KI-Assistent",
+    "newChat": "Neuer Chat",
+    "noConversations": "Noch keine Unterhaltungen.",
+    "notConfigured": "Es sind noch keine KI-Provider konfiguriert.",
+    "configureNow": "Jetzt im Admin-Panel konfigurieren",
+    "emptyChat": "Stelle eine Frage zu deinem Studium.",
+    "placeholder": "Nachricht schreiben … (Enter zum Senden)",
+    "thinking": "Denkt nach …",
+    "error": "Fehler",
+    "noModel": "Kein Modell verfügbar"
   },
   "home": {
     "title": "Willkommen bei StudyHelper",

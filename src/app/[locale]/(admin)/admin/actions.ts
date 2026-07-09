@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/session"
 import { bustAuthCache } from "@/lib/auth"
 import { sendEmail } from "@/lib/email"
 import {
+  aiSettingsSchema,
   brandingSchema,
   oidcProvidersSchema,
   registrationModeSchema,
@@ -68,5 +69,12 @@ export async function saveBranding(value: unknown) {
 export async function saveUploads(value: unknown) {
   await requireAdmin()
   await setSetting("uploads", uploadsSchema.parse(value))
+  return { ok: true as const }
+}
+
+export async function saveAiSettings(value: unknown) {
+  await requireAdmin()
+  await setSetting("ai", aiSettingsSchema.parse(value))
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
