@@ -11,6 +11,7 @@ import {
   setSetting,
   smtpSchema,
   socialProvidersSchema,
+  uploadsSchema,
 } from "@/lib/settings"
 
 export async function saveRegistrationMode(mode: unknown) {
@@ -61,5 +62,11 @@ export async function saveBranding(value: unknown) {
   await requireAdmin()
   await setSetting("branding", brandingSchema.parse(value))
   revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
+export async function saveUploads(value: unknown) {
+  await requireAdmin()
+  await setSetting("uploads", uploadsSchema.parse(value))
   return { ok: true as const }
 }

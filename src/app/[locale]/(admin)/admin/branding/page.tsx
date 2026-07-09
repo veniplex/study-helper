@@ -4,6 +4,11 @@ import { BrandingForm } from "@/components/admin/branding-form"
 
 export default async function AdminBrandingPage() {
   await requireAdmin()
-  const branding = await getSetting("branding")
-  return <BrandingForm initial={branding ?? { appName: "StudyHelper" }} />
+  const [branding, uploads] = await Promise.all([getSetting("branding"), getSetting("uploads")])
+  return (
+    <BrandingForm
+      initial={branding ?? { appName: "StudyHelper" }}
+      uploads={uploads ?? { maxUploadMb: 200 }}
+    />
+  )
 }

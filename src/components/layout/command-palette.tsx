@@ -1,12 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { Search } from "lucide-react"
+import { CalendarDays, File, FileText, Search } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import { navItems } from "@/config/nav"
 import { Button } from "@/components/ui/button"
 import {
+  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -15,10 +16,21 @@ import {
   CommandList,
 } from "@/components/ui/command"
 
+type SearchResults = {
+  modules: { id: string; name: string; programId: string }[]
+  materials: { id: string; name: string; kind: string; url: string | null }[]
+  events: { id: string; title: string; startsAt: string }[]
+}
+
+const EMPTY: SearchResults = { modules: [], materials: [], events: [] }
+
 export function CommandPalette() {
   const [open, setOpen] = React.useState(false)
+  const [query, setQuery] = React.useState("")
+  const [results, setResults] = React.useState<SearchResults>(EMPTY)
   const t = useTranslations("commandPalette")
   const tNav = useTranslations("nav")
+  const tSearch = useTranslations("search")
   const tCommon = useTranslations("common")
   const router = useRouter()
 
@@ -32,6 +44,37 @@ export function CommandPalette() {
     document.addEventListener("keydown", onKeyDown)
     return () => document.removeEventListener("keydown", onKeyDown)
   }, [])
+
+  const abortRef = React.useRef<AbortController | null>(null)
+  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function onQueryChange(value: string) {
+    setQuery(value)
+    abortRef.current?.abort()
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    if (value.trim().length < 2) {
+      setResults(EMPTY)
+      return
+    }
+    const controller = new AbortController()
+    abortRef.current = controller
+    timeoutRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(value)}`, {
+          signal: controller.signal,
+        })
+        if (res.ok) setResults(await res.json())
+      } catch {
+        // aborted or offline — ignore
+      }
+    }, 200)
+  }
+
+  function go(href: string) {
+    setOpen(false)
+    setQuery("")
+    router.push(href)
+  }
 
   return (
     <>
@@ -47,24 +90,58 @@ export function CommandPalette() {
         </kbd>
       </Button>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder={t("placeholder")} />
+        <Command shouldFilter={false}>
+        <CommandInput placeholder={t("placeholder")} value={query} onValueChange={onQueryChange} />
         <CommandList>
           <CommandEmpty>{t("empty")}</CommandEmpty>
+          {results.modules.length > 0 && (
+            <CommandGroup heading={tSearch("modules")}>
+              {results.modules.map((m) => (
+                <CommandItem key={m.id} onSelect={() => go(`/studies/${m.programId}/${m.id}`)}>
+                  <FileText className="size-4" />
+                  {m.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {results.materials.length > 0 && (
+            <CommandGroup heading={tSearch("materials")}>
+              {results.materials.map((m) => (
+                <CommandItem
+                  key={m.id}
+                  onSelect={() => {
+                    if (m.kind === "link" && m.url) {
+                      setOpen(false)
+                      window.open(m.url, "_blank")
+                    } else go(`/materials/${m.id}`)
+                  }}
+                >
+                  <File className="size-4" />
+                  {m.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {results.events.length > 0 && (
+            <CommandGroup heading={tSearch("events")}>
+              {results.events.map((e) => (
+                <CommandItem key={e.id} onSelect={() => go("/calendar")}>
+                  <CalendarDays className="size-4" />
+                  {e.title}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
           <CommandGroup heading={t("navigation")}>
             {navItems.map((item) => (
-              <CommandItem
-                key={item.key}
-                onSelect={() => {
-                  setOpen(false)
-                  router.push(item.href)
-                }}
-              >
+              <CommandItem key={item.key} onSelect={() => go(item.href)}>
                 <item.icon className="size-4" />
                 {tNav(item.key)}
               </CommandItem>
             ))}
           </CommandGroup>
         </CommandList>
+        </Command>
       </CommandDialog>
     </>
   )

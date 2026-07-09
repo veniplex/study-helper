@@ -40,12 +40,17 @@ export const brandingSchema = z.object({
   appName: z.string().min(1).default("StudyHelper"),
 })
 
+export const uploadsSchema = z.object({
+  maxUploadMb: z.number().int().min(1).max(10240).default(200),
+})
+
 const settingsSchemas = {
   "auth.registrationMode": registrationModeSchema,
   "auth.socialProviders": socialProvidersSchema,
   "auth.oidcProviders": oidcProvidersSchema,
   smtp: smtpSchema,
   branding: brandingSchema,
+  uploads: uploadsSchema,
 } as const
 
 export type SettingKey = keyof typeof settingsSchemas
@@ -60,6 +65,7 @@ const defaults: { [K in SettingKey]: SettingValue<K> } = {
   "auth.oidcProviders": [],
   smtp: undefined as never, // no default — unset means email disabled
   branding: { appName: "StudyHelper" },
+  uploads: { maxUploadMb: 200 },
 }
 
 // ---- Store -----------------------------------------------------------------

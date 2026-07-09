@@ -147,7 +147,8 @@
       "title": "Branding",
       "description": "Name and appearance of this instance",
       "appName": "App name",
-      "saved": "Branding saved."
+      "maxUploadMb": "Max upload size (MB)",
+      "saved": "Saved."
     }
   },
   "settings": {
@@ -305,6 +306,34 @@
     "quickActions": "Quick actions",
     "viewCalendar": "Open calendar",
     "viewStudies": "Open studies"
+  },
+  "materials": {
+    "title": "Materials",
+    "empty": "No materials yet. Upload files or add links.",
+    "emptyNoModules": "Create a module first to upload materials.",
+    "upload": "Upload file",
+    "addLink": "Add link",
+    "module": "Module",
+    "allModules": "All modules",
+    "folder": "Folder (optional)",
+    "name": "Name",
+    "url": "URL",
+    "size": "Size",
+    "added": "Added",
+    "uploading": "Uploading … {percent}%",
+    "uploaded": "Uploaded.",
+    "uploadFailed": "Upload failed: {error}",
+    "download": "Download",
+    "open": "Open",
+    "viewer": {
+      "unsupported": "No preview available for this file type — please download."
+    }
+  },
+  "search": {
+    "modules": "Modules",
+    "materials": "Materials",
+    "events": "Events",
+    "noResults": "No results."
   },
   "home": {
     "title": "Welcome to StudyHelper",

@@ -147,7 +147,8 @@
       "title": "Branding",
       "description": "Name und Erscheinungsbild der Instanz",
       "appName": "App-Name",
-      "saved": "Branding gespeichert."
+      "maxUploadMb": "Max. Upload-Größe (MB)",
+      "saved": "Gespeichert."
     }
   },
   "settings": {
@@ -305,6 +306,34 @@
     "quickActions": "Schnellzugriff",
     "viewCalendar": "Zum Kalender",
     "viewStudies": "Zum Studium"
+  },
+  "materials": {
+    "title": "Materialien",
+    "empty": "Noch keine Materialien. Lade Dateien hoch oder füge Links hinzu.",
+    "emptyNoModules": "Lege zuerst ein Modul an, um Materialien hochzuladen.",
+    "upload": "Datei hochladen",
+    "addLink": "Link hinzufügen",
+    "module": "Modul",
+    "allModules": "Alle Module",
+    "folder": "Ordner (optional)",
+    "name": "Name",
+    "url": "URL",
+    "size": "Größe",
+    "added": "Hinzugefügt",
+    "uploading": "Lädt hoch … {percent}%",
+    "uploaded": "Hochgeladen.",
+    "uploadFailed": "Upload fehlgeschlagen: {error}",
+    "download": "Herunterladen",
+    "open": "Öffnen",
+    "viewer": {
+      "unsupported": "Vorschau für diesen Dateityp nicht verfügbar — bitte herunterladen."
+    }
+  },
+  "search": {
+    "modules": "Module",
+    "materials": "Materialien",
+    "events": "Termine",
+    "noResults": "Keine Treffer."
   },
   "home": {
     "title": "Willkommen bei StudyHelper",

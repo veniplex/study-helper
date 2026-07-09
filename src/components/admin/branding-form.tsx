@@ -15,18 +15,26 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { saveBranding } from "@/app/[locale]/(admin)/admin/actions"
+import { saveBranding, saveUploads } from "@/app/[locale]/(admin)/admin/actions"
 
-export function BrandingForm({ initial }: { initial: { appName: string } }) {
+export function BrandingForm({
+  initial,
+  uploads,
+}: {
+  initial: { appName: string }
+  uploads: { maxUploadMb: number }
+}) {
   const t = useTranslations("admin.branding")
   const tCommon = useTranslations("common")
   const [pending, setPending] = React.useState(false)
   const [appName, setAppName] = React.useState(initial.appName)
+  const [maxUploadMb, setMaxUploadMb] = React.useState(uploads.maxUploadMb)
 
   async function save() {
     setPending(true)
     try {
       await saveBranding({ appName })
+      await saveUploads({ maxUploadMb })
       toast.success(t("saved"))
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
@@ -42,9 +50,21 @@ export function BrandingForm({ initial }: { initial: { appName: string } }) {
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="max-w-md space-y-1.5">
-          <Label htmlFor="appName">{t("appName")}</Label>
-          <Input id="appName" value={appName} onChange={(e) => setAppName(e.target.value)} />
+        <div className="max-w-md space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="appName">{t("appName")}</Label>
+            <Input id="appName" value={appName} onChange={(e) => setAppName(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="maxUpload">{t("maxUploadMb")}</Label>
+            <Input
+              id="maxUpload"
+              type="number"
+              min={1}
+              value={maxUploadMb}
+              onChange={(e) => setMaxUploadMb(Number(e.target.value))}
+            />
+          </div>
         </div>
       </CardContent>
       <CardFooter>
