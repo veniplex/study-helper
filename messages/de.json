@@ -1,0 +1,48 @@
+{
+  "app": {
+    "name": "StudyHelper",
+    "tagline": "Dein Studium. Geplant, gelernt, gemeistert."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "studies": "Studium",
+    "materials": "Materialien",
+    "learn": "Lernen",
+    "calendar": "Kalender",
+    "ai": "KI-Assistent",
+    "settings": "Einstellungen",
+    "admin": "Admin"
+  },
+  "theme": {
+    "toggle": "Design wechseln",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System"
+  },
+  "locale": {
+    "switch": "Sprache wechseln",
+    "de": "Deutsch",
+    "en": "Englisch"
+  },
+  "common": {
+    "loading": "Lädt …",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "search": "Suchen",
+    "close": "Schließen",
+    "back": "Zurück",
+    "comingSoon": "Bald verfügbar"
+  },
+  "commandPalette": {
+    "placeholder": "Suche oder Befehl eingeben …",
+    "empty": "Keine Ergebnisse gefunden.",
+    "navigation": "Navigation"
+  },
+  "home": {
+    "title": "Willkommen bei StudyHelper",
+    "description": "Die Open-Source-App für dein gesamtes Studium: Planung, Lernmaterialien, KI-Unterstützung und Prüfungsvorbereitung — self-hosted und offline-fähig."
+  }
+}

@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+data
+drizzle/meta/_journal.json.bak
+*.md
+.env*
+!.env.example
+.impeccable
+.claude

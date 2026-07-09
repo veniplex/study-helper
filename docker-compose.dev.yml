@@ -1,0 +1,20 @@
+# Development: only the database. Run the app with `npm run dev`.
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: study
+      POSTGRES_PASSWORD: study
+      POSTGRES_DB: study
+    ports:
+      - "5432:5432"
+    volumes:
+      - dev-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U study -d study"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  dev-db:

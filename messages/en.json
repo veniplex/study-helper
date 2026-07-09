@@ -1,0 +1,48 @@
+{
+  "app": {
+    "name": "StudyHelper",
+    "tagline": "Your studies. Planned, learned, mastered."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "studies": "Studies",
+    "materials": "Materials",
+    "learn": "Learn",
+    "calendar": "Calendar",
+    "ai": "AI Assistant",
+    "settings": "Settings",
+    "admin": "Admin"
+  },
+  "theme": {
+    "toggle": "Toggle theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "locale": {
+    "switch": "Switch language",
+    "de": "German",
+    "en": "English"
+  },
+  "common": {
+    "loading": "Loading …",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "close": "Close",
+    "back": "Back",
+    "comingSoon": "Coming soon"
+  },
+  "commandPalette": {
+    "placeholder": "Type a search or command …",
+    "empty": "No results found.",
+    "navigation": "Navigation"
+  },
+  "home": {
+    "title": "Welcome to StudyHelper",
+    "description": "The open-source app for your entire studies: planning, learning materials, AI support and exam preparation — self-hosted and offline-capable."
+  }
+}

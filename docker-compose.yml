@@ -1,0 +1,36 @@
+# Production self-hosting: app + database.
+# 1. Copy .env.example to .env and fill in the values.
+# 2. docker compose up -d
+services:
+  app:
+    build: .
+    # Or use the published image instead of building locally:
+    # image: ghcr.io/OWNER/study-helper:latest
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://study:${POSTGRES_PASSWORD:-study}@db:5432/study
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set in .env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set in .env}
+    volumes:
+      - ./data/uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: study
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-study}
+      POSTGRES_DB: study
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U study -d study"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
