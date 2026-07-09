@@ -51,5 +51,13 @@ export async function POST(request: Request) {
     })
     .returning({ id: material.id })
 
+  // Kick off text extraction + embedding in the background
+  try {
+    const { enqueueEmbedMaterial } = await import("@/lib/jobs")
+    await enqueueEmbedMaterial(created.id)
+  } catch (error) {
+    console.error("[upload] failed to enqueue embedding job", error)
+  }
+
   return NextResponse.json({ ok: true, id: created.id })
 }

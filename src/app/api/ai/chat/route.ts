@@ -1,19 +1,25 @@
-import { convertToModelMessages, streamText, type UIMessage } from "ai"
+import { convertToModelMessages, stepCountIs, streamText, tool, type UIMessage } from "ai"
+import { z } from "zod"
 import { and, eq } from "drizzle-orm"
 import { db } from "@/db"
 import { aiConversation, aiMessage } from "@/db/schema"
 import { getSession } from "@/lib/auth/session"
 import { getLanguageModel } from "@/lib/ai/registry"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
+import { searchChunks } from "@/lib/ai/rag"
+import { getSetting } from "@/lib/settings"
 
 export const maxDuration = 300
 
-function buildSystemPrompt(moduleName?: string | null): string {
+function buildSystemPrompt(moduleName: string | null | undefined, ragEnabled: boolean): string {
   return [
     "You are StudyHelper, an AI study assistant for university students.",
     "Answer in the language the user writes in.",
     "Use Markdown. Use LaTeX math ($...$ inline, $$...$$ display) where helpful.",
     moduleName ? `The current conversation is about the module "${moduleName}".` : "",
+    ragEnabled
+      ? "You can search the user's uploaded study materials with the searchMaterials tool. Use it whenever a question may relate to their course content, and cite the source material names in your answer."
+      : "",
   ]
     .filter(Boolean)
     .join(" ")
@@ -85,14 +91,38 @@ export async function POST(request: Request) {
       .where(eq(aiConversation.id, conversation.id))
   }
 
+  const ai = await getSetting("ai")
+  const ragEnabled = Boolean(ai?.defaultEmbeddingModel)
+  const userId = session.user.id
+  const moduleId = conversation.moduleId
+
   const result = streamText({
     model,
-    system: buildSystemPrompt(conversation.module?.name),
+    system: buildSystemPrompt(conversation.module?.name, ragEnabled),
     messages: await convertToModelMessages(body.messages),
-    onFinish: async ({ usage }) => {
-      await logUsage(session.user.id, body.model, "chat", {
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
+    stopWhen: stepCountIs(5),
+    tools: ragEnabled
+      ? {
+          searchMaterials: tool({
+            description:
+              "Search the user's uploaded study materials (lecture notes, slides, PDFs) for relevant passages.",
+            inputSchema: z.object({
+              query: z.string().describe("Search query in the language of the materials"),
+            }),
+            execute: async ({ query }) => {
+              const hits = await searchChunks(userId, query, { moduleId, limit: 6 })
+              return hits.map((h) => ({
+                source: h.materialName,
+                excerpt: h.content.slice(0, 1500),
+              }))
+            },
+          }),
+        }
+      : undefined,
+    onFinish: async ({ totalUsage }) => {
+      await logUsage(userId, body.model, "chat", {
+        inputTokens: totalUsage.inputTokens,
+        outputTokens: totalUsage.outputTokens,
       })
     },
   })

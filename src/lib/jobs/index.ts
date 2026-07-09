@@ -1,0 +1,33 @@
+import "server-only"
+import { PgBoss } from "pg-boss"
+import { env } from "@/lib/env"
+
+const globalForBoss = globalThis as unknown as { boss?: Promise<PgBoss> }
+
+export const QUEUE_EMBED_MATERIAL = "embed-material"
+
+async function start(): Promise<PgBoss> {
+  const boss = new PgBoss({ connectionString: env.DATABASE_URL })
+  boss.on("error", (error: Error) => console.error("[pg-boss]", error))
+  await boss.start()
+  await boss.createQueue(QUEUE_EMBED_MATERIAL)
+
+  await boss.work<{ materialId: string }>(QUEUE_EMBED_MATERIAL, async (jobs) => {
+    const { processMaterial } = await import("@/lib/ai/rag")
+    for (const job of jobs) {
+      await processMaterial(job.data.materialId)
+    }
+  })
+
+  return boss
+}
+
+export function getBoss(): Promise<PgBoss> {
+  if (!globalForBoss.boss) globalForBoss.boss = start()
+  return globalForBoss.boss
+}
+
+export async function enqueueEmbedMaterial(materialId: string): Promise<void> {
+  const boss = await getBoss()
+  await boss.send(QUEUE_EMBED_MATERIAL, { materialId }, { retryLimit: 2, retryDelay: 30 })
+}

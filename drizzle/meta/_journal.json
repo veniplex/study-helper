@@ -43,6 +43,13 @@
       "when": 1783629805822,
       "tag": "0005_thin_wiccan",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783630513402,
+      "tag": "0006_typical_ego",
+      "breakpoints": true
     }
   ]
 }
