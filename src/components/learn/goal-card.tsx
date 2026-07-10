@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { deleteGoal, updateGoalProgress } from "@/app/[locale]/(app)/learn/actions"
+import { deleteGoal, updateGoalProgress } from "@/app/[locale]/(app)/learn-actions"
 import { DeleteButton } from "@/components/studies/delete-button"
 
 export function GoalCard({

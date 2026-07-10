@@ -8,7 +8,7 @@ import { useRouter } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { submitAttempt, type AttemptResult } from "@/app/[locale]/(app)/learn/quizzes/actions"
+import { submitAttempt, type AttemptResult } from "@/app/[locale]/(app)/quiz-actions"
 import { cn } from "@/lib/utils"
 
 export type RunnerQuestion = {

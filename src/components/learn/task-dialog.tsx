@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { createTask } from "@/app/[locale]/(app)/learn/actions"
+import { createTask } from "@/app/[locale]/(app)/learn-actions"
 import { ModuleSelect, type ModuleOption } from "./module-select"
 
 type Priority = "low" | "medium" | "high"
@@ -31,9 +31,11 @@ type Priority = "low" | "medium" | "high"
 export function TaskDialog({
   modules,
   parentId,
+  fixedModuleId,
 }: {
   modules: ModuleOption[]
   parentId?: string
+  fixedModuleId?: string
 }) {
   const t = useTranslations("learn.tasks")
   const tLearn = useTranslations("learn")
@@ -42,7 +44,7 @@ export function TaskDialog({
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
   const [priority, setPriority] = React.useState<Priority>("medium")
-  const [moduleId, setModuleId] = React.useState("")
+  const [moduleId, setModuleId] = React.useState(fixedModuleId ?? "")
 
   const priorityLabels: Record<Priority, string> = {
     low: t("priorityLow"),
@@ -110,7 +112,7 @@ export function TaskDialog({
               <Input id="t-due" name="dueDate" type="date" />
             </div>
           </div>
-          {!parentId && (
+          {!parentId && !fixedModuleId && (
             <div className="space-y-1.5">
               <Label>{tLearn("module")}</Label>
               <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />

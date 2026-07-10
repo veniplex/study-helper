@@ -4,8 +4,8 @@ import * as React from "react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { flush } from "@/lib/offline/outbox"
-import { reviewCard } from "@/app/[locale]/(app)/learn/decks/actions"
-import { toggleTask, togglePlanItem } from "@/app/[locale]/(app)/learn/actions"
+import { reviewCard } from "@/app/[locale]/(app)/deck-actions"
+import { toggleTask, togglePlanItem } from "@/app/[locale]/(app)/learn-actions"
 import type { ReviewRating } from "@/lib/learning/fsrs"
 
 /** Replays queued offline writes on app start and whenever we come back online. */

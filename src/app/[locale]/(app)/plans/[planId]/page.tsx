@@ -5,9 +5,8 @@ import { studyPlan, studyPlanItem } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { AddPlanItemForm } from "@/components/learn/plan-dialogs"
 import { PlanItemRow } from "@/components/learn/plan-item-row"
-import { Badge } from "@/components/ui/badge"
 
-export default async function PlanDetailPage({
+export default async function GeneralPlanDetailPage({
   params,
 }: {
   params: Promise<{ planId: string }>
@@ -18,19 +17,15 @@ export default async function PlanDetailPage({
   const plan = await db.query.studyPlan.findFirst({
     where: and(eq(studyPlan.id, planId), eq(studyPlan.userId, session.user.id)),
     with: {
-      module: true,
       items: { orderBy: [asc(studyPlanItem.scheduledDate), asc(studyPlanItem.sortOrder)] },
     },
   })
   if (!plan) notFound()
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto w-full max-w-4xl space-y-4">
       <div>
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          {plan.title}
-          {plan.module && <Badge variant="secondary">{plan.module.name}</Badge>}
-        </h2>
+        <h1 className="font-heading text-xl font-semibold tracking-tight">{plan.title}</h1>
         {plan.description && (
           <p className="text-muted-foreground mt-1 text-sm whitespace-pre-wrap">
             {plan.description}

@@ -16,17 +16,23 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { createGoal } from "@/app/[locale]/(app)/learn/actions"
+import { createGoal } from "@/app/[locale]/(app)/learn-actions"
 import { ModuleSelect, type ModuleOption } from "./module-select"
 
-export function GoalDialog({ modules }: { modules: ModuleOption[] }) {
+export function GoalDialog({
+  modules,
+  fixedModuleId,
+}: {
+  modules: ModuleOption[]
+  fixedModuleId?: string
+}) {
   const t = useTranslations("learn.goals")
   const tLearn = useTranslations("learn")
   const tCommon = useTranslations("common")
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
-  const [moduleId, setModuleId] = React.useState("")
+  const [moduleId, setModuleId] = React.useState(fixedModuleId ?? "")
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -72,10 +78,12 @@ export function GoalDialog({ modules }: { modules: ModuleOption[] }) {
               <Label htmlFor="g-target">{t("targetDate")}</Label>
               <Input id="g-target" name="targetDate" type="date" />
             </div>
-            <div className="space-y-1.5">
-              <Label>{tLearn("module")}</Label>
-              <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
-            </div>
+            {!fixedModuleId && (
+              <div className="space-y-1.5">
+                <Label>{tLearn("module")}</Label>
+                <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

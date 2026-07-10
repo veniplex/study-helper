@@ -1,7 +1,5 @@
 import {
-  Brain,
   Calendar,
-  FolderOpen,
   GraduationCap,
   LayoutDashboard,
   ScrollText,
@@ -12,7 +10,7 @@ import {
 
 export type NavItem = {
   /** Translation key under the `nav` namespace */
-  key: "dashboard" | "studies" | "materials" | "learn" | "calendar" | "ai" | "thesis" | "settings"
+  key: "dashboard" | "studies" | "calendar" | "ai" | "thesis" | "settings"
   href: string
   icon: LucideIcon
   /** Shown in the mobile bottom navigation */
@@ -22,8 +20,6 @@ export type NavItem = {
 export const navItems: NavItem[] = [
   { key: "dashboard", href: "/", icon: LayoutDashboard, mobile: true },
   { key: "studies", href: "/studies", icon: GraduationCap, mobile: true },
-  { key: "materials", href: "/materials", icon: FolderOpen },
-  { key: "learn", href: "/learn", icon: Brain, mobile: true },
   { key: "calendar", href: "/calendar", icon: Calendar, mobile: true },
   { key: "ai", href: "/ai", icon: Sparkles, mobile: true },
   { key: "thesis", href: "/thesis", icon: ScrollText },

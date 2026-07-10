@@ -1,28 +1,31 @@
-import { asc, desc, eq } from "drizzle-orm"
+import { and, asc, desc, eq } from "drizzle-orm"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { studyTask } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
-import { getModuleOptions } from "@/lib/studies/module-options"
+import { ownModule } from "@/lib/studies/access"
 import { TaskDialog } from "@/components/learn/task-dialog"
 import { TaskRow } from "@/components/learn/task-row"
 
-export default async function TasksPage() {
+export default async function ModuleTasksPage({
+  params,
+}: {
+  params: Promise<{ programId: string; moduleId: string }>
+}) {
+  const { moduleId } = await params
   const session = await requireSession()
+  const mod = await ownModule(moduleId, session.user.id)
   const t = await getTranslations("learn.tasks")
+  const modules = [{ id: mod.id, name: mod.name }]
 
-  const [tasks, modules] = await Promise.all([
-    db.query.studyTask.findMany({
-      where: eq(studyTask.userId, session.user.id),
-      orderBy: [asc(studyTask.status), desc(studyTask.priority), asc(studyTask.dueDate)],
-      with: { module: true },
-    }),
-    getModuleOptions(session.user.id),
-  ])
+  const tasks = await db.query.studyTask.findMany({
+    where: and(eq(studyTask.userId, session.user.id), eq(studyTask.moduleId, moduleId)),
+    orderBy: [asc(studyTask.status), desc(studyTask.priority), asc(studyTask.dueDate)],
+  })
 
   const roots = tasks.filter((task) => !task.parentId)
   const childrenOf = (id: string) => tasks.filter((task) => task.parentId === id)
-  const open = roots.filter((task) => task.status === "open")
+  const open = roots.filter((task) => task.status !== "done")
   const done = roots.filter((task) => task.status === "done")
 
   function renderTask(task: (typeof tasks)[number]) {
@@ -37,10 +40,9 @@ export default async function TasksPage() {
               priority: task.priority,
               status: task.status,
               dueDate: task.dueDate,
-              moduleName: task.module?.name ?? null,
             }}
           >
-            <TaskDialog modules={modules} parentId={task.id} />
+            <TaskDialog modules={modules} parentId={task.id} fixedModuleId={mod.id} />
           </TaskRow>
         </ul>
         {childrenOf(task.id).length > 0 && (
@@ -67,7 +69,7 @@ export default async function TasksPage() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <TaskDialog modules={modules} />
+        <TaskDialog modules={modules} fixedModuleId={mod.id} />
       </div>
       {open.length === 0 ? (
         <p className="text-muted-foreground py-8 text-center text-sm">{t("empty")}</p>

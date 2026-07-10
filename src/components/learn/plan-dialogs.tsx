@@ -20,17 +20,25 @@ import {
   addPlanItem,
   createPlan,
   generateStudyPlan,
-} from "@/app/[locale]/(app)/learn/actions"
+} from "@/app/[locale]/(app)/learn-actions"
 import { ModuleSelect, type ModuleOption } from "./module-select"
 
-export function PlanDialog({ modules }: { modules: ModuleOption[] }) {
+export function PlanDialog({
+  modules,
+  fixedModuleId,
+  basePath,
+}: {
+  modules: ModuleOption[]
+  fixedModuleId?: string
+  basePath: string
+}) {
   const t = useTranslations("learn.plans")
   const tLearn = useTranslations("learn")
   const tCommon = useTranslations("common")
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
-  const [moduleId, setModuleId] = React.useState("")
+  const [moduleId, setModuleId] = React.useState(fixedModuleId ?? "")
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -43,7 +51,7 @@ export function PlanDialog({ modules }: { modules: ModuleOption[] }) {
         moduleId: moduleId || null,
       })
       setOpen(false)
-      router.push(`/learn/plans/${result.id}`)
+      router.push(`${basePath}/plans/${result.id}`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
       setPending(false)
@@ -69,10 +77,12 @@ export function PlanDialog({ modules }: { modules: ModuleOption[] }) {
             <Label htmlFor="p-desc">{t("description")}</Label>
             <Textarea id="p-desc" name="description" rows={2} />
           </div>
-          <div className="space-y-1.5">
-            <Label>{tLearn("module")}</Label>
-            <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
-          </div>
+          {!fixedModuleId && (
+            <div className="space-y-1.5">
+              <Label>{tLearn("module")}</Label>
+              <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               {tCommon("cancel")}
@@ -91,9 +101,13 @@ export function PlanDialog({ modules }: { modules: ModuleOption[] }) {
 export function GeneratePlanDialog({
   modules,
   aiAvailable,
+  fixedModuleId,
+  basePath,
 }: {
   modules: ModuleOption[]
   aiAvailable: boolean
+  fixedModuleId?: string
+  basePath: string
 }) {
   const t = useTranslations("learn.plans.generateDialog")
   const tPlans = useTranslations("learn.plans")
@@ -102,7 +116,7 @@ export function GeneratePlanDialog({
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
-  const [moduleId, setModuleId] = React.useState("")
+  const [moduleId, setModuleId] = React.useState(fixedModuleId ?? "")
 
   if (!aiAvailable) return null
 
@@ -119,7 +133,7 @@ export function GeneratePlanDialog({
         useMaterials: true,
       })
       setOpen(false)
-      router.push(`/learn/plans/${result.id}`)
+      router.push(`${basePath}/plans/${result.id}`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
       setPending(false)
@@ -155,10 +169,12 @@ export function GeneratePlanDialog({
               />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>{tLearn("module")}</Label>
-            <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
-          </div>
+          {!fixedModuleId && (
+            <div className="space-y-1.5">
+              <Label>{tLearn("module")}</Label>
+              <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="gen-topics">{t("topics")}</Label>
             <Textarea id="gen-topics" name="topics" rows={4} required />

@@ -360,7 +360,9 @@
     "programs": "Studiengänge",
     "quickActions": "Schnellzugriff",
     "viewCalendar": "Zum Kalender",
-    "viewStudies": "Zum Studium"
+    "viewStudies": "Zum Studium",
+    "general": "Allgemein",
+    "generalEmpty": "Keine modulunabhängigen Aufgaben, Ziele oder Pläne."
   },
   "materials": {
     "title": "Materialien",
@@ -591,6 +593,20 @@
     },
     "saved": "Gespeichert.",
     "generating": "Generiere …"
+  },
+  "context": {
+    "program": "Studiengang",
+    "semester": "Semester",
+    "modules": "Module"
+  },
+  "moduleTabs": {
+    "overview": "Übersicht",
+    "materials": "Materialien",
+    "tasks": "Aufgaben",
+    "decks": "Karteikarten",
+    "quizzes": "Quizze",
+    "plans": "Lernpläne",
+    "chat": "Chat"
   },
   "offline": {
     "synced": "{count} Offline-Änderungen synchronisiert."

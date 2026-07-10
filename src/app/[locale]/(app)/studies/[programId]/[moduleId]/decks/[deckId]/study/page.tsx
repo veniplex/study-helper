@@ -6,15 +6,19 @@ import { deck, flashcard } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { StudySession } from "@/components/learn/study-session"
 
-export default async function StudyPage({ params }: { params: Promise<{ deckId: string }> }) {
-  const { deckId } = await params
+export default async function ModuleStudyPage({
+  params,
+}: {
+  params: Promise<{ programId: string; moduleId: string; deckId: string }>
+}) {
+  const { programId, moduleId, deckId } = await params
   const session = await requireSession()
   const t = await getTranslations("learn.decks")
 
   const deckRow = await db.query.deck.findFirst({
     where: and(eq(deck.id, deckId), eq(deck.userId, session.user.id)),
   })
-  if (!deckRow) notFound()
+  if (!deckRow || deckRow.moduleId !== moduleId) notFound()
 
   const dueCards = await db.query.flashcard.findMany({
     where: and(eq(flashcard.deckId, deckId), lte(flashcard.due, new Date())),
@@ -27,5 +31,10 @@ export default async function StudyPage({ params }: { params: Promise<{ deckId: 
     return <p className="text-muted-foreground py-12 text-center text-sm">{t("noDue")}</p>
   }
 
-  return <StudySession deckId={deckId} cards={dueCards} />
+  return (
+    <StudySession
+      backHref={`/studies/${programId}/${moduleId}/decks/${deckId}`}
+      cards={dueCards}
+    />
+  )
 }

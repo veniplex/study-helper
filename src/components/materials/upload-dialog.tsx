@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { createLinkMaterial } from "@/app/[locale]/(app)/materials/actions"
+import { createLinkMaterial } from "@/app/[locale]/(app)/materials-actions"
 
 export type ModuleOption = { id: string; name: string }
 

@@ -16,17 +16,25 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { addCard, createDeck, generateCards } from "@/app/[locale]/(app)/learn/decks/actions"
+import { addCard, createDeck, generateCards } from "@/app/[locale]/(app)/deck-actions"
 import { ModuleSelect, type ModuleOption } from "./module-select"
 
-export function DeckDialog({ modules }: { modules: ModuleOption[] }) {
+export function DeckDialog({
+  modules,
+  fixedModuleId,
+  basePath,
+}: {
+  modules: ModuleOption[]
+  fixedModuleId?: string
+  basePath: string
+}) {
   const t = useTranslations("learn.decks")
   const tLearn = useTranslations("learn")
   const tCommon = useTranslations("common")
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
-  const [moduleId, setModuleId] = React.useState("")
+  const [moduleId, setModuleId] = React.useState(fixedModuleId ?? "")
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -39,7 +47,7 @@ export function DeckDialog({ modules }: { modules: ModuleOption[] }) {
         moduleId: moduleId || null,
       })
       setOpen(false)
-      router.push(`/learn/decks/${result.id}`)
+      router.push(`${basePath}/decks/${result.id}`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
       setPending(false)
@@ -65,10 +73,12 @@ export function DeckDialog({ modules }: { modules: ModuleOption[] }) {
             <Label htmlFor="d-desc">{t("description")}</Label>
             <Textarea id="d-desc" name="description" rows={2} />
           </div>
-          <div className="space-y-1.5">
-            <Label>{tLearn("module")}</Label>
-            <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
-          </div>
+          {!fixedModuleId && (
+            <div className="space-y-1.5">
+              <Label>{tLearn("module")}</Label>
+              <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               {tCommon("cancel")}

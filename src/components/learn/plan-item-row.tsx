@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
-import { deletePlanItem, togglePlanItem } from "@/app/[locale]/(app)/learn/actions"
+import { deletePlanItem, togglePlanItem } from "@/app/[locale]/(app)/learn-actions"
 import { DeleteButton } from "@/components/studies/delete-button"
 import { cn } from "@/lib/utils"
 

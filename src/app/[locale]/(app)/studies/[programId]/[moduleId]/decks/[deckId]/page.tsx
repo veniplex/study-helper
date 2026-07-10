@@ -6,29 +6,29 @@ import { deck, flashcard } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { listAvailableModels } from "@/lib/ai/registry"
 import { Link } from "@/i18n/navigation"
-import { deleteCard } from "@/app/[locale]/(app)/learn/decks/actions"
+import { deleteCard } from "@/app/[locale]/(app)/deck-actions"
 import { AddCardForm, GenerateCardsDialog } from "@/components/learn/deck-dialogs"
 import { DeleteButton } from "@/components/studies/delete-button"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
-export default async function DeckDetailPage({
+export default async function ModuleDeckDetailPage({
   params,
 }: {
-  params: Promise<{ deckId: string }>
+  params: Promise<{ programId: string; moduleId: string; deckId: string }>
 }) {
-  const { deckId } = await params
+  const { programId, moduleId, deckId } = await params
   const session = await requireSession()
   const t = await getTranslations("learn.decks")
+  const basePath = `/studies/${programId}/${moduleId}`
 
   const [deckRow, { defaultModel }] = await Promise.all([
     db.query.deck.findFirst({
       where: and(eq(deck.id, deckId), eq(deck.userId, session.user.id)),
-      with: { module: true, cards: { orderBy: [asc(flashcard.createdAt)] } },
+      with: { cards: { orderBy: [asc(flashcard.createdAt)] } },
     }),
     listAvailableModels(),
   ])
-  if (!deckRow) notFound()
+  if (!deckRow || deckRow.moduleId !== moduleId) notFound()
 
   const now = new Date()
   const dueCount = deckRow.cards.filter((c) => c.due <= now).length
@@ -36,17 +36,13 @@ export default async function DeckDetailPage({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="flex-1 text-lg font-semibold">
-          {deckRow.name}
-          {deckRow.module && (
-            <Badge variant="secondary" className="ml-2">
-              {deckRow.module.name}
-            </Badge>
-          )}
-        </h2>
+        <h2 className="flex-1 text-lg font-semibold">{deckRow.name}</h2>
         <GenerateCardsDialog deckId={deckRow.id} aiAvailable={Boolean(defaultModel)} />
         {dueCount > 0 && (
-          <Button nativeButton={false} render={<Link href={`/learn/decks/${deckRow.id}/study`} />}>
+          <Button
+            nativeButton={false}
+            render={<Link href={`${basePath}/decks/${deckRow.id}/study`} />}
+          >
             {t("study")} ({dueCount})
           </Button>
         )}

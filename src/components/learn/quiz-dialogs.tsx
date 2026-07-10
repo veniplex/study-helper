@@ -23,17 +23,25 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { createQuiz, generateQuiz } from "@/app/[locale]/(app)/learn/quizzes/actions"
+import { createQuiz, generateQuiz } from "@/app/[locale]/(app)/quiz-actions"
 import { ModuleSelect, type ModuleOption } from "./module-select"
 
-export function QuizDialog({ modules }: { modules: ModuleOption[] }) {
+export function QuizDialog({
+  modules,
+  fixedModuleId,
+  basePath,
+}: {
+  modules: ModuleOption[]
+  fixedModuleId?: string
+  basePath: string
+}) {
   const t = useTranslations("learn.quizzes")
   const tLearn = useTranslations("learn")
   const tCommon = useTranslations("common")
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
-  const [moduleId, setModuleId] = React.useState("")
+  const [moduleId, setModuleId] = React.useState(fixedModuleId ?? "")
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -45,7 +53,7 @@ export function QuizDialog({ modules }: { modules: ModuleOption[] }) {
         moduleId: moduleId || null,
       })
       setOpen(false)
-      router.push(`/learn/quizzes/${result.id}`)
+      router.push(`${basePath}/quizzes/${result.id}`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
       setPending(false)
@@ -67,10 +75,12 @@ export function QuizDialog({ modules }: { modules: ModuleOption[] }) {
             <Label htmlFor="q-title">{t("title")}</Label>
             <Input id="q-title" name="title" required />
           </div>
-          <div className="space-y-1.5">
-            <Label>{tLearn("module")}</Label>
-            <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
-          </div>
+          {!fixedModuleId && (
+            <div className="space-y-1.5">
+              <Label>{tLearn("module")}</Label>
+              <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               {tCommon("cancel")}
@@ -89,9 +99,13 @@ export function QuizDialog({ modules }: { modules: ModuleOption[] }) {
 export function GenerateQuizDialog({
   modules,
   aiAvailable,
+  fixedModuleId,
+  basePath,
 }: {
   modules: ModuleOption[]
   aiAvailable: boolean
+  fixedModuleId?: string
+  basePath: string
 }) {
   const t = useTranslations("learn.quizzes.generateDialog")
   const tQuiz = useTranslations("learn.quizzes")
@@ -100,7 +114,7 @@ export function GenerateQuizDialog({
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
-  const [moduleId, setModuleId] = React.useState("")
+  const [moduleId, setModuleId] = React.useState(fixedModuleId ?? "")
   const [mixed, setMixed] = React.useState(true)
 
   if (!aiAvailable) return null
@@ -117,7 +131,7 @@ export function GenerateQuizDialog({
         mixed,
       })
       setOpen(false)
-      router.push(`/learn/quizzes/${result.id}`)
+      router.push(`${basePath}/quizzes/${result.id}`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
       setPending(false)
@@ -164,10 +178,12 @@ export function GenerateQuizDialog({
               </Select>
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>{tLearn("module")}</Label>
-            <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
-          </div>
+          {!fixedModuleId && (
+            <div className="space-y-1.5">
+              <Label>{tLearn("module")}</Label>
+              <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="gq-topics">{t("topics")}</Label>
             <Textarea id="gq-topics" name="topics" rows={3} />

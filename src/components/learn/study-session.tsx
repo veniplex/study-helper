@@ -7,13 +7,13 @@ import { toast } from "sonner"
 import { Link } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { reviewCard } from "@/app/[locale]/(app)/learn/decks/actions"
+import { reviewCard } from "@/app/[locale]/(app)/deck-actions"
 import { enqueue, isNetworkError } from "@/lib/offline/outbox"
 import type { ReviewRating } from "@/lib/learning/fsrs"
 
 export type StudyCard = { id: string; front: string; back: string }
 
-export function StudySession({ deckId, cards }: { deckId: string; cards: StudyCard[] }) {
+export function StudySession({ backHref, cards }: { backHref: string; cards: StudyCard[] }) {
   const t = useTranslations("learn.decks")
   const [queue, setQueue] = React.useState(cards)
   const [revealed, setRevealed] = React.useState(false)
@@ -53,7 +53,7 @@ export function StudySession({ deckId, cards }: { deckId: string; cards: StudyCa
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-center">
         <PartyPopper className="text-muted-foreground size-8" />
         <p className="font-medium">{t("done")}</p>
-        <Button variant="outline" nativeButton={false} render={<Link href={`/learn/decks/${deckId}`} />}>
+        <Button variant="outline" nativeButton={false} render={<Link href={backHref} />}>
           ←
         </Button>
       </div>

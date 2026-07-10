@@ -1,11 +1,17 @@
-import { asc, eq, gte } from "drizzle-orm"
+import { and, asc, eq, gte, isNull } from "drizzle-orm"
 import { ArrowRight, CalendarDays } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import { degreeProgram, studyEvent } from "@/db/schema"
+import { degreeProgram, learningGoal, studyEvent, studyPlan, studyTask } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { earnedEcts, formatGrade, programAverage } from "@/lib/grades"
+import { getModuleOptions } from "@/lib/studies/module-options"
 import { Link } from "@/i18n/navigation"
+import { GoalCard } from "@/components/learn/goal-card"
+import { GoalDialog } from "@/components/learn/goal-dialog"
+import { PlanDialog } from "@/components/learn/plan-dialogs"
+import { TaskDialog } from "@/components/learn/task-dialog"
+import { TaskRow } from "@/components/learn/task-row"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -28,7 +34,8 @@ export default async function DashboardPage() {
   const tStudies = await getTranslations("studies")
   const format = await getFormatter()
 
-  const [events, programs] = await Promise.all([
+  const [events, programs, generalTasks, generalGoals, generalPlans, modules] =
+    await Promise.all([
     db.query.studyEvent.findMany({
       where: (e, { and }) => and(eq(e.userId, session.user.id), gte(e.startsAt, new Date())),
       orderBy: [asc(studyEvent.startsAt)],
@@ -39,7 +46,23 @@ export default async function DashboardPage() {
       where: eq(degreeProgram.userId, session.user.id),
       with: { semesters: { with: { modules: { with: { grades: true } } } } },
     }),
+    db.query.studyTask.findMany({
+      where: and(eq(studyTask.userId, session.user.id), isNull(studyTask.moduleId)),
+      orderBy: [asc(studyTask.status), asc(studyTask.dueDate)],
+    }),
+    db.query.learningGoal.findMany({
+      where: and(eq(learningGoal.userId, session.user.id), isNull(learningGoal.moduleId)),
+      orderBy: [asc(learningGoal.targetDate), asc(learningGoal.createdAt)],
+    }),
+    db.query.studyPlan.findMany({
+      where: and(eq(studyPlan.userId, session.user.id), isNull(studyPlan.moduleId)),
+      orderBy: [asc(studyPlan.createdAt)],
+      with: { items: { columns: { id: true, done: true } } },
+    }),
+    getModuleOptions(session.user.id),
   ])
+
+  const openGeneralTasks = generalTasks.filter((t) => !t.parentId && t.status !== "done")
 
   const typeLabels = {
     exam: tCal("event.typeExam"),
@@ -136,6 +159,84 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">{t("general")}</CardTitle>
+          <div className="flex flex-wrap gap-2">
+            <TaskDialog modules={modules} />
+            <GoalDialog modules={modules} />
+            <PlanDialog modules={modules} basePath="" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {openGeneralTasks.length === 0 &&
+          generalGoals.length === 0 &&
+          generalPlans.length === 0 ? (
+            <p className="text-muted-foreground text-sm">{t("generalEmpty")}</p>
+          ) : (
+            <>
+              {openGeneralTasks.length > 0 && (
+                <ul className="space-y-1.5">
+                  {openGeneralTasks.map((task) => (
+                    <TaskRow
+                      key={task.id}
+                      task={{
+                        id: task.id,
+                        title: task.title,
+                        notes: task.notes,
+                        priority: task.priority,
+                        status: task.status,
+                        dueDate: task.dueDate,
+                      }}
+                    />
+                  ))}
+                </ul>
+              )}
+              {generalGoals.length > 0 && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {generalGoals.map((g) => (
+                    <GoalCard
+                      key={g.id}
+                      goal={{
+                        id: g.id,
+                        title: g.title,
+                        description: g.description,
+                        progress: g.progress,
+                        targetDate: g.targetDate,
+                        moduleName: null,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+              {generalPlans.length > 0 && (
+                <ul className="space-y-1.5">
+                  {generalPlans.map((plan) => {
+                    const doneCount = plan.items.filter((i) => i.done).length
+                    return (
+                      <li
+                        key={plan.id}
+                        className="flex items-center gap-2.5 rounded-md border px-3 py-2 text-sm"
+                      >
+                        <Link
+                          href={`/plans/${plan.id}`}
+                          className="min-w-0 flex-1 truncate font-medium underline-offset-4 hover:underline"
+                        >
+                          {plan.title}
+                        </Link>
+                        <span className="text-muted-foreground text-xs">
+                          {doneCount}/{plan.items.length}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

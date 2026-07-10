@@ -22,9 +22,11 @@ export default async function MaterialViewerPage({
 
   const row = await db.query.material.findFirst({
     where: and(eq(material.id, id), eq(material.userId, session.user.id)),
-    with: { module: true },
+    with: { module: { with: { semester: true } } },
   })
   if (!row || row.kind !== "file") notFound()
+
+  const backHref = `/studies/${row.module.semester.programId}/${row.moduleId}/materials`
 
   const fileUrl = `/api/materials/${row.id}/file`
   const mime = row.mimeType ?? ""
@@ -32,7 +34,7 @@ export default async function MaterialViewerPage({
   return (
     <div className="mx-auto w-full max-w-5xl space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="icon" nativeButton={false} render={<Link href="/materials" />}>
+        <Button variant="ghost" size="icon" nativeButton={false} render={<Link href={backHref} />}>
           <ArrowLeft className="size-4.5" />
           <span className="sr-only">{tCommon("back")}</span>
         </Button>

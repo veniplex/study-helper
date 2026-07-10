@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { addQuestion } from "@/app/[locale]/(app)/learn/quizzes/actions"
+import { addQuestion } from "@/app/[locale]/(app)/quiz-actions"
 
 export function QuestionForm({ quizId }: { quizId: string }) {
   const t = useTranslations("learn.questionForm")

@@ -360,7 +360,9 @@
     "programs": "Degree programs",
     "quickActions": "Quick actions",
     "viewCalendar": "Open calendar",
-    "viewStudies": "Open studies"
+    "viewStudies": "Open studies",
+    "general": "General",
+    "generalEmpty": "No module-independent tasks, goals, or plans."
   },
   "materials": {
     "title": "Materials",
@@ -591,6 +593,20 @@
     },
     "saved": "Saved.",
     "generating": "Generating …"
+  },
+  "context": {
+    "program": "Degree program",
+    "semester": "Semester",
+    "modules": "Modules"
+  },
+  "moduleTabs": {
+    "overview": "Overview",
+    "materials": "Materials",
+    "tasks": "Tasks",
+    "decks": "Flashcards",
+    "quizzes": "Quizzes",
+    "plans": "Study plans",
+    "chat": "Chat"
   },
   "offline": {
     "synced": "{count} offline changes synced."
