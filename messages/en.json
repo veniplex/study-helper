@@ -399,6 +399,8 @@
     "notConfigured": "No AI providers are configured yet.",
     "configureNow": "Configure now in the admin panel",
     "emptyChat": "Ask anything about your studies.",
+    "quickChat": "Quick chat",
+    "close": "Close",
     "placeholder": "Type a message … (Enter to send)",
     "thinking": "Thinking …",
     "error": "Error",

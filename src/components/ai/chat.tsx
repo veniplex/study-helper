@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Markdown } from "./markdown"
+import { describePageContext, usePageContext } from "./page-context"
 import { cn } from "@/lib/utils"
 
 export function Chat({
@@ -22,24 +23,29 @@ export function Chat({
   initialMessages,
   models,
   initialModel,
+  className,
 }: {
   conversationId: string
   initialMessages: UIMessage[]
   models: { ref: string; label: string }[]
   initialModel: string | null
+  className?: string
 }) {
   const t = useTranslations("ai")
   const [model, setModel] = React.useState(initialModel ?? models[0]?.ref ?? "")
   const [input, setInput] = React.useState("")
   const bottomRef = React.useRef<HTMLDivElement>(null)
 
+  const pageContext = usePageContext()
+
+  const [transport] = React.useState(
+    () => new DefaultChatTransport({ api: "/api/ai/chat" })
+  )
+
   const { messages, sendMessage, status, error } = useChat({
     id: conversationId,
     messages: initialMessages,
-    transport: new DefaultChatTransport({
-      api: "/api/ai/chat",
-      body: () => ({ conversationId, model }),
-    }),
+    transport,
   })
 
   React.useEffect(() => {
@@ -52,11 +58,25 @@ export function Chat({
     const text = input.trim()
     if (!text || busy || !model) return
     setInput("")
-    void sendMessage({ text })
+    void sendMessage(
+      { text },
+      {
+        body: {
+          conversationId,
+          model,
+          pageContext: describePageContext(pageContext),
+        },
+      }
+    )
   }
 
   return (
-    <div className="flex h-[calc(100dvh-10rem)] flex-col md:h-[calc(100dvh-9rem)]">
+    <div
+      className={cn(
+        "flex h-[calc(100dvh-10rem)] flex-col md:h-[calc(100dvh-9rem)]",
+        className
+      )}
+    >
       <div className="flex-1 space-y-4 overflow-y-auto pb-4">
         {messages.length === 0 && (
           <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 text-sm">

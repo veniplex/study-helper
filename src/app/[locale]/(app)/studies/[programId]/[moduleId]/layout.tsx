@@ -5,6 +5,7 @@ import { db } from "@/db"
 import { studyModule } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { formatGrade, moduleGrade } from "@/lib/grades"
+import { PageContextSetter } from "@/components/ai/page-context"
 import { ModuleTabs } from "@/components/studies/module-tabs"
 import { Badge } from "@/components/ui/badge"
 
@@ -48,6 +49,7 @@ export default async function ModuleWorkspaceLayout({
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-4">
+      <PageContextSetter moduleId={mod.id} moduleName={mod.name} />
       <div>
         <p className="text-muted-foreground text-xs">
           {mod.semester.program.name} · {mod.semester.name}

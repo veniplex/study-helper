@@ -15,7 +15,8 @@ export const maxDuration = 300
 function buildSystemPrompt(
   moduleName: string | null | undefined,
   ragEnabled: boolean,
-  mode: ChatMode
+  mode: ChatMode,
+  pageContext?: string
 ): string {
   return [
     "You are StudyHelper, an AI study assistant for university students.",
@@ -25,6 +26,9 @@ function buildSystemPrompt(
     MODE_PROMPTS[mode] ?? "",
     ragEnabled
       ? "You can search the user's uploaded study materials with the searchMaterials tool. Use it whenever a question may relate to their course content, and cite the source material names in your answer."
+      : "",
+    pageContext
+      ? `The user is currently looking at this page in the app: ${pageContext}. Use this as context when the question refers to "this module", "this page", or similar.`
       : "",
   ]
     .filter(Boolean)
@@ -47,7 +51,10 @@ export async function POST(request: Request) {
     messages: UIMessage[]
     conversationId: string
     model: string
+    pageContext?: string
   }
+  const pageContext =
+    typeof body.pageContext === "string" ? body.pageContext.slice(0, 500) : undefined
 
   const conversation = await db.query.aiConversation.findFirst({
     where: and(
@@ -107,7 +114,8 @@ export async function POST(request: Request) {
     system: buildSystemPrompt(
       conversation.module?.name,
       ragEnabled,
-      (conversation.mode as ChatMode) ?? "general"
+      (conversation.mode as ChatMode) ?? "general",
+      pageContext
     ),
     messages: await convertToModelMessages(body.messages),
     stopWhen: stepCountIs(5),

@@ -22,6 +22,24 @@ export async function createConversation(moduleId?: string | null, mode?: string
   return { ok: true as const, id: created.id }
 }
 
+/** Load a conversation's messages (used by the floating quick chat). Returns null if not found. */
+export async function getConversationMessages(conversationId: string) {
+  const session = await requireSession()
+  const conversation = await db.query.aiConversation.findFirst({
+    where: and(
+      eq(aiConversation.id, conversationId),
+      eq(aiConversation.userId, session.user.id)
+    ),
+    with: { messages: { orderBy: (m, { asc }) => [asc(m.createdAt)] } },
+  })
+  if (!conversation) return null
+  return conversation.messages.map((m) => ({
+    id: m.id,
+    role: m.role as "user" | "assistant",
+    parts: m.parts,
+  }))
+}
+
 export async function deleteConversation(conversationId: string) {
   const session = await requireSession()
   await db
