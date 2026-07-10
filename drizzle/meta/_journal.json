@@ -50,6 +50,13 @@
       "when": 1783630513402,
       "tag": "0006_typical_ego",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783630986951,
+      "tag": "0007_exotic_goliath",
+      "breakpoints": true
     }
   ]
 }
