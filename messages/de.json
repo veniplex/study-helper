@@ -477,6 +477,14 @@
         "label": "Thesis-Coach",
         "description": "Themenfindung, Forschungsfrage, Exposé, Methodik"
       }
+    },
+    "hub": {
+      "quickActions": "Schnellaktionen",
+      "quickActionsHint": "Lass dir Lernmaterial von der KI erstellen — aus deinen Themen oder hochgeladenen Materialien.",
+      "generateCards": "Karteikarten generieren",
+      "generateQuiz": "Quiz generieren",
+      "ragHint": "Der Chat kennt deine hochgeladenen Materialien und bezieht sie in Antworten ein.",
+      "history": "Verlauf"
     }
   },
   "learn": {

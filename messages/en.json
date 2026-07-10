@@ -477,6 +477,14 @@
         "label": "Thesis coach",
         "description": "Topic finding, research question, exposé, methodology"
       }
+    },
+    "hub": {
+      "quickActions": "Quick actions",
+      "quickActionsHint": "Have the AI create study material for you — from your topics or uploaded materials.",
+      "generateCards": "Generate flashcards",
+      "generateQuiz": "Generate quiz",
+      "ragHint": "The chat knows your uploaded materials and uses them in its answers.",
+      "history": "History"
     }
   },
   "learn": {
