@@ -251,6 +251,8 @@
     "profile": {
       "title": "Profile",
       "name": "Name",
+      "email": "Email address",
+      "emailHint": "Your account address — reminder emails are sent here.",
       "changeAvatar": "Change picture",
       "removeAvatar": "Remove",
       "save": "Save",
@@ -268,8 +270,14 @@
     "notifications": {
       "title": "Notifications",
       "description": "Reminders for exams, deadlines and events",
-      "email": "Email reminders",
-      "push": "Push reminders",
+      "email": "Email",
+      "push": "Push",
+      "categories": {
+        "events": "Event reminders",
+        "assignments": "Assignment deadlines",
+        "dailyPlan": "Daily study-plan reminder"
+      },
+      "emailHint": "Emails go to {email} (your account address).",
       "subscribe": "Enable push on this device",
       "unsubscribe": "Disable push on this device",
       "pushEnabled": "Push enabled.",

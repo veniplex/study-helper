@@ -251,6 +251,8 @@
     "profile": {
       "title": "Profil",
       "name": "Name",
+      "email": "E-Mail-Adresse",
+      "emailHint": "Deine Account-Adresse — hierhin gehen Erinnerungs-E-Mails.",
       "changeAvatar": "Bild ändern",
       "removeAvatar": "Entfernen",
       "save": "Speichern",
@@ -268,8 +270,14 @@
     "notifications": {
       "title": "Benachrichtigungen",
       "description": "Erinnerungen für Prüfungen, Deadlines und Termine",
-      "email": "E-Mail-Erinnerungen",
-      "push": "Push-Erinnerungen",
+      "email": "E-Mail",
+      "push": "Push",
+      "categories": {
+        "events": "Termin-Erinnerungen",
+        "assignments": "Abgabe-Deadlines",
+        "dailyPlan": "Tägliche Lernplan-Erinnerung"
+      },
+      "emailHint": "E-Mails gehen an {email} (deine Account-Adresse).",
       "subscribe": "Push auf diesem Gerät aktivieren",
       "unsubscribe": "Push auf diesem Gerät deaktivieren",
       "pushEnabled": "Push aktiviert.",

@@ -38,10 +38,23 @@ export async function saveUserAiKey(input: unknown) {
 
 export async function saveNotificationPrefs(input: unknown) {
   const session = await requireSession()
-  const data = z
-    .object({ emailReminders: z.boolean(), pushReminders: z.boolean() })
+  const channelSchema = z.object({ email: z.boolean(), push: z.boolean() })
+  const channels = z
+    .object({
+      events: channelSchema,
+      assignments: channelSchema,
+      dailyPlan: channelSchema,
+    })
     .parse(input)
   const { notificationPrefs } = await import("@/db/schema")
+  const data = {
+    channels,
+    // keep the legacy booleans in sync as a coarse fallback
+    emailReminders:
+      channels.events.email || channels.assignments.email || channels.dailyPlan.email,
+    pushReminders:
+      channels.events.push || channels.assignments.push || channels.dailyPlan.push,
+  }
   await db
     .insert(notificationPrefs)
     .values({ userId: session.user.id, ...data })

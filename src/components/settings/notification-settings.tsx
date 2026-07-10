@@ -22,14 +22,24 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0))
 }
 
+export type NotificationChannelsState = {
+  events: { email: boolean; push: boolean }
+  assignments: { email: boolean; push: boolean }
+  dailyPlan: { email: boolean; push: boolean }
+}
+
+const CATEGORIES = ["events", "assignments", "dailyPlan"] as const
+
 export function NotificationSettings({
   initial,
+  email,
 }: {
-  initial: { emailReminders: boolean; pushReminders: boolean }
+  initial: NotificationChannelsState
+  /** Account email address the reminders are sent to. */
+  email: string
 }) {
   const t = useTranslations("settings.notifications")
-  const [emailReminders, setEmailReminders] = React.useState(initial.emailReminders)
-  const [pushReminders, setPushReminders] = React.useState(initial.pushReminders)
+  const [channels, setChannels] = React.useState(initial)
   const [pushSubscribed, setPushSubscribed] = React.useState<boolean | null>(null)
   const [pending, setPending] = React.useState(false)
 
@@ -40,12 +50,15 @@ export function NotificationSettings({
       .catch(() => setPushSubscribed(false))
   }, [])
 
-  async function savePrefs(email: boolean, push: boolean) {
-    try {
-      await saveNotificationPrefs({ emailReminders: email, pushReminders: push })
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+  function toggle(category: (typeof CATEGORIES)[number], channel: "email" | "push", on: boolean) {
+    const next = {
+      ...channels,
+      [category]: { ...channels[category], [channel]: on },
     }
+    setChannels(next)
+    saveNotificationPrefs(next).catch((error: unknown) =>
+      toast.error(error instanceof Error ? error.message : String(error))
+    )
   }
 
   async function enablePush() {
@@ -110,28 +123,27 @@ export function NotificationSettings({
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center justify-between gap-2">
-          <Label htmlFor="n-email">{t("email")}</Label>
-          <Switch
-            id="n-email"
-            checked={emailReminders}
-            onCheckedChange={(on) => {
-              setEmailReminders(on)
-              void savePrefs(on, pushReminders)
-            }}
-          />
+        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 gap-y-2.5 text-sm">
+          <span />
+          <span className="text-muted-foreground text-xs font-medium">{t("email")}</span>
+          <span className="text-muted-foreground text-xs font-medium">{t("push")}</span>
+          {CATEGORIES.map((category) => (
+            <React.Fragment key={category}>
+              <Label className="font-normal">{t(`categories.${category}`)}</Label>
+              <Switch
+                checked={channels[category].email}
+                onCheckedChange={(on) => toggle(category, "email", on)}
+                aria-label={`${t(`categories.${category}`)} ${t("email")}`}
+              />
+              <Switch
+                checked={channels[category].push}
+                onCheckedChange={(on) => toggle(category, "push", on)}
+                aria-label={`${t(`categories.${category}`)} ${t("push")}`}
+              />
+            </React.Fragment>
+          ))}
         </div>
-        <div className="flex items-center justify-between gap-2">
-          <Label htmlFor="n-push">{t("push")}</Label>
-          <Switch
-            id="n-push"
-            checked={pushReminders}
-            onCheckedChange={(on) => {
-              setPushReminders(on)
-              void savePrefs(emailReminders, on)
-            }}
-          />
-        </div>
+        <p className="text-muted-foreground text-xs">{t("emailHint", { email })}</p>
         <div className="border-t pt-3">
           {pushSubscribed === null ? (
             <Loader2 className="text-muted-foreground size-4 animate-spin" />

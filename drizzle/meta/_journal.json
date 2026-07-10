@@ -120,6 +120,13 @@
       "when": 1783718855021,
       "tag": "0016_sudden_energizer",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1783719278067,
+      "tag": "0017_damp_moonstone",
+      "breakpoints": true
     }
   ]
 }

@@ -40,9 +40,11 @@ async function toAvatarDataUrl(file: File): Promise<string> {
 export function ProfileSettings({
   initialName,
   initialImage,
+  email,
 }: {
   initialName: string
   initialImage: string | null
+  email?: string
 }) {
   const t = useTranslations("settings.profile")
   const router = useRouter()
@@ -125,6 +127,13 @@ export function ProfileSettings({
             maxLength={100}
           />
         </div>
+        {email && (
+          <div className="max-w-sm space-y-1.5">
+            <Label htmlFor="profile-email">{t("email")}</Label>
+            <Input id="profile-email" value={email} readOnly disabled />
+            <p className="text-muted-foreground text-xs">{t("emailHint")}</p>
+          </div>
+        )}
         <Button onClick={save} disabled={pending}>
           {t("save")}
         </Button>

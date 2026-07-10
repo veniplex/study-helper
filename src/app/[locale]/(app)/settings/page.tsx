@@ -50,16 +50,30 @@ export default async function SettingsPage() {
       <ProfileSettings
         initialName={session.user.name}
         initialImage={session.user.image ?? null}
+        email={session.user.email}
       />
       <SecuritySettings
         twoFactorEnabled={Boolean(session.user.twoFactorEnabled)}
         passkeys={passkeys.map((p) => ({ ...p, createdAt: p.createdAt ?? new Date() }))}
       />
       <NotificationSettings
-        initial={{
-          emailReminders: nPrefs?.emailReminders ?? true,
-          pushReminders: nPrefs?.pushReminders ?? true,
-        }}
+        email={session.user.email}
+        initial={
+          nPrefs?.channels ?? {
+            events: {
+              email: nPrefs?.emailReminders ?? true,
+              push: nPrefs?.pushReminders ?? true,
+            },
+            assignments: {
+              email: nPrefs?.emailReminders ?? true,
+              push: nPrefs?.pushReminders ?? true,
+            },
+            dailyPlan: {
+              email: nPrefs?.emailReminders ?? true,
+              push: nPrefs?.pushReminders ?? true,
+            },
+          }
+        }
       />
       <AiKeySettings providers={providers} />
       <Card>
