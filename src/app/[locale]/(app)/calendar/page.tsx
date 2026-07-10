@@ -2,7 +2,7 @@ import { asc, eq } from "drizzle-orm"
 import { CalendarDays, MapPin } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import { degreeProgram, studyEvent, userPrefs } from "@/db/schema"
+import { degreeProgram, semesterPlan, studyEvent, userPrefs } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { env } from "@/lib/env"
 import { deleteEvent } from "./actions"
@@ -31,7 +31,7 @@ export default async function CalendarPage() {
   const format = await getFormatter()
   const now = new Date()
 
-  const [allEvents, prefs, programs] = await Promise.all([
+  const [allEvents, prefs, programs, planItems] = await Promise.all([
     db.query.studyEvent.findMany({
       where: eq(studyEvent.userId, session.user.id),
       orderBy: [asc(studyEvent.startsAt)],
@@ -41,6 +41,23 @@ export default async function CalendarPage() {
     db.query.degreeProgram.findMany({
       where: eq(degreeProgram.userId, session.user.id),
       with: { semesters: { with: { modules: true } } },
+    }),
+    db.query.semesterPlanItem.findMany({
+      where: (item, { exists, and: a, eq: e }) =>
+        exists(
+          db
+            .select()
+            .from(semesterPlan)
+            .where(a(e(semesterPlan.id, item.planId), e(semesterPlan.userId, session.user.id)))
+        ),
+      columns: {
+        id: true,
+        title: true,
+        date: true,
+        startTime: true,
+        durationMinutes: true,
+        done: true,
+      },
     }),
   ])
   const upcoming = allEvents.filter((e) => e.startsAt >= now)
@@ -106,6 +123,7 @@ export default async function CalendarPage() {
 
       <CalendarView
         modules={modules}
+        planItems={planItems}
         events={allEvents.map((e) => ({
           id: e.id,
           title: e.title,

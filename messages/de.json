@@ -778,6 +778,37 @@
     "noProgram": "Noch kein Studiengang angelegt.",
     "createProgram": "Studiengang anlegen"
   },
+  "semesterPlan": {
+    "title": "Lernplan",
+    "availability": "Verfügbarkeit",
+    "weekdays": {
+      "0": "Sonntag",
+      "1": "Montag",
+      "2": "Dienstag",
+      "3": "Mittwoch",
+      "4": "Donnerstag",
+      "5": "Freitag",
+      "6": "Samstag"
+    },
+    "blackouts": "Abwesenheiten (Urlaub etc.)",
+    "blackoutLabel": "Bezeichnung",
+    "addBlackout": "Zeitraum hinzufügen",
+    "removeBlackout": "Entfernen",
+    "save": "Speichern",
+    "saved": "Verfügbarkeit gespeichert.",
+    "generate": "Plan generieren (KI)",
+    "regenerate": "Neu generieren (erledigte bleiben)",
+    "generated": "{count} Lerneinheiten geplant.",
+    "empty": "Noch kein Plan. Verfügbarkeit festlegen und generieren — Klausuren und Abgabefristen werden berücksichtigt.",
+    "week": "Woche {week}",
+    "kind": {
+      "study": "Lernen",
+      "review": "Wiederholung",
+      "assignment": "Abgabe"
+    },
+    "deleteItem": "Entfernen",
+    "today": "Heute lernen"
+  },
   "learnSession": {
     "title": "Lernsession starten",
     "start": "Lernsession",

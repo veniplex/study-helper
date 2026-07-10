@@ -2,13 +2,21 @@ import { and, asc, eq, gte, isNull } from "drizzle-orm"
 import { ArrowRight, CalendarDays, Check } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import { assignment, degreeProgram, learningGoal, studyEvent, studyPlan } from "@/db/schema"
+import {
+  assignment,
+  degreeProgram,
+  learningGoal,
+  semesterPlan,
+  studyEvent,
+  studyPlan,
+} from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { earnedEcts, formatGrade, programAverage } from "@/lib/grades"
 import { getDashboardStats } from "@/lib/learning/stats-server"
 import { getModuleOptions } from "@/lib/studies/module-options"
 import { Link } from "@/i18n/navigation"
 import { StatsCard } from "@/components/learn/stats-card"
+import { TodayPlanCard } from "@/components/plan/today-plan-card"
 import { GoalCard } from "@/components/learn/goal-card"
 import { GoalDialog } from "@/components/learn/goal-dialog"
 import { PlanDialog } from "@/components/learn/plan-dialogs"
@@ -65,6 +73,25 @@ export default async function DashboardPage() {
     getModuleOptions(session.user.id),
   ])
   const stats = await getDashboardStats(session.user.id)
+
+  const today = new Date().toISOString().slice(0, 10)
+  const todayPlanItems = await db.query.semesterPlanItem.findMany({
+    where: (item, { exists, and: a, eq: e }) =>
+      a(
+        e(item.date, today),
+        exists(
+          db
+            .select()
+            .from(semesterPlan)
+            .where(a(e(semesterPlan.id, item.planId), e(semesterPlan.userId, session.user.id)))
+        )
+      ),
+    orderBy: (item, { asc: ascFn }) => [ascFn(item.startTime)],
+    with: {
+      module: { columns: { name: true } },
+      plan: { columns: { semesterId: true } },
+    },
+  })
 
   const hasProgram = programs.length > 0
   const hasSemester = programs.some((p) => p.semesters.length > 0)
@@ -126,6 +153,18 @@ export default async function DashboardPage() {
       )}
 
       <StatsCard stats={stats} />
+
+      <TodayPlanCard
+        items={todayPlanItems.map((i) => ({
+          id: i.id,
+          title: i.title,
+          startTime: i.startTime,
+          durationMinutes: i.durationMinutes,
+          done: i.done,
+          moduleName: i.module?.name ?? null,
+          semesterId: i.plan.semesterId,
+        }))}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

@@ -30,12 +30,24 @@ const TYPE_CLASS: Record<EventType, string> = {
   other: "sh-event-other",
 }
 
+export type PlanCalendarItem = {
+  id: string
+  title: string
+  date: string
+  startTime: string | null
+  durationMinutes: number
+  done: boolean
+}
+
 export function CalendarView({
   events,
   modules,
+  planItems = [],
 }: {
   events: CalendarEvent[]
   modules: ModuleOption[]
+  /** Semester study-plan sessions, shown read-only in their own color. */
+  planItems?: PlanCalendarItem[]
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -100,14 +112,35 @@ export function CalendarView({
           dayMaxEventRows={3}
           nowIndicator
           editable
-          events={events.map((e) => ({
-            id: e.id,
-            title: e.title,
-            start: e.startsAt,
-            end: e.endsAt ?? undefined,
-            classNames: [TYPE_CLASS[e.type]],
-          }))}
-          eventClick={openEvent}
+          events={[
+            ...events.map((e) => ({
+              id: e.id,
+              title: e.title,
+              start: e.startsAt,
+              end: e.endsAt ?? undefined,
+              classNames: [TYPE_CLASS[e.type]],
+            })),
+            ...planItems.map((p) => {
+              const start = p.startTime ? `${p.date}T${p.startTime}` : p.date
+              const end = p.startTime
+                ? toLocalInputValue(
+                    new Date(new Date(start).getTime() + p.durationMinutes * 60000)
+                  )
+                : undefined
+              return {
+                id: `plan:${p.id}`,
+                title: p.title,
+                start,
+                end,
+                editable: false,
+                classNames: ["sh-event-plan", ...(p.done ? ["sh-event-plan-done"] : [])],
+              }
+            }),
+          ]}
+          eventClick={(arg) => {
+            if (arg.event.id.startsWith("plan:")) return
+            openEvent(arg)
+          }}
           dateClick={(arg) => openNew(arg.dateStr)}
           eventDrop={onMove}
           eventResize={onMove}

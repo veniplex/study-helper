@@ -778,6 +778,37 @@
     "noProgram": "No degree program yet.",
     "createProgram": "Create degree program"
   },
+  "semesterPlan": {
+    "title": "Study plan",
+    "availability": "Availability",
+    "weekdays": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    },
+    "blackouts": "Time off (vacation etc.)",
+    "blackoutLabel": "Label",
+    "addBlackout": "Add range",
+    "removeBlackout": "Remove",
+    "save": "Save",
+    "saved": "Availability saved.",
+    "generate": "Generate plan (AI)",
+    "regenerate": "Regenerate (done items kept)",
+    "generated": "{count} sessions planned.",
+    "empty": "No plan yet. Set your availability and generate — exams and assignment deadlines are taken into account.",
+    "week": "Week {week}",
+    "kind": {
+      "study": "Study",
+      "review": "Review",
+      "assignment": "Assignment"
+    },
+    "deleteItem": "Remove",
+    "today": "Study today"
+  },
   "learnSession": {
     "title": "Start learning session",
     "start": "Learning session",

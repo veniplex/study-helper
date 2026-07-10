@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   BookOpen,
   BrainCircuit,
+  CalendarClock,
   ChevronRight,
   ClipboardCheck,
   FileText,
@@ -240,6 +241,7 @@ function SidebarSemester({
   const tContext = useTranslations("context")
   const tStudies = useTranslations("studies")
   const tCommon = useTranslations("common")
+  const tPlan = useTranslations("semesterPlan")
   const router = useRouter()
   const pathname = usePathname()
   const [openModule, setOpenModule] = React.useState<string | null>(null)
@@ -308,6 +310,18 @@ function SidebarSemester({
       </div>
       {open && (
         <div className="mt-0.5 mb-1 ml-3 space-y-0.5">
+          <Link
+            href={`/plan/${semester.id}`}
+            className={cn(
+              "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
+              pathname.startsWith(`/plan/${semester.id}`)
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+            )}
+          >
+            <CalendarClock className="size-4 shrink-0" />
+            {tPlan("title")}
+          </Link>
           {semester.modules.map((mod) => (
             <SidebarModule
               key={mod.id}

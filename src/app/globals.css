@@ -172,3 +172,5 @@
 .sh-event-lecture { background: color-mix(in oklch, var(--primary) 45%, var(--muted)); color: var(--primary-foreground); }
 .sh-event-other { background: var(--muted-foreground); color: var(--background); }
 .sh-calendar .fc .fc-event.sh-event-exam .fc-event-dot { border-color: var(--destructive); }
+.sh-event-plan { background: color-mix(in oklch, var(--primary) 22%, var(--muted)); color: var(--foreground); border: 1px dashed var(--primary); }
+.sh-event-plan-done { opacity: 0.5; text-decoration: line-through; }
