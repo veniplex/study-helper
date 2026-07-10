@@ -57,15 +57,28 @@ export function ModuleSheet({ context }: { context: StudyContext }) {
         <ContextSwitcher context={context} />
         <div className="space-y-1 px-4 pb-4">
           {context.activeProgram &&
-            context.modules.map((mod) => {
-              const href = `/studies/${context.activeProgram!.id}/${mod.id}`
-              return (
-                <Link key={mod.id} href={href} className={itemClass(pathname.startsWith(href))}>
-                  <BookOpen className="size-4 shrink-0" />
-                  <span className="truncate">{mod.name}</span>
-                </Link>
-              )
-            })}
+            context.tree.map((sem) => (
+              <div key={sem.id} className="space-y-0.5">
+                <p className="text-muted-foreground px-3 pt-2 pb-0.5 text-[11px] font-medium tracking-wide uppercase">
+                  {sem.name}
+                </p>
+                {sem.modules.map((mod) => {
+                  const href = `/studies/${context.activeProgram!.id}/${mod.id}`
+                  return (
+                    <Link key={mod.id} href={href} className={itemClass(pathname.startsWith(href))}>
+                      <BookOpen className="size-4 shrink-0" />
+                      <span className="truncate">{mod.name}</span>
+                    </Link>
+                  )
+                })}
+                {sem.theses.map((thesis) => (
+                  <Link key={thesis.id} href="/thesis" className={itemClass(pathname.startsWith("/thesis"))}>
+                    <ScrollText className="size-4 shrink-0" />
+                    <span className="truncate">{thesis.title}</span>
+                  </Link>
+                ))}
+              </div>
+            ))}
           <div className="mt-2 space-y-1 border-t pt-2">
             <Link href="/studies" className={itemClass(pathname === "/studies")}>
               <GraduationCap className="size-4 shrink-0" />

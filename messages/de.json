@@ -667,6 +667,7 @@
     "modules": "Module",
     "general": "Allgemein",
     "noModules": "Keine Module im aktiven Semester.",
+    "noSemesters": "Noch keine Semester angelegt.",
     "noProgram": "Noch kein Studiengang angelegt.",
     "createProgram": "Studiengang anlegen"
   },

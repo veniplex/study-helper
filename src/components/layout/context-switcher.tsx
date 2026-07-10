@@ -69,26 +69,6 @@ export function ContextSwitcher({ context }: { context: StudyContext }) {
           ))}
         </SelectContent>
       </Select>
-      {context.semesters.length > 0 && (
-        <Select
-          value={context.activeSemester?.id ?? ""}
-          onValueChange={(v) =>
-            v && context.activeProgram && change(context.activeProgram.id, v)
-          }
-          disabled={pending}
-        >
-          <SelectTrigger className="h-8 w-full text-xs" aria-label={t("semester")}>
-            <SelectValue>{context.activeSemester?.name ?? t("semester")}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {context.semesters.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
     </div>
   )
 }

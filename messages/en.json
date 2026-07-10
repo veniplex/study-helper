@@ -667,6 +667,7 @@
     "modules": "Modules",
     "general": "General",
     "noModules": "No modules in the active semester.",
+    "noSemesters": "No semesters yet.",
     "noProgram": "No degree program yet.",
     "createProgram": "Create degree program"
   },
