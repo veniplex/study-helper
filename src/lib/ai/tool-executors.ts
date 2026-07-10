@@ -1,7 +1,7 @@
 import "server-only"
 import { z } from "zod"
 import { db } from "@/db"
-import { deck, flashcard, learningGoal, question, quiz, studyEvent } from "@/db/schema"
+import { assignment, deck, flashcard, learningGoal, question, quiz, studyEvent } from "@/db/schema"
 import { ownModule } from "@/lib/studies/access"
 import { writeToolSchemas, type WriteToolName } from "./tools"
 
@@ -125,6 +125,29 @@ async function runTool(
         label: input.title,
         href: "/calendar",
         entityType: "event",
+        entityId: created.id,
+      }
+    }
+    case "createAssignment": {
+      const input = writeToolSchemas.createAssignment.parse(rawInput)
+      const mod = await ownModule(input.moduleId, userId)
+      const dueDate = input.dueDate ? z.string().date().parse(input.dueDate) : null
+      const [created] = await db
+        .insert(assignment)
+        .values({
+          userId,
+          moduleId: mod.id,
+          title: input.title,
+          description: input.description ?? null,
+          dueDate,
+          pointsMax: input.pointsMax != null ? String(input.pointsMax) : null,
+        })
+        .returning({ id: assignment.id })
+      return {
+        ok: true,
+        label: input.title,
+        href: `/studies/${mod.semester.programId}/${mod.id}/assignments`,
+        entityType: "assignment",
         entityId: created.id,
       }
     }

@@ -198,6 +198,10 @@ export async function POST(request: Request) {
         description: writeToolDescriptions.createCalendarEvent,
         inputSchema: writeToolSchemas.createCalendarEvent,
       }),
+      createAssignment: tool({
+        description: writeToolDescriptions.createAssignment,
+        inputSchema: writeToolSchemas.createAssignment,
+      }),
       createGoal: tool({
         description: writeToolDescriptions.createGoal,
         inputSchema: writeToolSchemas.createGoal,

@@ -191,6 +191,26 @@
       "saved": "Gespeichert."
     }
   },
+  "assignments": {
+    "new": "Abgabe anlegen",
+    "edit": "Abgabe bearbeiten",
+    "empty": "Noch keine Abgaben. Lege bewertete Aufgaben mit Deadline an.",
+    "points": "Punkte",
+    "status": {
+      "open": "Offen",
+      "submitted": "Abgegeben",
+      "graded": "Bewertet"
+    },
+    "fields": {
+      "title": "Titel",
+      "description": "Beschreibung",
+      "dueDate": "Abgabefrist",
+      "status": "Status",
+      "pointsAchieved": "Erreichte Punkte",
+      "pointsMax": "Max. Punkte",
+      "materials": "Verknüpfte Materialien"
+    }
+  },
   "audit": {
     "title": "Aktivitätsprotokoll",
     "empty": "Keine Einträge.",
@@ -415,6 +435,7 @@
     "greeting": "Hallo {name}!",
     "upcoming": "Nächste Termine",
     "noUpcoming": "Keine anstehenden Termine.",
+    "assignmentDue": "Abgabe",
     "programs": "Studiengänge",
     "quickActions": "Schnellzugriff",
     "viewCalendar": "Zum Kalender",
@@ -514,6 +535,7 @@
         "createDeckWithCards": "Karteikarten-Deck anlegen",
         "createQuizWithQuestions": "Quiz anlegen",
         "createCalendarEvent": "Termin anlegen",
+        "createAssignment": "Abgabe anlegen",
         "createGoal": "Lernziel anlegen"
       }
     },
@@ -756,10 +778,9 @@
   "moduleTabs": {
     "overview": "Übersicht",
     "materials": "Materialien",
-    "tasks": "Aufgaben",
+    "assignments": "Abgaben",
     "decks": "Karteikarten",
     "quizzes": "Quizze",
-    "plans": "Lernpläne",
     "chat": "Chat"
   },
   "offline": {

@@ -191,6 +191,26 @@
       "saved": "Saved."
     }
   },
+  "assignments": {
+    "new": "New assignment",
+    "edit": "Edit assignment",
+    "empty": "No assignments yet. Track graded coursework with deadlines.",
+    "points": "points",
+    "status": {
+      "open": "Open",
+      "submitted": "Submitted",
+      "graded": "Graded"
+    },
+    "fields": {
+      "title": "Title",
+      "description": "Description",
+      "dueDate": "Due date",
+      "status": "Status",
+      "pointsAchieved": "Points achieved",
+      "pointsMax": "Max points",
+      "materials": "Linked materials"
+    }
+  },
   "audit": {
     "title": "Activity log",
     "empty": "No entries.",
@@ -415,6 +435,7 @@
     "greeting": "Hello {name}!",
     "upcoming": "Upcoming events",
     "noUpcoming": "No upcoming events.",
+    "assignmentDue": "Assignment",
     "programs": "Degree programs",
     "quickActions": "Quick actions",
     "viewCalendar": "Open calendar",
@@ -513,6 +534,7 @@
         "createDeckWithCards": "Create flashcard deck",
         "createQuizWithQuestions": "Create quiz",
         "createCalendarEvent": "Create event",
+        "createAssignment": "Create assignment",
         "createGoal": "Create learning goal"
       }
     },
@@ -756,10 +778,9 @@
   "moduleTabs": {
     "overview": "Overview",
     "materials": "Materials",
-    "tasks": "Tasks",
+    "assignments": "Assignments",
     "decks": "Flashcards",
     "quizzes": "Quizzes",
-    "plans": "Study plans",
     "chat": "Chat"
   },
   "offline": {

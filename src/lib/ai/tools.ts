@@ -42,6 +42,13 @@ export const writeToolSchemas = {
     notes: z.string().max(2000).nullish(),
     moduleId: z.string().nullish(),
   }),
+  createAssignment: z.object({
+    moduleId: z.string().describe("Module id the assignment belongs to (required)"),
+    title: z.string().min(1).max(300),
+    description: z.string().max(4000).nullish(),
+    dueDate: z.string().nullish().describe("ISO date, e.g. 2026-08-01"),
+    pointsMax: z.number().min(0).nullish(),
+  }),
   createGoal: z.object({
     title: z.string().min(1).max(300),
     description: z.string().max(2000).nullish(),
@@ -61,5 +68,7 @@ export const writeToolDescriptions: Record<WriteToolName, string> = {
     "Create a new quiz with questions for the user. For multiple_choice provide options and correctIndex; for free_text provide referenceAnswer.",
   createCalendarEvent:
     "Create a calendar event (exam, deadline, lecture or other) for the user.",
+  createAssignment:
+    "Create a graded assignment (Abgabe) with deadline for a module. moduleId is required — use getContext to find it.",
   createGoal: "Create a learning goal for the user.",
 }

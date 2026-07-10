@@ -2,7 +2,7 @@ import { and, asc, eq, gte, isNull } from "drizzle-orm"
 import { ArrowRight, CalendarDays, Check } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import { degreeProgram, learningGoal, studyEvent, studyPlan, studyTask } from "@/db/schema"
+import { assignment, degreeProgram, learningGoal, studyEvent, studyPlan } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { earnedEcts, formatGrade, programAverage } from "@/lib/grades"
 import { getDashboardStats } from "@/lib/learning/stats-server"
@@ -12,8 +12,6 @@ import { StatsCard } from "@/components/learn/stats-card"
 import { GoalCard } from "@/components/learn/goal-card"
 import { GoalDialog } from "@/components/learn/goal-dialog"
 import { PlanDialog } from "@/components/learn/plan-dialogs"
-import { TaskDialog } from "@/components/learn/task-dialog"
-import { TaskRow } from "@/components/learn/task-row"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -36,7 +34,7 @@ export default async function DashboardPage() {
   const tStudies = await getTranslations("studies")
   const format = await getFormatter()
 
-  const [events, programs, generalTasks, generalGoals, generalPlans, modules] =
+  const [events, programs, dueAssignments, generalGoals, generalPlans, modules] =
     await Promise.all([
     db.query.studyEvent.findMany({
       where: (e, { and }) => and(eq(e.userId, session.user.id), gte(e.startsAt, new Date())),
@@ -48,9 +46,12 @@ export default async function DashboardPage() {
       where: eq(degreeProgram.userId, session.user.id),
       with: { semesters: { with: { modules: { with: { grades: true } } } } },
     }),
-    db.query.studyTask.findMany({
-      where: and(eq(studyTask.userId, session.user.id), isNull(studyTask.moduleId)),
-      orderBy: [asc(studyTask.status), asc(studyTask.dueDate)],
+    db.query.assignment.findMany({
+      where: (a, { and, isNotNull, ne }) =>
+        and(eq(a.userId, session.user.id), isNotNull(a.dueDate), ne(a.status, "graded")),
+      orderBy: [asc(assignment.dueDate)],
+      limit: 5,
+      with: { module: { columns: { name: true } } },
     }),
     db.query.learningGoal.findMany({
       where: and(eq(learningGoal.userId, session.user.id), isNull(learningGoal.moduleId)),
@@ -64,8 +65,6 @@ export default async function DashboardPage() {
     getModuleOptions(session.user.id),
   ])
   const stats = await getDashboardStats(session.user.id)
-
-  const openGeneralTasks = generalTasks.filter((t) => !t.parentId && t.status !== "done")
 
   const hasProgram = programs.length > 0
   const hasSemester = programs.some((p) => p.semesters.length > 0)
@@ -141,7 +140,7 @@ export default async function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent>
-            {events.length === 0 ? (
+            {events.length === 0 && dueAssignments.length === 0 ? (
               <p className="text-muted-foreground text-sm">{t("noUpcoming")}</p>
             ) : (
               <ul className="space-y-2">
@@ -152,6 +151,17 @@ export default async function DashboardPage() {
                     <span className="text-muted-foreground ml-auto flex items-center gap-1 text-xs">
                       <CalendarDays className="size-3" />
                       {format.dateTime(e.startsAt, { dateStyle: "medium", timeStyle: "short" })}
+                    </span>
+                  </li>
+                ))}
+                {dueAssignments.map((a) => (
+                  <li key={a.id} className="flex flex-wrap items-center gap-2 text-sm">
+                    <Badge variant="default">{t("assignmentDue")}</Badge>
+                    <span className="font-medium">{a.title}</span>
+                    <span className="text-muted-foreground text-xs">{a.module.name}</span>
+                    <span className="text-muted-foreground ml-auto flex items-center gap-1 text-xs">
+                      <CalendarDays className="size-3" />
+                      {a.dueDate && format.dateTime(new Date(a.dueDate), { dateStyle: "medium" })}
                     </span>
                   </li>
                 ))}
@@ -215,35 +225,15 @@ export default async function DashboardPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{t("general")}</CardTitle>
           <div className="flex flex-wrap gap-2">
-            <TaskDialog modules={modules} />
             <GoalDialog modules={modules} />
             <PlanDialog modules={modules} basePath="" />
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
-          {openGeneralTasks.length === 0 &&
-          generalGoals.length === 0 &&
-          generalPlans.length === 0 ? (
+          {generalGoals.length === 0 && generalPlans.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t("generalEmpty")}</p>
           ) : (
             <>
-              {openGeneralTasks.length > 0 && (
-                <ul className="space-y-1.5">
-                  {openGeneralTasks.map((task) => (
-                    <TaskRow
-                      key={task.id}
-                      task={{
-                        id: task.id,
-                        title: task.title,
-                        notes: task.notes,
-                        priority: task.priority,
-                        status: task.status,
-                        dueDate: task.dueDate,
-                      }}
-                    />
-                  ))}
-                </ul>
-              )}
               {generalGoals.length > 0 && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {generalGoals.map((g) => (

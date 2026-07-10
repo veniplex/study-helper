@@ -5,6 +5,7 @@ import {
   BookOpen,
   BrainCircuit,
   ChevronRight,
+  ClipboardCheck,
   FileText,
   GraduationCap,
   Layers,
@@ -46,6 +47,7 @@ import { cn } from "@/lib/utils"
 
 const moduleTabs: { key: string; segment: string; icon: LucideIcon }[] = [
   { key: "materials", segment: "/materials", icon: FileText },
+  { key: "assignments", segment: "/assignments", icon: ClipboardCheck },
   { key: "decks", segment: "/decks", icon: Layers },
   { key: "quizzes", segment: "/quizzes", icon: BrainCircuit },
   { key: "chat", segment: "/chat", icon: MessageSquare },
