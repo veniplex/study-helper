@@ -13,6 +13,8 @@ export type ToolExecutionResult = {
   href?: string
   entityType: string
   entityId: string
+  /** Row snapshot for the audit log (create → after). */
+  snapshot?: unknown
 }
 
 async function resolveModule(moduleId: string | null | undefined, userId: string) {
@@ -26,6 +28,27 @@ async function resolveModule(moduleId: string | null | undefined, userId: string
  * the model's input is never trusted directly.
  */
 export async function executeWriteTool(
+  name: WriteToolName,
+  rawInput: unknown,
+  userId: string,
+  conversationId?: string | null
+): Promise<ToolExecutionResult> {
+  const result = await runTool(name, rawInput, userId)
+  const { logAudit } = await import("@/lib/audit")
+  await logAudit({
+    userId,
+    actor: "ai",
+    operation: "create",
+    entityType: result.entityType,
+    entityId: result.entityId,
+    entityLabel: result.label,
+    after: result.snapshot ?? null,
+    conversationId,
+  })
+  return result
+}
+
+async function runTool(
   name: WriteToolName,
   rawInput: unknown,
   userId: string

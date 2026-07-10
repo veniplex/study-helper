@@ -46,8 +46,7 @@ export default async function SettingsPage() {
   const limit = ai?.monthlyTokenLimitPerUser ?? 0
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6">
-      <h1 className="font-heading text-xl font-semibold tracking-tight">{t("title")}</h1>
+    <div className="space-y-6">
       <ProfileSettings
         initialName={session.user.name}
         initialImage={session.user.image ?? null}

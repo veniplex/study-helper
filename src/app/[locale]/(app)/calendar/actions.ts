@@ -7,7 +7,16 @@ import { z } from "zod"
 import { db } from "@/db"
 import { studyEvent, userPrefs } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
+import { logAudit } from "@/lib/audit"
 import { ownModule } from "@/lib/studies/access"
+
+async function ownEvent(eventId: string, userId: string) {
+  const row = await db.query.studyEvent.findFirst({
+    where: and(eq(studyEvent.id, eventId), eq(studyEvent.userId, userId)),
+  })
+  if (!row) throw new Error("Not found")
+  return row
+}
 
 const eventSchema = z.object({
   title: z.string().min(1).max(300),
@@ -24,16 +33,27 @@ export async function createEvent(input: unknown) {
   const session = await requireSession()
   const data = eventSchema.parse(input)
   if (data.moduleId) await ownModule(data.moduleId, session.user.id)
-  await db.insert(studyEvent).values({
+  const [created] = await db
+    .insert(studyEvent)
+    .values({
+      userId: session.user.id,
+      title: data.title,
+      type: data.type,
+      startsAt: new Date(data.startsAt),
+      endsAt: data.endsAt ? new Date(data.endsAt) : null,
+      location: data.location ?? null,
+      notes: data.notes ?? null,
+      moduleId: data.moduleId || null,
+      reminderOffsets: data.reminderOffsets,
+    })
+    .returning()
+  await logAudit({
     userId: session.user.id,
-    title: data.title,
-    type: data.type,
-    startsAt: new Date(data.startsAt),
-    endsAt: data.endsAt ? new Date(data.endsAt) : null,
-    location: data.location ?? null,
-    notes: data.notes ?? null,
-    moduleId: data.moduleId || null,
-    reminderOffsets: data.reminderOffsets,
+    operation: "create",
+    entityType: "event",
+    entityId: created.id,
+    entityLabel: data.title,
+    after: created,
   })
   revalidatePath("/calendar")
   return { ok: true as const }
@@ -43,6 +63,7 @@ export async function updateEvent(eventId: string, input: unknown) {
   const session = await requireSession()
   const data = eventSchema.parse(input)
   if (data.moduleId) await ownModule(data.moduleId, session.user.id)
+  const before = await ownEvent(eventId, session.user.id)
   await db
     .update(studyEvent)
     .set({
@@ -56,6 +77,15 @@ export async function updateEvent(eventId: string, input: unknown) {
       reminderOffsets: data.reminderOffsets,
     })
     .where(and(eq(studyEvent.id, eventId), eq(studyEvent.userId, session.user.id)))
+  await logAudit({
+    userId: session.user.id,
+    operation: "update",
+    entityType: "event",
+    entityId: eventId,
+    entityLabel: data.title,
+    before,
+    after: { ...before, ...data },
+  })
   revalidatePath("/calendar")
   return { ok: true as const }
 }
@@ -69,6 +99,7 @@ const moveSchema = z.object({
 export async function moveEvent(eventId: string, input: unknown) {
   const session = await requireSession()
   const data = moveSchema.parse(input)
+  const before = await ownEvent(eventId, session.user.id)
   await db
     .update(studyEvent)
     .set({
@@ -76,15 +107,33 @@ export async function moveEvent(eventId: string, input: unknown) {
       endsAt: data.endsAt ? new Date(data.endsAt) : null,
     })
     .where(and(eq(studyEvent.id, eventId), eq(studyEvent.userId, session.user.id)))
+  await logAudit({
+    userId: session.user.id,
+    operation: "update",
+    entityType: "event",
+    entityId: eventId,
+    entityLabel: before.title,
+    before,
+    after: { ...before, startsAt: data.startsAt, endsAt: data.endsAt ?? null },
+  })
   revalidatePath("/calendar")
   return { ok: true as const }
 }
 
 export async function deleteEvent(eventId: string) {
   const session = await requireSession()
+  const before = await ownEvent(eventId, session.user.id)
   await db
     .delete(studyEvent)
     .where(and(eq(studyEvent.id, eventId), eq(studyEvent.userId, session.user.id)))
+  await logAudit({
+    userId: session.user.id,
+    operation: "delete",
+    entityType: "event",
+    entityId: eventId,
+    entityLabel: before.title,
+    before,
+  })
   revalidatePath("/calendar")
   return { ok: true as const }
 }

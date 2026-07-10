@@ -11,6 +11,7 @@ import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
 import { searchChunks } from "@/lib/ai/rag"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
 import { scheduleReview, type ReviewRating } from "@/lib/learning/fsrs"
+import { logAudit } from "@/lib/audit"
 import { ownModule } from "@/lib/studies/access"
 
 const deckSchema = z.object({
@@ -31,14 +32,31 @@ export async function createDeck(input: unknown) {
       description: data.description ?? null,
       moduleId: data.moduleId || null,
     })
-    .returning({ id: deck.id })
+    .returning()
+  await logAudit({
+    userId: session.user.id,
+    operation: "create",
+    entityType: "deck",
+    entityId: created.id,
+    entityLabel: data.name,
+    after: created,
+  })
   revalidatePath("/", "layout")
   return { ok: true as const, id: created.id }
 }
 
 export async function deleteDeck(deckId: string) {
   const session = await requireSession()
+  const row = await ownDeck(deckId, session.user.id)
   await db.delete(deck).where(and(eq(deck.id, deckId), eq(deck.userId, session.user.id)))
+  await logAudit({
+    userId: session.user.id,
+    operation: "delete",
+    entityType: "deck",
+    entityId: deckId,
+    entityLabel: row.name,
+    before: row,
+  })
   revalidatePath("/", "layout")
   return { ok: true as const }
 }
@@ -60,7 +78,18 @@ export async function addCard(deckId: string, input: unknown) {
   const session = await requireSession()
   await ownDeck(deckId, session.user.id)
   const data = cardSchema.parse(input)
-  await db.insert(flashcard).values({ deckId, front: data.front, back: data.back })
+  const [created] = await db
+    .insert(flashcard)
+    .values({ deckId, front: data.front, back: data.back })
+    .returning()
+  await logAudit({
+    userId: session.user.id,
+    operation: "create",
+    entityType: "flashcard",
+    entityId: created.id,
+    entityLabel: data.front.slice(0, 80),
+    after: created,
+  })
   revalidatePath("/", "layout")
   return { ok: true as const }
 }
@@ -73,6 +102,15 @@ export async function deleteCard(cardId: string) {
   })
   if (!card || card.deck.userId !== session.user.id) throw new Error("Not found")
   await db.delete(flashcard).where(eq(flashcard.id, cardId))
+  const { deck: _deck, ...cardRow } = card // eslint-disable-line @typescript-eslint/no-unused-vars
+  await logAudit({
+    userId: session.user.id,
+    operation: "delete",
+    entityType: "flashcard",
+    entityId: cardId,
+    entityLabel: card.front.slice(0, 80),
+    before: cardRow,
+  })
   revalidatePath("/", "layout")
   return { ok: true as const }
 }

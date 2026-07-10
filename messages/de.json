@@ -191,8 +191,43 @@
       "saved": "Gespeichert."
     }
   },
+  "audit": {
+    "title": "Aktivitätsprotokoll",
+    "empty": "Keine Einträge.",
+    "filterActor": "Alle Akteure",
+    "filterOperation": "Alle Operationen",
+    "actor": { "user": "Du", "ai": "KI" },
+    "operation": {
+      "create": "Erstellt",
+      "update": "Geändert",
+      "delete": "Gelöscht",
+      "undo": "Rückgängig",
+      "ai_read": "KI-Lesezugriff"
+    },
+    "entity": {
+      "deck": "Karteikarten-Deck",
+      "flashcard": "Karteikarte",
+      "quiz": "Quiz",
+      "question": "Quiz-Frage",
+      "goal": "Lernziel",
+      "event": "Termin",
+      "material": "Material",
+      "plan": "Lernplan",
+      "thesis": "Abschlussarbeit",
+      "assignment": "Abgabe"
+    },
+    "undo": "Rückgängig machen",
+    "undoConfirm": "„{operation}: {label}“ wirklich rückgängig machen?",
+    "undone": "Rückgängig gemacht.",
+    "undoneBadge": "Rückgängig",
+    "cancel": "Abbrechen"
+  },
   "settings": {
     "title": "Einstellungen",
+    "nav": {
+      "general": "Einstellungen",
+      "audit": "Aktivitätsprotokoll"
+    },
     "profile": {
       "title": "Profil",
       "name": "Name",

@@ -89,7 +89,11 @@ export async function updateConversationModule(
 }
 
 /** Runs a user-confirmed AI write tool (called from the confirmation card). */
-export async function executeAiTool(name: string, input: unknown) {
+export async function executeAiTool(
+  name: string,
+  input: unknown,
+  conversationId?: string
+) {
   const session = await requireSession()
   const { WRITE_TOOL_NAMES } = await import("@/lib/ai/tools")
   const { executeWriteTool } = await import("@/lib/ai/tool-executors")
@@ -99,7 +103,8 @@ export async function executeAiTool(name: string, input: unknown) {
   const result = await executeWriteTool(
     name as (typeof WRITE_TOOL_NAMES)[number],
     input,
-    session.user.id
+    session.user.id,
+    conversationId ?? null
   )
   revalidatePath("/", "layout")
   return result

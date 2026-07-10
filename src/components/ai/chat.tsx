@@ -48,10 +48,12 @@ type ToolOutput =
 function ToolCard({
   toolName,
   part,
+  conversationId,
   onResolve,
 }: {
   toolName: string
   part: { state: string; input?: unknown; output?: unknown }
+  conversationId: string
   onResolve: (output: ToolOutput) => void
 }) {
   const t = useTranslations("ai")
@@ -63,7 +65,7 @@ function ToolCard({
   async function run() {
     setPending(true)
     try {
-      const result = await executeAiTool(toolName, part.input)
+      const result = await executeAiTool(toolName, part.input, conversationId)
       onResolve({ status: "executed", label: result.label, href: result.href })
     } catch (error) {
       onResolve({ status: "rejected" })
@@ -298,6 +300,7 @@ export function Chat({
                       key={toolPart.toolCallId}
                       toolName={part.type.slice(5)}
                       part={toolPart}
+                      conversationId={conversationId}
                       onResolve={(output) =>
                         void addToolResult({
                           tool: part.type.slice(5),

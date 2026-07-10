@@ -133,6 +133,18 @@ export async function POST(request: Request) {
               }),
               execute: async ({ query }) => {
                 const hits = await searchChunks(userId, query, { moduleId, limit: 6 })
+                if (hits.length > 0) {
+                  const { logAudit } = await import("@/lib/audit")
+                  await logAudit({
+                    userId,
+                    actor: "ai",
+                    operation: "ai_read",
+                    entityType: "material",
+                    entityId: query.slice(0, 100),
+                    entityLabel: [...new Set(hits.map((h) => h.materialName))].join(", "),
+                    conversationId: conversation.id,
+                  })
+                }
                 return hits.map((h) => ({
                   source: h.materialName,
                   excerpt: h.content.slice(0, 1500),

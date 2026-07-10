@@ -191,8 +191,43 @@
       "saved": "Saved."
     }
   },
+  "audit": {
+    "title": "Activity log",
+    "empty": "No entries.",
+    "filterActor": "All actors",
+    "filterOperation": "All operations",
+    "actor": { "user": "You", "ai": "AI" },
+    "operation": {
+      "create": "Created",
+      "update": "Updated",
+      "delete": "Deleted",
+      "undo": "Undone",
+      "ai_read": "AI read access"
+    },
+    "entity": {
+      "deck": "Flashcard deck",
+      "flashcard": "Flashcard",
+      "quiz": "Quiz",
+      "question": "Quiz question",
+      "goal": "Learning goal",
+      "event": "Event",
+      "material": "Material",
+      "plan": "Study plan",
+      "thesis": "Thesis",
+      "assignment": "Assignment"
+    },
+    "undo": "Undo",
+    "undoConfirm": "Really undo “{operation}: {label}”?",
+    "undone": "Undone.",
+    "undoneBadge": "Undone",
+    "cancel": "Cancel"
+  },
   "settings": {
     "title": "Settings",
+    "nav": {
+      "general": "Settings",
+      "audit": "Activity log"
+    },
     "profile": {
       "title": "Profile",
       "name": "Name",

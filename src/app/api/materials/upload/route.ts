@@ -49,7 +49,17 @@ export async function POST(request: Request) {
       sizeBytes: file.size,
       folder,
     })
-    .returning({ id: material.id })
+    .returning()
+
+  const { logAudit } = await import("@/lib/audit")
+  await logAudit({
+    userId: session.user.id,
+    operation: "create",
+    entityType: "material",
+    entityId: created.id,
+    entityLabel: file.name,
+    after: created,
+  })
 
   // Kick off text extraction + embedding in the background
   try {

@@ -10,6 +10,7 @@ import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
 import { searchChunks } from "@/lib/ai/rag"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
+import { logAudit } from "@/lib/audit"
 import { ownModule } from "@/lib/studies/access"
 
 async function ownQuiz(quizId: string, userId: string) {
@@ -34,14 +35,31 @@ export async function createQuiz(input: unknown) {
   const [created] = await db
     .insert(quiz)
     .values({ userId: session.user.id, title: data.title, moduleId: data.moduleId || null })
-    .returning({ id: quiz.id })
+    .returning()
+  await logAudit({
+    userId: session.user.id,
+    operation: "create",
+    entityType: "quiz",
+    entityId: created.id,
+    entityLabel: data.title,
+    after: created,
+  })
   revalidatePath("/", "layout")
   return { ok: true as const, id: created.id }
 }
 
 export async function deleteQuiz(quizId: string) {
   const session = await requireSession()
+  const row = await ownQuiz(quizId, session.user.id)
   await db.delete(quiz).where(and(eq(quiz.id, quizId), eq(quiz.userId, session.user.id)))
+  await logAudit({
+    userId: session.user.id,
+    operation: "delete",
+    entityType: "quiz",
+    entityId: quizId,
+    entityLabel: row.title,
+    before: row,
+  })
   revalidatePath("/", "layout")
   return { ok: true as const }
 }
@@ -66,14 +84,25 @@ export async function addQuestion(quizId: string, input: unknown) {
   const session = await requireSession()
   await ownQuiz(quizId, session.user.id)
   const data = questionSchema.parse(input)
-  await db.insert(question).values({
-    quizId,
-    kind: data.kind,
-    prompt: data.prompt,
-    options: data.kind === "multiple_choice" ? data.options : null,
-    correctIndex: data.kind === "multiple_choice" ? data.correctIndex : null,
-    referenceAnswer: data.kind === "free_text" ? data.referenceAnswer : null,
-    explanation: data.explanation ?? null,
+  const [created] = await db
+    .insert(question)
+    .values({
+      quizId,
+      kind: data.kind,
+      prompt: data.prompt,
+      options: data.kind === "multiple_choice" ? data.options : null,
+      correctIndex: data.kind === "multiple_choice" ? data.correctIndex : null,
+      referenceAnswer: data.kind === "free_text" ? data.referenceAnswer : null,
+      explanation: data.explanation ?? null,
+    })
+    .returning()
+  await logAudit({
+    userId: session.user.id,
+    operation: "create",
+    entityType: "question",
+    entityId: created.id,
+    entityLabel: data.prompt.slice(0, 80),
+    after: created,
   })
   revalidatePath("/", "layout")
   return { ok: true as const }
@@ -87,6 +116,15 @@ export async function deleteQuestion(questionId: string) {
   })
   if (!row || row.quiz.userId !== session.user.id) throw new Error("Not found")
   await db.delete(question).where(eq(question.id, questionId))
+  const { quiz: _quiz, ...questionRow } = row // eslint-disable-line @typescript-eslint/no-unused-vars
+  await logAudit({
+    userId: session.user.id,
+    operation: "delete",
+    entityType: "question",
+    entityId: questionId,
+    entityLabel: row.prompt.slice(0, 80),
+    before: questionRow,
+  })
   revalidatePath("/", "layout")
   return { ok: true as const }
 }

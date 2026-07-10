@@ -119,12 +119,24 @@ export async function createGoal(input: unknown) {
   const session = await requireSession()
   const data = goalSchema.parse(input)
   await ownModuleOrNull(data.moduleId, session.user.id)
-  await db.insert(learningGoal).values({
+  const [created] = await db
+    .insert(learningGoal)
+    .values({
+      userId: session.user.id,
+      title: data.title,
+      description: data.description ?? null,
+      targetDate: data.targetDate ?? null,
+      moduleId: data.moduleId || null,
+    })
+    .returning()
+  const { logAudit } = await import("@/lib/audit")
+  await logAudit({
     userId: session.user.id,
-    title: data.title,
-    description: data.description ?? null,
-    targetDate: data.targetDate ?? null,
-    moduleId: data.moduleId || null,
+    operation: "create",
+    entityType: "goal",
+    entityId: created.id,
+    entityLabel: data.title,
+    after: created,
   })
   revalidatePath("/", "layout")
   return { ok: true as const }
@@ -143,9 +155,22 @@ export async function updateGoalProgress(goalId: string, progress: number) {
 
 export async function deleteGoal(goalId: string) {
   const session = await requireSession()
+  const before = await db.query.learningGoal.findFirst({
+    where: and(eq(learningGoal.id, goalId), eq(learningGoal.userId, session.user.id)),
+  })
+  if (!before) throw new Error("Not found")
   await db
     .delete(learningGoal)
     .where(and(eq(learningGoal.id, goalId), eq(learningGoal.userId, session.user.id)))
+  const { logAudit } = await import("@/lib/audit")
+  await logAudit({
+    userId: session.user.id,
+    operation: "delete",
+    entityType: "goal",
+    entityId: goalId,
+    entityLabel: before.title,
+    before,
+  })
   revalidatePath("/", "layout")
   return { ok: true as const }
 }
