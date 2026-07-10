@@ -6,7 +6,6 @@ import {
   notificationPrefs,
   notificationSent,
   reminderSent,
-  semesterPlan,
   studyEvent,
   user,
   type NotificationChannels,
