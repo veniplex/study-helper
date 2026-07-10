@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation"
-import { and, asc, eq } from "drizzle-orm"
+import { asc, eq } from "drizzle-orm"
 import { ExternalLink, KeyRound } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import { externalResource, learningGoal, studyModule } from "@/db/schema"
+import { externalResource, studyModule } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { decrypt } from "@/lib/crypto"
 import { formatGrade, moduleGrade } from "@/lib/grades"
@@ -14,8 +14,6 @@ import { GradeDialog } from "@/components/studies/grade-dialog"
 import { ResourceDialog } from "@/components/studies/resource-dialog"
 import { AnalyzeButton } from "@/components/learn/analyze-button"
 import { SessionStartDialog } from "@/components/learn/session-start-dialog"
-import { GoalCard } from "@/components/learn/goal-card"
-import { GoalDialog } from "@/components/learn/goal-dialog"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -33,8 +31,6 @@ export default async function ModuleOverviewPage({
   const { programId, moduleId } = await params
   const session = await requireSession()
   const t = await getTranslations("studies")
-  const tLearn = await getTranslations("learn")
-  const tGoals = await getTranslations("learn.goals")
   const format = await getFormatter()
 
   const mod = await db.query.studyModule.findFirst({
@@ -52,16 +48,10 @@ export default async function ModuleOverviewPage({
     notFound()
   }
 
-  const [resources, goals] = await Promise.all([
-    db.query.externalResource.findMany({
-      where: eq(externalResource.moduleId, moduleId),
-      orderBy: (r) => [asc(r.createdAt)],
-    }),
-    db.query.learningGoal.findMany({
-      where: and(eq(learningGoal.userId, session.user.id), eq(learningGoal.moduleId, moduleId)),
-      orderBy: [asc(learningGoal.targetDate), asc(learningGoal.createdAt)],
-    }),
-  ])
+  const resources = await db.query.externalResource.findMany({
+    where: eq(externalResource.moduleId, moduleId),
+    orderBy: (r) => [asc(r.createdAt)],
+  })
 
   const gradingSystem = mod.semester.program.gradingSystem
   const finalGrade = moduleGrade(mod.grades)
@@ -121,36 +111,6 @@ export default async function ModuleOverviewPage({
           {mod.notes && <p className="mt-2 text-sm whitespace-pre-wrap">{mod.notes}</p>}
         </div>
       )}
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>{tLearn("nav.goals")}</CardTitle>
-          </div>
-          <GoalDialog modules={[{ id: mod.id, name: mod.name }]} fixedModuleId={mod.id} />
-        </CardHeader>
-        <CardContent>
-          {goals.length === 0 ? (
-            <p className="text-muted-foreground text-sm">{tGoals("empty")}</p>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {goals.map((g) => (
-                <GoalCard
-                  key={g.id}
-                  goal={{
-                    id: g.id,
-                    title: g.title,
-                    description: g.description,
-                    progress: g.progress,
-                    targetDate: g.targetDate,
-                    moduleName: null,
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

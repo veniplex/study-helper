@@ -202,10 +202,6 @@ export async function POST(request: Request) {
         description: writeToolDescriptions.createAssignment,
         inputSchema: writeToolSchemas.createAssignment,
       }),
-      createGoal: tool({
-        description: writeToolDescriptions.createGoal,
-        inputSchema: writeToolSchemas.createGoal,
-      }),
     },
     onFinish: async ({ totalUsage }) => {
       await logUsage(userId, body.model, "chat", {

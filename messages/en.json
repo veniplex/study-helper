@@ -538,8 +538,7 @@
         "createDeckWithCards": "Create flashcard deck",
         "createQuizWithQuestions": "Create quiz",
         "createCalendarEvent": "Create event",
-        "createAssignment": "Create assignment",
-        "createGoal": "Create learning goal"
+        "createAssignment": "Create assignment"
       }
     },
     "suggestions": {

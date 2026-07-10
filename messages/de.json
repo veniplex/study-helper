@@ -539,8 +539,7 @@
         "createDeckWithCards": "Karteikarten-Deck anlegen",
         "createQuizWithQuestions": "Quiz anlegen",
         "createCalendarEvent": "Termin anlegen",
-        "createAssignment": "Abgabe anlegen",
-        "createGoal": "Lernziel anlegen"
+        "createAssignment": "Abgabe anlegen"
       }
     },
     "suggestions": {

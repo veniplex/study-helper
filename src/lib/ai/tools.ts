@@ -49,12 +49,6 @@ export const writeToolSchemas = {
     dueDate: z.string().nullish().describe("ISO date, e.g. 2026-08-01"),
     pointsMax: z.number().min(0).nullish(),
   }),
-  createGoal: z.object({
-    title: z.string().min(1).max(300),
-    description: z.string().max(2000).nullish(),
-    targetDate: z.string().nullish().describe("ISO date, e.g. 2026-08-01"),
-    moduleId: z.string().nullish(),
-  }),
 } as const
 
 export type WriteToolName = keyof typeof writeToolSchemas
@@ -70,5 +64,4 @@ export const writeToolDescriptions: Record<WriteToolName, string> = {
     "Create a calendar event (exam, deadline, lecture or other) for the user.",
   createAssignment:
     "Create a graded assignment (Abgabe) with deadline for a module. moduleId is required — use getContext to find it.",
-  createGoal: "Create a learning goal for the user.",
 }
