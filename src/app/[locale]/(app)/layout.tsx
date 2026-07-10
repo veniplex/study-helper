@@ -23,7 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <PageContextProvider>
       <div className="flex min-h-dvh flex-col">
-        <AppSidebar context={context} />
+        <AppSidebar context={context} isAdmin={user.isAdmin} />
         <div className="flex flex-1 flex-col pb-16 md:pb-0 md:pl-60">
           <AppHeader
             user={user}
@@ -31,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           />
           <main className="flex-1 p-4 md:p-6">{children}</main>
         </div>
-        <BottomNav />
+        <BottomNav context={context} />
         <FloatingChat models={models} initialModel={defaultModel} />
       </div>
     </PageContextProvider>

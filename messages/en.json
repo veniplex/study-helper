@@ -640,7 +640,11 @@
   "context": {
     "program": "Degree program",
     "semester": "Semester",
-    "modules": "Modules"
+    "modules": "Modules",
+    "general": "General",
+    "noModules": "No modules in the active semester.",
+    "noProgram": "No degree program yet.",
+    "createProgram": "Create degree program"
   },
   "moduleTabs": {
     "overview": "Overview",

@@ -640,7 +640,11 @@
   "context": {
     "program": "Studiengang",
     "semester": "Semester",
-    "modules": "Module"
+    "modules": "Module",
+    "general": "Allgemein",
+    "noModules": "Keine Module im aktiven Semester.",
+    "noProgram": "Noch kein Studiengang angelegt.",
+    "createProgram": "Studiengang anlegen"
   },
   "moduleTabs": {
     "overview": "Übersicht",

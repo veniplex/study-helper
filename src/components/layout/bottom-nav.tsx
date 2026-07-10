@@ -3,9 +3,11 @@
 import { useTranslations } from "next-intl"
 import { Link, usePathname } from "@/i18n/navigation"
 import { navItems } from "@/config/nav"
+import { ModuleSheet } from "./module-sheet"
+import type { StudyContext } from "@/lib/studies/context"
 import { cn } from "@/lib/utils"
 
-export function BottomNav() {
+export function BottomNav({ context }: { context: StudyContext }) {
   const t = useTranslations("nav")
   const pathname = usePathname()
   const items = navItems.filter((i) => i.mobile)
@@ -17,6 +19,9 @@ export function BottomNav() {
         style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)` }}
       >
         {items.map((item) => {
+          if (item.key === "studies") {
+            return <ModuleSheet key={item.key} context={context} />
+          }
           const active =
             item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
           return (

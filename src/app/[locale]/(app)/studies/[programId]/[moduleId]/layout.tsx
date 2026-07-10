@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation"
+import { ChevronRight } from "lucide-react"
 import { eq } from "drizzle-orm"
+import { Link } from "@/i18n/navigation"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { studyModule } from "@/db/schema"
@@ -51,9 +53,17 @@ export default async function ModuleWorkspaceLayout({
     <div className="mx-auto w-full max-w-5xl space-y-4">
       <PageContextSetter moduleId={mod.id} moduleName={mod.name} />
       <div>
-        <p className="text-muted-foreground text-xs">
-          {mod.semester.program.name} · {mod.semester.name}
-        </p>
+        <nav className="text-muted-foreground flex items-center gap-1 text-xs">
+          <Link href={`/studies/${programId}`} className="hover:text-foreground transition-colors">
+            {mod.semester.program.name}
+          </Link>
+          <ChevronRight className="size-3" />
+          <Link href={`/studies/${programId}`} className="hover:text-foreground transition-colors">
+            {mod.semester.name}
+          </Link>
+          <ChevronRight className="size-3" />
+          <span className="text-foreground">{mod.name}</span>
+        </nav>
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="font-heading text-xl font-semibold tracking-tight">
             {mod.name}
