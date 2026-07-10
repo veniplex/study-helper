@@ -4,14 +4,17 @@ Open-source, self-hostable study companion. Plan your entire degree, manage lear
 
 ## Features
 
-- 🎓 Degree programs, semesters, modules, grades (ECTS-weighted averages), deadlines and a calendar with a private ICS subscription feed
-- 🗂️ Module-centric workspace: pick your program and active semester in the sidebar, then plan everything per module — materials, tasks (kanban board with drag & drop), flashcards, quizzes, study plans and a module chat in one place
+- 🎓 Degree programs, semesters, modules, grades (ECTS-weighted averages) — managed inline from the sidebar tree (program → semesters → modules)
+- 🗂️ Module workspace: materials (folders, rename, drag & drop), graded assignments with deadlines/points/linked materials, flashcards, quizzes and a module chat
+- 📅 Calendar with month/week grid view (drag & drop rescheduling), private ICS subscription feed, and study-plan sessions overlaid
+- 🤖 An AI **agent** in a floating chat dock: knows which page/module you're looking at, searches your materials (RAG over pgvector), and can create decks, quizzes, events, goals and assignments — every write behind a confirmation card. Conversation switcher, rename, fullscreen mode, suggestion pills
+- 📋 Per-user audit log: every CRUD operation recorded with actor (you or the AI), filterable and undoable with one click — including what the AI read to answer
+- 🧠 Learning sessions: start from a module with flashcards (due / random / in-order / previously-wrong / least-practiced) or a quiz, optional Pomodoro autostart, result screen and an AI analysis of your full history ("what should I deepen?")
+- 🗓️ AI semester study plan: set weekly availability and vacations; the AI schedules study, review and assignment sessions around exams and deadlines — visible in the calendar and as a "study today" dashboard card
+- 🃏 Spaced repetition with FSRS, quizzes with editable questions, score history and retry-mistakes mode, learning goals; AI grading of free-text answers, homework help (Socratic hints or full solutions), writing assistant and thesis coach
+- 📈 Learning statistics: streaks, a 26-week activity heatmap and study time per module, plus an auto-cycling Pomodoro timer (long breaks included) that books focus time to a module
 - 🔗 External resources per module: Moodle, ILIAS, fileshares, Discord & co. with encrypted notes
 - 📚 Materials stored locally (PDF, video, audio, slides, links) with inline viewers and playback-position memory
-- 🤖 AI everywhere: streaming chat with RAG over your own materials (pgvector), study-plan generation, flashcard & quiz generation, AI grading of free-text answers, homework help (Socratic hints or full solutions), academic writing assistant, thesis coach with topic brainstorming, outline and milestone generation
-- 🧠 Spaced repetition with FSRS, quizzes with score history and retry-mistakes mode, tasks with subtasks, learning goals
-- 📈 Learning statistics: streaks, a 26-week activity heatmap and study time per week/module, plus a Pomodoro timer in the header that books focus time to a module
-- 💬 Floating AI quick chat (desktop) that stays open while you navigate and knows which page/module you are looking at
 - 🌐 Works with commercial APIs (Anthropic, OpenAI, Google, Mistral, Groq) and self-hosted models (Ollama, any OpenAI-compatible endpoint) — admin-managed keys plus optional per-user BYOK, token usage tracking and limits
 - 🔐 Multi-user: email/password, passkeys (WebAuthn), TOTP 2FA, GitHub/Google and generic OIDC SSO (Keycloak, Authentik, Zitadel, Authelia, …); registration open, closed or via invite links
 - 🌍 i18n (German & English), light/dark mode, responsive, installable PWA with offline reading and an offline write queue that syncs on reconnect
