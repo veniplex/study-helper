@@ -449,7 +449,11 @@
       "dueDate": "Due date",
       "empty": "No open tasks. 🎉",
       "showDone": "Show completed",
-      "subtask": "Add subtask"
+      "subtask": "Add subtask",
+      "subtasks": "{count} subtasks",
+      "columnOpen": "Open",
+      "columnDoing": "In progress",
+      "columnDone": "Done"
     },
     "goals": {
       "new": "Add goal",

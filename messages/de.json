@@ -449,7 +449,11 @@
       "dueDate": "Fällig am",
       "empty": "Keine offenen Aufgaben. 🎉",
       "showDone": "Erledigte anzeigen",
-      "subtask": "Unteraufgabe hinzufügen"
+      "subtask": "Unteraufgabe hinzufügen",
+      "subtasks": "{count} Unteraufgaben",
+      "columnOpen": "Offen",
+      "columnDoing": "In Arbeit",
+      "columnDone": "Erledigt"
     },
     "goals": {
       "new": "Ziel anlegen",

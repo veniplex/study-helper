@@ -30,7 +30,7 @@ const timestamps = {
 // ---- Tasks -------------------------------------------------------------------
 
 export type TaskPriority = "low" | "medium" | "high"
-export type TaskStatus = "open" | "done"
+export type TaskStatus = "open" | "doing" | "done"
 
 export const studyTask = pgTable(
   "study_task",

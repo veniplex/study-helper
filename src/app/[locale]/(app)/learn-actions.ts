@@ -73,6 +73,30 @@ export async function toggleTask(taskId: string, done: boolean) {
   return { ok: true as const }
 }
 
+export async function updateTaskStatus(taskId: string, status: unknown) {
+  const session = await requireSession()
+  const value = z.enum(["open", "doing", "done"]).parse(status)
+  await db
+    .update(studyTask)
+    .set({ status: value, completedAt: value === "done" ? new Date() : null })
+    .where(and(eq(studyTask.id, taskId), eq(studyTask.userId, session.user.id)))
+  return { ok: true as const }
+}
+
+export async function reorderTasks(ids: unknown) {
+  const session = await requireSession()
+  const list = z.array(z.string()).max(500).parse(ids)
+  await Promise.all(
+    list.map((id, i) =>
+      db
+        .update(studyTask)
+        .set({ sortOrder: i })
+        .where(and(eq(studyTask.id, id), eq(studyTask.userId, session.user.id)))
+    )
+  )
+  return { ok: true as const }
+}
+
 export async function deleteTask(taskId: string) {
   const session = await requireSession()
   await db
@@ -211,6 +235,21 @@ export async function deletePlanItem(itemId: string) {
   if (!item || item.plan.userId !== session.user.id) throw new Error("Not found")
   await db.delete(studyPlanItem).where(eq(studyPlanItem.id, itemId))
   revalidatePath(`/learn/plans/${item.planId}`)
+  return { ok: true as const }
+}
+
+export async function reorderPlanItems(planId: string, ids: unknown) {
+  const session = await requireSession()
+  await ownPlan(planId, session.user.id)
+  const list = z.array(z.string()).max(500).parse(ids)
+  await Promise.all(
+    list.map((id, i) =>
+      db
+        .update(studyPlanItem)
+        .set({ sortOrder: i })
+        .where(and(eq(studyPlanItem.id, id), eq(studyPlanItem.planId, planId)))
+    )
+  )
   return { ok: true as const }
 }
 

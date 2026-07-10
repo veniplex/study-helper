@@ -4,7 +4,7 @@ import { db } from "@/db"
 import { studyPlan, studyPlanItem } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { AddPlanItemForm } from "@/components/learn/plan-dialogs"
-import { PlanItemRow } from "@/components/learn/plan-item-row"
+import { PlanItemList } from "@/components/learn/plan-item-list"
 
 export default async function ModulePlanDetailPage({
   params,
@@ -17,7 +17,7 @@ export default async function ModulePlanDetailPage({
   const plan = await db.query.studyPlan.findFirst({
     where: and(eq(studyPlan.id, planId), eq(studyPlan.userId, session.user.id)),
     with: {
-      items: { orderBy: [asc(studyPlanItem.scheduledDate), asc(studyPlanItem.sortOrder)] },
+      items: { orderBy: [asc(studyPlanItem.sortOrder), asc(studyPlanItem.scheduledDate)] },
     },
   })
   if (!plan || plan.moduleId !== moduleId) notFound()
@@ -32,11 +32,7 @@ export default async function ModulePlanDetailPage({
           </p>
         )}
       </div>
-      <ul className="space-y-1.5">
-        {plan.items.map((item) => (
-          <PlanItemRow key={item.id} item={item} />
-        ))}
-      </ul>
+      <PlanItemList planId={plan.id} items={plan.items} />
       <AddPlanItemForm planId={plan.id} />
     </div>
   )

@@ -18,7 +18,7 @@ export function TaskRow({
     title: string
     notes: string | null
     priority: "low" | "medium" | "high"
-    status: "open" | "done"
+    status: "open" | "doing" | "done"
     dueDate: string | null
     moduleName?: string | null
   }

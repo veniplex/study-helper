@@ -13,6 +13,7 @@ import {
 } from "@/app/[locale]/(app)/studies/actions"
 import { DeleteButton } from "@/components/studies/delete-button"
 import { ModuleDialog } from "@/components/studies/module-dialog"
+import { SortableModuleTable } from "@/components/studies/sortable-module-table"
 import { ProgramDialog } from "@/components/studies/program-dialog"
 import { SemesterDialog } from "@/components/studies/semester-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -114,19 +115,22 @@ export default async function ProgramPage({
                 <p className="text-muted-foreground text-sm">{t("module.empty")}</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
+                  <SortableModuleTable
+                    semesterId={sem.id}
+                    head={
                       <tr className="text-muted-foreground border-b text-left">
+                        <th className="w-8 py-2 pr-1 font-medium"></th>
                         <th className="py-2 pr-4 font-medium">{t("module.name")}</th>
                         <th className="py-2 pr-4 font-medium">{t("module.ects")}</th>
                         <th className="py-2 pr-4 font-medium">{t("module.grade")}</th>
                         <th className="py-2 pr-4 font-medium">{t("module.status")}</th>
                         <th className="py-2 text-right font-medium"></th>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {sem.modules.map((mod) => (
-                        <tr key={mod.id} className="border-b last:border-0">
+                    }
+                    rows={sem.modules.map((mod) => ({
+                      id: mod.id,
+                      cells: (
+                        <>
                           <td className="py-2.5 pr-4">
                             <Link
                               href={`/studies/${program.id}/${mod.id}`}
@@ -155,10 +159,10 @@ export default async function ProgramPage({
                               <DeleteButton action={deleteModule.bind(null, mod.id)} />
                             </div>
                           </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                        </>
+                      ),
+                    }))}
+                  />
                 </div>
               )}
             </CardContent>

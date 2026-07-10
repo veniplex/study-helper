@@ -32,7 +32,7 @@ export function PlanItemRow({
   }
 
   return (
-    <li className="rounded-md border px-3 py-2.5">
+    <div className="bg-card rounded-md border px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-2.5 text-sm">
         <input
           type="checkbox"
@@ -55,6 +55,6 @@ export function PlanItemRow({
         </p>
       )}
       <span className="sr-only">{t("items")}</span>
-    </li>
+    </div>
   )
 }

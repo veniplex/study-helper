@@ -125,6 +125,22 @@ export async function deleteModule(moduleId: string) {
   return { ok: true as const }
 }
 
+export async function reorderModules(semesterId: string, ids: unknown) {
+  const session = await requireSession()
+  const sem = await ownSemester(semesterId, session.user.id)
+  const list = z.array(z.string()).max(200).parse(ids)
+  await Promise.all(
+    list.map((id, i) =>
+      db
+        .update(studyModule)
+        .set({ sortOrder: i })
+        .where(and(eq(studyModule.id, id), eq(studyModule.semesterId, semesterId)))
+    )
+  )
+  revalidatePath(`/studies/${sem.programId}`)
+  return { ok: true as const }
+}
+
 // ---- Grades ------------------------------------------------------------------
 
 const gradeSchema = z.object({
