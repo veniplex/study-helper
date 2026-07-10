@@ -2,18 +2,20 @@
 
 Open-source, self-hostable study companion. Plan your entire degree, manage learning materials, and prepare for exams with AI support — as an offline-capable PWA.
 
-> **Status:** early development (Phase 0 of 8 — foundation).
+## Features
 
-## Features (planned)
-
-- 🎓 Manage degree programs, semesters, modules, grades and deadlines
-- 📚 Store materials locally (PDF, video, audio, slides, links) with inline viewers
-- 🤖 AI support for every step: study plans, flashcards, quizzes, assignments, thesis planning — works with commercial APIs (Anthropic, OpenAI, Google, …) and self-hosted models (Ollama, any OpenAI-compatible endpoint)
-- 🧠 Spaced repetition (FSRS), quizzes with progress tracking, learning goals
-- 🔐 Multi-user with email/password, passkeys, 2FA, GitHub/Google and generic OIDC SSO (Keycloak, Authentik, Zitadel, …)
-- 🌍 i18n (German & English), light/dark mode, responsive, PWA with offline support
-- 🔔 Reminders via email and web push
+- 🎓 Degree programs, semesters, modules, grades (ECTS-weighted averages), deadlines and a calendar with a private ICS subscription feed
+- 🔗 External resources per module: Moodle, ILIAS, fileshares, Discord & co. with encrypted notes
+- 📚 Materials stored locally (PDF, video, audio, slides, links) with inline viewers and playback-position memory
+- 🤖 AI everywhere: streaming chat with RAG over your own materials (pgvector), study-plan generation, flashcard & quiz generation, AI grading of free-text answers, homework help (Socratic hints or full solutions), academic writing assistant, thesis coach with topic brainstorming, outline and milestone generation
+- 🧠 Spaced repetition with FSRS, quizzes with score history and retry-mistakes mode, tasks with subtasks, learning goals
+- 🌐 Works with commercial APIs (Anthropic, OpenAI, Google, Mistral, Groq) and self-hosted models (Ollama, any OpenAI-compatible endpoint) — admin-managed keys plus optional per-user BYOK, token usage tracking and limits
+- 🔐 Multi-user: email/password, passkeys (WebAuthn), TOTP 2FA, GitHub/Google and generic OIDC SSO (Keycloak, Authentik, Zitadel, Authelia, …)
+- 🌍 i18n (German & English), light/dark mode, responsive, installable PWA with offline reading and an offline write queue that syncs on reconnect
+- 🔔 Reminders via email and web push (configurable offsets per event)
 - ⚙️ Everything configurable from the admin panel
+
+See [docs/self-hosting.md](docs/self-hosting.md) for deployment details.
 
 ## Quick start (development)
 
@@ -35,7 +37,7 @@ docker compose up -d
 
 ## Tech stack
 
-Next.js (App Router) · TypeScript · Tailwind CSS v4 + shadcn/ui · Drizzle ORM · PostgreSQL + pgvector · Better Auth · Vercel AI SDK · next-intl · Serwist · pg-boss
+Next.js (App Router) · TypeScript · Tailwind CSS v4 + shadcn/ui · Drizzle ORM · PostgreSQL + pgvector · Better Auth · Vercel AI SDK · next-intl · pg-boss · ts-fsrs · Dexie
 
 ## Scripts
 
