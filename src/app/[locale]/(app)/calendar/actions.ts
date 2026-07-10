@@ -21,13 +21,29 @@ async function ownEvent(eventId: string, userId: string) {
 const eventSchema = z.object({
   title: z.string().min(1).max(300),
   type: z.enum(["exam", "deadline", "lecture", "other"]),
-  startsAt: z.string().datetime({ local: true }).or(z.string().datetime()),
-  endsAt: z.string().datetime({ local: true }).or(z.string().datetime()).optional().nullable(),
+  startsAt: z
+    .string()
+    .datetime({ local: true })
+    .or(z.string().datetime())
+    .or(z.string().date()),
+  endsAt: z
+    .string()
+    .datetime({ local: true })
+    .or(z.string().datetime())
+    .or(z.string().date())
+    .optional()
+    .nullable(),
   location: z.string().max(300).optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
   moduleId: z.string().optional().nullable(),
+  allDay: z.boolean().default(false),
   reminderOffsets: z.array(z.number().int().positive()).default([]),
 })
+
+/** All-day events store their date at local midnight. */
+function parseStart(value: string, allDay: boolean): Date {
+  return new Date(allDay && !value.includes("T") ? `${value}T00:00` : value)
+}
 
 export async function createEvent(input: unknown) {
   const session = await requireSession()
@@ -39,11 +55,12 @@ export async function createEvent(input: unknown) {
       userId: session.user.id,
       title: data.title,
       type: data.type,
-      startsAt: new Date(data.startsAt),
-      endsAt: data.endsAt ? new Date(data.endsAt) : null,
+      startsAt: parseStart(data.startsAt, data.allDay),
+      endsAt: data.endsAt ? parseStart(data.endsAt, data.allDay) : null,
       location: data.location ?? null,
       notes: data.notes ?? null,
       moduleId: data.moduleId || null,
+      allDay: data.allDay,
       reminderOffsets: data.reminderOffsets,
     })
     .returning()
@@ -69,11 +86,12 @@ export async function updateEvent(eventId: string, input: unknown) {
     .set({
       title: data.title,
       type: data.type,
-      startsAt: new Date(data.startsAt),
-      endsAt: data.endsAt ? new Date(data.endsAt) : null,
+      startsAt: parseStart(data.startsAt, data.allDay),
+      endsAt: data.endsAt ? parseStart(data.endsAt, data.allDay) : null,
       location: data.location ?? null,
       notes: data.notes ?? null,
       moduleId: data.moduleId || null,
+      allDay: data.allDay,
       reminderOffsets: data.reminderOffsets,
     })
     .where(and(eq(studyEvent.id, eventId), eq(studyEvent.userId, session.user.id)))

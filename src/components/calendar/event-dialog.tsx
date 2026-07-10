@@ -34,11 +34,12 @@ export type EventData = {
   id?: string
   title: string
   type: EventType
-  startsAt: string // ISO local "YYYY-MM-DDTHH:mm"
+  startsAt: string // ISO local "YYYY-MM-DDTHH:mm" (or "YYYY-MM-DD" for all-day)
   endsAt: string | null
   location: string | null
   notes: string | null
   moduleId: string | null
+  allDay?: boolean
   reminderOffsets: number[]
 }
 
@@ -68,6 +69,7 @@ export function EventDialog({
   }
   const [pending, setPending] = React.useState(false)
   const [type, setType] = React.useState<EventType>(event?.type ?? "exam")
+  const [allDay, setAllDay] = React.useState(event?.allDay ?? false)
   const [moduleId, setModuleId] = React.useState<string>(event?.moduleId ?? "")
   const [reminders, setReminders] = React.useState<number[]>(event?.reminderOffsets ?? [1440])
   const isEdit = Boolean(event?.id)
@@ -85,6 +87,7 @@ export function EventDialog({
     const payload = {
       title: String(form.get("title")),
       type,
+      allDay,
       startsAt: String(form.get("startsAt")),
       endsAt: String(form.get("endsAt") || "") || null,
       location: String(form.get("location") || "") || null,
@@ -163,23 +166,33 @@ export function EventDialog({
                 </SelectContent>
               </Select>
             </div>
+            <div className="col-span-full flex items-center gap-2">
+              <Switch id="e-allday" checked={allDay} onCheckedChange={setAllDay} />
+              <Label htmlFor="e-allday" className="font-normal">
+                {t("event.allDay")}
+              </Label>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="e-start">{t("event.startsAt")}</Label>
               <Input
+                key={allDay ? "start-date" : "start-dt"}
                 id="e-start"
                 name="startsAt"
-                type="datetime-local"
-                defaultValue={event?.startsAt}
+                type={allDay ? "date" : "datetime-local"}
+                defaultValue={
+                  allDay ? event?.startsAt.slice(0, 10) : event?.startsAt
+                }
                 required
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="e-end">{t("event.endsAt")}</Label>
               <Input
+                key={allDay ? "end-date" : "end-dt"}
                 id="e-end"
                 name="endsAt"
-                type="datetime-local"
-                defaultValue={event?.endsAt ?? ""}
+                type={allDay ? "date" : "datetime-local"}
+                defaultValue={allDay ? (event?.endsAt?.slice(0, 10) ?? "") : (event?.endsAt ?? "")}
               />
             </div>
           </div>

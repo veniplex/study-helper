@@ -401,8 +401,15 @@
     "empty": "No upcoming events.",
     "upcoming": "Upcoming events",
     "past": "Past events",
+    "filters": {
+      "allModules": "All modules",
+      "assignments": "Assignments",
+      "plan": "Study sessions",
+      "absences": "Time off"
+    },
     "event": {
       "title": "Title",
+      "allDay": "All day",
       "type": "Type",
       "typeExam": "Exam",
       "typeDeadline": "Deadline",

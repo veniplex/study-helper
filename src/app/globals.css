@@ -167,13 +167,14 @@
   background: color-mix(in oklch, var(--accent) 40%, transparent);
   cursor: pointer;
 }
-.sh-event-exam { background: var(--destructive); color: #fff; }
-.sh-event-deadline { background: var(--primary); color: var(--primary-foreground); }
-.sh-event-lecture { background: color-mix(in oklch, var(--primary) 45%, var(--muted)); color: var(--primary-foreground); }
-.sh-event-other { background: var(--muted-foreground); color: var(--background); }
-.sh-calendar .fc .fc-event.sh-event-exam .fc-event-dot { border-color: var(--destructive); }
-.sh-event-plan { background: color-mix(in oklch, var(--primary) 22%, var(--muted)); color: var(--foreground); border: 1px dashed var(--primary); }
+.sh-event-exam { background: oklch(0.577 0.245 27.325); color: #fff; }
+.sh-event-deadline { background: oklch(0.769 0.188 70.08); color: #1c1400; }
+.sh-event-lecture { background: oklch(0.685 0.169 237.323); color: #fff; }
+.sh-event-other { background: oklch(0.606 0.25 292.717); color: #fff; }
+.sh-event-assignment { background: color-mix(in oklch, oklch(0.769 0.188 70.08) 30%, var(--background)); color: var(--foreground); border: 1px dashed oklch(0.769 0.188 70.08); }
+.sh-event-plan { background: color-mix(in oklch, oklch(0.696 0.17 162.48) 25%, var(--background)); color: var(--foreground); border: 1px dashed oklch(0.696 0.17 162.48); }
 .sh-event-plan-done { opacity: 0.5; text-decoration: line-through; }
+.sh-event-absence { background: color-mix(in oklch, var(--muted-foreground) 25%, transparent); }
 
 /* Interactive elements always get a pointer cursor */
 @layer base {

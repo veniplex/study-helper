@@ -1,24 +1,13 @@
-import { asc, eq } from "drizzle-orm"
-import { CalendarDays, MapPin } from "lucide-react"
-import { getFormatter, getTranslations } from "next-intl/server"
+import { asc, eq, ne, and, isNotNull } from "drizzle-orm"
+import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import { degreeProgram, semesterPlan, studyEvent, userPrefs } from "@/db/schema"
+import { assignment, degreeProgram, semesterPlan, studyEvent, userPrefs } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { env } from "@/lib/env"
-import { deleteEvent } from "./actions"
-import { DeleteButton } from "@/components/studies/delete-button"
+import { expandAbsences } from "@/lib/plan/absences"
 import { CalendarView } from "@/components/calendar/calendar-view"
 import { EventDialog, type ModuleOption } from "@/components/calendar/event-dialog"
 import { IcsCard } from "@/components/calendar/ics-card"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-
-const typeVariant = {
-  exam: "destructive",
-  deadline: "default",
-  lecture: "secondary",
-  other: "outline",
-} as const
 
 function toLocalInputValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0")
@@ -28,10 +17,8 @@ function toLocalInputValue(d: Date): string {
 export default async function CalendarPage() {
   const session = await requireSession()
   const t = await getTranslations("calendar")
-  const format = await getFormatter()
-  const now = new Date()
 
-  const [allEvents, prefs, programs, planItems] = await Promise.all([
+  const [allEvents, prefs, programs, planItems, plans, dueAssignments] = await Promise.all([
     db.query.studyEvent.findMany({
       where: eq(studyEvent.userId, session.user.id),
       orderBy: [asc(studyEvent.startsAt)],
@@ -57,65 +44,36 @@ export default async function CalendarPage() {
         startTime: true,
         durationMinutes: true,
         done: true,
+        moduleId: true,
       },
     }),
+    db.query.semesterPlan.findMany({
+      where: eq(semesterPlan.userId, session.user.id),
+      columns: { availability: true },
+    }),
+    db.query.assignment.findMany({
+      where: and(
+        eq(assignment.userId, session.user.id),
+        isNotNull(assignment.dueDate),
+        ne(assignment.status, "graded")
+      ),
+      with: { module: { with: { semester: true } } },
+    }),
   ])
-  const upcoming = allEvents.filter((e) => e.startsAt >= now)
 
   const modules: ModuleOption[] = programs.flatMap((p) =>
     p.semesters.flatMap((s) => s.modules.map((m) => ({ id: m.id, name: m.name })))
   )
 
-  const typeLabels = {
-    exam: t("event.typeExam"),
-    deadline: t("event.typeDeadline"),
-    lecture: t("event.typeLecture"),
-    other: t("event.typeOther"),
-  } as const
-
-  function EventRow({ event }: { event: (typeof upcoming)[number] }) {
-    return (
-      <li className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2.5 text-sm">
-        <Badge variant={typeVariant[event.type]}>{typeLabels[event.type]}</Badge>
-        <span className="font-medium">{event.title}</span>
-        {event.module && (
-          <span className="text-muted-foreground text-xs">{event.module.name}</span>
-        )}
-        <span className="text-muted-foreground ml-auto flex items-center gap-3 text-xs">
-          {event.location && (
-            <span className="flex items-center gap-1">
-              <MapPin className="size-3" />
-              {event.location}
-            </span>
-          )}
-          <span className="flex items-center gap-1">
-            <CalendarDays className="size-3" />
-            {format.dateTime(event.startsAt, { dateStyle: "medium", timeStyle: "short" })}
-          </span>
-        </span>
-        <span className="flex gap-1">
-          <EventDialog
-            modules={modules}
-            event={{
-              id: event.id,
-              title: event.title,
-              type: event.type,
-              startsAt: toLocalInputValue(event.startsAt),
-              endsAt: event.endsAt ? toLocalInputValue(event.endsAt) : null,
-              location: event.location,
-              notes: event.notes,
-              moduleId: event.moduleId,
-              reminderOffsets: event.reminderOffsets,
-            }}
-          />
-          <DeleteButton action={deleteEvent.bind(null, event.id)} />
-        </span>
-      </li>
-    )
-  }
+  // Expand plan unavailability into concrete windows for ±6 months
+  const from = new Date()
+  from.setMonth(from.getMonth() - 6)
+  const to = new Date()
+  to.setMonth(to.getMonth() + 6)
+  const absences = plans.flatMap((p) => expandAbsences(p.availability, from, to))
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6">
+    <div className="mx-auto w-full max-w-5xl space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-xl font-semibold tracking-tight">{t("title")}</h1>
         <EventDialog modules={modules} />
@@ -123,7 +81,6 @@ export default async function CalendarPage() {
 
       <CalendarView
         modules={modules}
-        planItems={planItems}
         events={allEvents.map((e) => ({
           id: e.id,
           title: e.title,
@@ -133,26 +90,20 @@ export default async function CalendarPage() {
           location: e.location,
           notes: e.notes,
           moduleId: e.moduleId,
+          allDay: e.allDay,
           reminderOffsets: e.reminderOffsets,
         }))}
+        planItems={planItems}
+        assignments={dueAssignments.map((a) => ({
+          id: a.id,
+          title: a.title,
+          dueDate: a.dueDate!,
+          moduleId: a.moduleId,
+          moduleName: a.module.name,
+          href: `/studies/${a.module.semester.programId}/${a.moduleId}/assignments`,
+        }))}
+        absences={absences}
       />
-
-      {upcoming.length === 0 ? (
-        <Card>
-          <CardContent className="text-muted-foreground py-8 text-center text-sm">
-            {t("empty")}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          <h2 className="text-muted-foreground text-sm font-medium">{t("upcoming")}</h2>
-          <ul className="space-y-2">
-            {upcoming.map((e) => (
-              <EventRow key={e.id} event={e} />
-            ))}
-          </ul>
-        </div>
-      )}
 
       <IcsCard appUrl={env.APP_URL} token={prefs?.icsToken ?? null} />
     </div>

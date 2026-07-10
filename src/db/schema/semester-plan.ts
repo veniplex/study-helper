@@ -28,6 +28,11 @@ export type PlanAvailability = {
     /** First affected date for biweekly rhythms (ISO date). */
     anchor?: string
     label?: string
+    /** Expert mode: 5-field cron expression for the start times; overrides
+     * weekday/from/to/interval when set. */
+    cron?: string
+    /** Blocked duration per cron occurrence (minutes). */
+    durationMinutes?: number
   }[]
 }
 

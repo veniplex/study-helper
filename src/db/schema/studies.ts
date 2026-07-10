@@ -1,4 +1,5 @@
 import {
+  boolean,
   date,
   integer,
   jsonb,
@@ -141,6 +142,7 @@ export const studyEvent = pgTable(
     endsAt: timestamp("ends_at", { withTimezone: true }),
     location: text("location"),
     notes: text("notes"),
+    allDay: boolean("all_day").notNull().default(false),
     /** Reminder offsets in minutes before startsAt, e.g. [10080, 1440]. */
     reminderOffsets: jsonb("reminder_offsets").$type<number[]>().notNull().default([]),
     ...timestamps,

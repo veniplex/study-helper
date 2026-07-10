@@ -401,8 +401,15 @@
     "empty": "Keine anstehenden Termine.",
     "upcoming": "Nächste Termine",
     "past": "Vergangene Termine",
+    "filters": {
+      "allModules": "Alle Module",
+      "assignments": "Abgaben",
+      "plan": "Lerneinheiten",
+      "absences": "Abwesenheiten"
+    },
     "event": {
       "title": "Titel",
+      "allDay": "Ganztägig",
       "type": "Typ",
       "typeExam": "Prüfung",
       "typeDeadline": "Abgabe / Deadline",

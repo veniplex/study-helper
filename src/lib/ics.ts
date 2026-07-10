@@ -5,6 +5,12 @@ type IcsEvent = {
   endsAt: Date | null
   location: string | null
   notes: string | null
+  allDay?: boolean
+}
+
+function icsDateOnly(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`
 }
 
 function icsDate(d: Date): string {
@@ -39,8 +45,18 @@ export function buildIcsCalendar(name: string, events: IcsEvent[]): string {
       "BEGIN:VEVENT",
       fold(`UID:${e.id}@studyhelper`),
       `DTSTAMP:${icsDate(new Date())}`,
-      `DTSTART:${icsDate(e.startsAt)}`,
-      ...(e.endsAt ? [`DTEND:${icsDate(e.endsAt)}`] : []),
+      ...(e.allDay
+        ? [
+            `DTSTART;VALUE=DATE:${icsDateOnly(e.startsAt)}`,
+            // DTEND is exclusive for all-day events
+            `DTEND;VALUE=DATE:${icsDateOnly(
+              new Date((e.endsAt ?? e.startsAt).getTime() + 24 * 60 * 60 * 1000)
+            )}`,
+          ]
+        : [
+            `DTSTART:${icsDate(e.startsAt)}`,
+            ...(e.endsAt ? [`DTEND:${icsDate(e.endsAt)}`] : []),
+          ]),
       fold(`SUMMARY:${escapeText(e.title)}`),
       ...(e.location ? [fold(`LOCATION:${escapeText(e.location)}`)] : []),
       ...(e.notes ? [fold(`DESCRIPTION:${escapeText(e.notes)}`)] : []),
