@@ -44,6 +44,87 @@ export async function createLinkMaterial(input: unknown) {
   return { ok: true as const }
 }
 
+async function ownMaterial(materialId: string, userId: string) {
+  const row = await db.query.material.findFirst({
+    where: and(eq(material.id, materialId), eq(material.userId, userId)),
+  })
+  if (!row) throw new Error("Not found")
+  return row
+}
+
+export async function renameMaterial(materialId: string, name: string) {
+  const session = await requireSession()
+  const clean = name.trim().slice(0, 300)
+  if (!clean) throw new Error("Name required")
+  const before = await ownMaterial(materialId, session.user.id)
+  await db.update(material).set({ name: clean }).where(eq(material.id, materialId))
+  await logAudit({
+    userId: session.user.id,
+    operation: "update",
+    entityType: "material",
+    entityId: materialId,
+    entityLabel: clean,
+    before,
+    after: { ...before, name: clean },
+  })
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
+export async function moveMaterialToFolder(materialId: string, folder: string | null) {
+  const session = await requireSession()
+  const clean = folder?.trim().slice(0, 100) || null
+  const before = await ownMaterial(materialId, session.user.id)
+  await db.update(material).set({ folder: clean }).where(eq(material.id, materialId))
+  await logAudit({
+    userId: session.user.id,
+    operation: "update",
+    entityType: "material",
+    entityId: materialId,
+    entityLabel: before.name,
+    before,
+    after: { ...before, folder: clean },
+  })
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
+export async function renameFolder(moduleId: string, oldName: string, newName: string) {
+  const session = await requireSession()
+  await ownModule(moduleId, session.user.id)
+  const clean = newName.trim().slice(0, 100)
+  if (!clean) throw new Error("Name required")
+  await db
+    .update(material)
+    .set({ folder: clean })
+    .where(
+      and(
+        eq(material.moduleId, moduleId),
+        eq(material.userId, session.user.id),
+        eq(material.folder, oldName)
+      )
+    )
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
+export async function deleteFolder(moduleId: string, folderName: string) {
+  const session = await requireSession()
+  await ownModule(moduleId, session.user.id)
+  await db
+    .update(material)
+    .set({ folder: null })
+    .where(
+      and(
+        eq(material.moduleId, moduleId),
+        eq(material.userId, session.user.id),
+        eq(material.folder, folderName)
+      )
+    )
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
 export async function deleteMaterial(materialId: string) {
   const session = await requireSession()
   const row = await db.query.material.findFirst({

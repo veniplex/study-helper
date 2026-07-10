@@ -26,7 +26,14 @@ import { createLinkMaterial } from "@/app/[locale]/(app)/materials-actions"
 
 export type ModuleOption = { id: string; name: string }
 
-export function UploadDialog({ modules }: { modules: ModuleOption[] }) {
+export function UploadDialog({
+  modules,
+  hideModuleSelect,
+}: {
+  modules: ModuleOption[]
+  /** Inside a module workspace the module is fixed — hide the redundant select. */
+  hideModuleSelect?: boolean
+}) {
   const t = useTranslations("materials")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -92,23 +99,25 @@ export function UploadDialog({ modules }: { modules: ModuleOption[] }) {
           <DialogTitle>{t("upload")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>{t("module")}</Label>
-            <Select value={moduleId} onValueChange={(v) => setModuleId(v ?? "")}>
-              <SelectTrigger className="w-full">
-                <SelectValue>
-                  {modules.find((m) => m.id === moduleId)?.name ?? ""}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {modules.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!hideModuleSelect && (
+            <div className="space-y-1.5">
+              <Label>{t("module")}</Label>
+              <Select value={moduleId} onValueChange={(v) => setModuleId(v ?? "")}>
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {modules.find((m) => m.id === moduleId)?.name ?? ""}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {modules.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="u-file">{t("upload")}</Label>
             <Input id="u-file" type="file" multiple required />
@@ -140,7 +149,13 @@ export function UploadDialog({ modules }: { modules: ModuleOption[] }) {
   )
 }
 
-export function LinkDialog({ modules }: { modules: ModuleOption[] }) {
+export function LinkDialog({
+  modules,
+  hideModuleSelect,
+}: {
+  modules: ModuleOption[]
+  hideModuleSelect?: boolean
+}) {
   const t = useTranslations("materials")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -180,23 +195,25 @@ export function LinkDialog({ modules }: { modules: ModuleOption[] }) {
           <DialogTitle>{t("addLink")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>{t("module")}</Label>
-            <Select value={moduleId} onValueChange={(v) => setModuleId(v ?? "")}>
-              <SelectTrigger className="w-full">
-                <SelectValue>
-                  {modules.find((m) => m.id === moduleId)?.name ?? ""}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {modules.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!hideModuleSelect && (
+            <div className="space-y-1.5">
+              <Label>{t("module")}</Label>
+              <Select value={moduleId} onValueChange={(v) => setModuleId(v ?? "")}>
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {modules.find((m) => m.id === moduleId)?.name ?? ""}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {modules.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="l-name">{t("name")}</Label>
             <Input id="l-name" name="name" required />
