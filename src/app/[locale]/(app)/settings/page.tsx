@@ -7,6 +7,7 @@ import { getSetting } from "@/lib/settings"
 import { daysAgo } from "@/lib/utils"
 import { AiKeySettings } from "@/components/settings/ai-key-settings"
 import { NotificationSettings } from "@/components/settings/notification-settings"
+import { ProfileSettings } from "@/components/settings/profile-settings"
 import { SecuritySettings } from "@/components/settings/security-settings"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -47,6 +48,10 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
       <h1 className="font-heading text-xl font-semibold tracking-tight">{t("title")}</h1>
+      <ProfileSettings
+        initialName={session.user.name}
+        initialImage={session.user.image ?? null}
+      />
       <SecuritySettings
         twoFactorEnabled={Boolean(session.user.twoFactorEnabled)}
         passkeys={passkeys.map((p) => ({ ...p, createdAt: p.createdAt ?? new Date() }))}

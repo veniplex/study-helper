@@ -193,6 +193,14 @@
   },
   "settings": {
     "title": "Settings",
+    "profile": {
+      "title": "Profile",
+      "name": "Name",
+      "changeAvatar": "Change picture",
+      "removeAvatar": "Remove",
+      "save": "Save",
+      "saved": "Profile saved."
+    },
     "aiKeys": {
       "title": "Your AI API keys (BYOK)",
       "description": "Your own keys take precedence over centrally configured ones. Stored encrypted.",

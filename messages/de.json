@@ -193,6 +193,14 @@
   },
   "settings": {
     "title": "Einstellungen",
+    "profile": {
+      "title": "Profil",
+      "name": "Name",
+      "changeAvatar": "Bild ändern",
+      "removeAvatar": "Entfernen",
+      "save": "Speichern",
+      "saved": "Profil gespeichert."
+    },
     "aiKeys": {
       "title": "Eigene KI-API-Keys (BYOK)",
       "description": "Eigene Keys haben Vorrang vor den zentral konfigurierten. Verschlüsselt gespeichert.",
