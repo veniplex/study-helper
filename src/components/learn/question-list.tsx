@@ -38,7 +38,7 @@ function EditQuestionDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const t = useTranslations("learn.quizzes.questionForm")
+  const t = useTranslations("learn.questionForm")
   const tCommon = useTranslations("common")
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
@@ -146,7 +146,7 @@ function EditQuestionDialog({
 }
 
 export function QuestionList({ questions }: { questions: QuestionItem[] }) {
-  const t = useTranslations("learn.quizzes")
+  const tForm = useTranslations("learn.questionForm")
   const tCommon = useTranslations("common")
   const [editing, setEditing] = React.useState<string | null>(null)
 
@@ -159,7 +159,7 @@ export function QuestionList({ questions }: { questions: QuestionItem[] }) {
           <span className="text-muted-foreground text-xs tabular-nums">{i + 1}.</span>
           <span className="min-w-0 flex-1 truncate">{q.prompt}</span>
           <Badge variant="outline">
-            {q.kind === "multiple_choice" ? t("questionForm.mc") : t("questionForm.freeText")}
+            {q.kind === "multiple_choice" ? tForm("mc") : tForm("freeText")}
           </Badge>
           <Button
             variant="ghost"

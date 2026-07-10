@@ -524,6 +524,7 @@
     "deleteChat": "Chat löschen",
     "deleteChatConfirm": "Diesen Chat wirklich löschen?",
     "expand": "Als Vollbild öffnen",
+    "minimize": "Minimieren",
     "newConversation": "Neue Unterhaltung",
     "module": "Modul",
     "tool": {

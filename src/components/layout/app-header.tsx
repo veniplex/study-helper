@@ -13,14 +13,17 @@ export function AppHeader({
   modules?: ModuleOption[]
 }) {
   return (
-    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 flex h-14 items-center gap-2 border-b px-4 backdrop-blur md:px-6">
-      <div className="flex flex-1 items-center gap-2">
+    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 grid h-14 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b px-4 backdrop-blur md:px-6">
+      <div />
+      <div className="flex justify-center">
         <CommandPalette />
       </div>
-      <Pomodoro modules={modules} />
-      <LocaleSwitcher />
-      <ThemeToggle />
-      <UserMenu {...user} />
+      <div className="flex items-center justify-end gap-2">
+        <Pomodoro modules={modules} />
+        <LocaleSwitcher />
+        <ThemeToggle />
+        <UserMenu {...user} />
+      </div>
     </header>
   )
 }

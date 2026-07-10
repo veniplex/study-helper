@@ -40,6 +40,12 @@ import {
 } from "@/app/[locale]/(app)/materials-actions"
 import { DeleteButton } from "@/components/studies/delete-button"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
@@ -306,6 +312,8 @@ export function MaterialsBrowser({
   const router = useRouter()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
   const [extraFolders, setExtraFolders] = React.useState<string[]>([])
+  const [newFolderOpen, setNewFolderOpen] = React.useState(false)
+  const [newFolderName, setNewFolderName] = React.useState("")
 
   const folderNames = [
     ...new Set([
@@ -333,19 +341,45 @@ export function MaterialsBrowser({
   }
 
   function addFolder() {
-    const name = window.prompt(t("newFolderPrompt"))?.trim()
+    const name = newFolderName.trim()
     if (!name) return
     if (!folderNames.includes(name)) setExtraFolders((f) => [...f, name])
+    setNewFolderName("")
+    setNewFolderOpen(false)
   }
 
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={addFolder}>
+        <Button variant="outline" size="sm" onClick={() => setNewFolderOpen(true)}>
           <FolderPlus className="size-4" />
           {t("newFolder")}
         </Button>
       </div>
+      <Dialog open={newFolderOpen} onOpenChange={setNewFolderOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("newFolder")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addFolder()}
+              placeholder={t("newFolderPrompt")}
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setNewFolderOpen(false)}>
+                {t("cancel")}
+              </Button>
+              <Button onClick={addFolder} disabled={!newFolderName.trim()}>
+                {t("newFolder")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <DndContext id={`materials-${moduleId}`} sensors={sensors} onDragEnd={onDragEnd}>
         <div className="space-y-3">
           {folderNames.map((name) => (

@@ -114,14 +114,15 @@ export function ChatDock({
     [pageContext.moduleId, pageContext.moduleName, conversations, t]
   )
 
-  async function openDock() {
+  async function openDock(targetId?: string) {
     setOpen(true)
-    if (current) return
+    if (current && !targetId) return
+    if (current && targetId === current.id) return
     setPending(true)
     try {
       const list = await listConversations()
       setConversations(list)
-      const lastId = window.localStorage.getItem(LAST_CHAT_KEY)
+      const lastId = targetId ?? window.localStorage.getItem(LAST_CHAT_KEY)
       const target = list.find((c) => c.id === lastId) ?? list[0]
       if (target) {
         const messages = await getConversationMessages(target.id)
@@ -139,9 +140,10 @@ export function ChatDock({
     }
   }
 
-  // Bottom-nav "AI" tab opens the dock (fullscreen on mobile)
+  // Bottom-nav "AI" tab and the fullscreen page's minimize button open the dock
   React.useEffect(() => {
-    const handler = () => void openDock()
+    const handler = (e: Event) =>
+      void openDock((e as CustomEvent<{ conversationId?: string }>).detail?.conversationId)
     window.addEventListener(CHAT_OPEN_EVENT, handler)
     return () => window.removeEventListener(CHAT_OPEN_EVENT, handler)
     // eslint-disable-next-line react-hooks/exhaustive-deps

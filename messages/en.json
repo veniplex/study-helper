@@ -523,6 +523,7 @@
     "deleteChat": "Delete chat",
     "deleteChatConfirm": "Really delete this chat?",
     "expand": "Open fullscreen",
+    "minimize": "Minimize",
     "newConversation": "New conversation",
     "module": "Module",
     "tool": {

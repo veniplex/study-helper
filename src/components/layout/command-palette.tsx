@@ -81,7 +81,7 @@ export function CommandPalette() {
       <Button
         variant="outline"
         onClick={() => setOpen(true)}
-        className="text-muted-foreground h-9 w-9 justify-center p-0 sm:w-56 sm:justify-start sm:px-3"
+        className="text-muted-foreground h-9 w-9 justify-center p-0 sm:w-72 sm:justify-start sm:px-3 lg:w-96"
       >
         <Search className="size-4 shrink-0" />
         <span className="hidden truncate text-sm font-normal sm:inline">{tCommon("search")}</span>

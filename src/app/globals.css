@@ -174,3 +174,17 @@
 .sh-calendar .fc .fc-event.sh-event-exam .fc-event-dot { border-color: var(--destructive); }
 .sh-event-plan { background: color-mix(in oklch, var(--primary) 22%, var(--muted)); color: var(--foreground); border: 1px dashed var(--primary); }
 .sh-event-plan-done { opacity: 0.5; text-decoration: line-through; }
+
+/* Interactive elements always get a pointer cursor */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  select:not(:disabled),
+  summary,
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="range"]:not(:disabled),
+  input[type="file"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
