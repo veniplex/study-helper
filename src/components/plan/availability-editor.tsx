@@ -184,7 +184,71 @@ export function AvailabilityEditor({
 
         <div className="space-y-2">
           <p className="text-sm font-medium">{t("recurring")}</p>
-          {recurring.map((r, i) => (
+          {recurring.map((r, i) =>
+            r.cron != null ? (
+              <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
+                <Input
+                  value={r.cron}
+                  onChange={(e) =>
+                    setRecurring((list) =>
+                      list.map((x, j) => (j === i ? { ...x, cron: e.target.value } : x))
+                    )
+                  }
+                  placeholder="0 18 * * 2"
+                  className="h-8 w-36 font-mono"
+                  title={t("cronHint")}
+                />
+                <Input
+                  type="number"
+                  min={5}
+                  max={1440}
+                  value={r.durationMinutes ?? 60}
+                  onChange={(e) =>
+                    setRecurring((list) =>
+                      list.map((x, j) =>
+                        j === i
+                          ? { ...x, durationMinutes: Math.max(5, Number(e.target.value) || 60) }
+                          : x
+                      )
+                    )
+                  }
+                  className="h-8 w-20"
+                  title={t("cronDuration")}
+                />
+                <span className="text-muted-foreground text-xs">{t("cronDuration")}</span>
+                <Input
+                  placeholder={t("blackoutLabel")}
+                  value={r.label ?? ""}
+                  onChange={(e) =>
+                    setRecurring((list) =>
+                      list.map((x, j) => (j === i ? { ...x, label: e.target.value } : x))
+                    )
+                  }
+                  className="h-8 w-36"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setRecurring((list) =>
+                      list.map((x, j) =>
+                        j === i ? { ...x, cron: undefined, durationMinutes: undefined } : x
+                      )
+                    )
+                  }
+                >
+                  {t("simpleMode")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setRecurring((list) => list.filter((_, j) => j !== i))}
+                >
+                  <Trash2 className="size-3.5" />
+                  <span className="sr-only">{t("removeBlackout")}</span>
+                </Button>
+              </div>
+            ) : (
             <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
               <select
                 value={r.weekday}
@@ -265,6 +329,19 @@ export function AvailabilityEditor({
               />
               <Button
                 variant="ghost"
+                size="sm"
+                onClick={() =>
+                  setRecurring((list) =>
+                    list.map((x, j) =>
+                      j === i ? { ...x, cron: "0 18 * * 2", durationMinutes: 60 } : x
+                    )
+                  )
+                }
+              >
+                {t("cronMode")}
+              </Button>
+              <Button
+                variant="ghost"
                 size="icon-sm"
                 onClick={() => setRecurring((list) => list.filter((_, j) => j !== i))}
               >
@@ -272,7 +349,8 @@ export function AvailabilityEditor({
                 <span className="sr-only">{t("removeBlackout")}</span>
               </Button>
             </div>
-          ))}
+            )
+          )}
           <Button
             variant="outline"
             size="sm"

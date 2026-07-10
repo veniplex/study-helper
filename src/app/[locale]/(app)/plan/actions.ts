@@ -16,6 +16,7 @@ import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
 import { logAudit } from "@/lib/audit"
+import { expandAbsences, validateCron } from "@/lib/plan/absences"
 import { ownSemester } from "@/lib/studies/access"
 
 const availabilitySchema = z.object({
@@ -46,6 +47,14 @@ const availabilitySchema = z.object({
         interval: z.union([z.literal(1), z.literal(2)]),
         anchor: z.string().date().optional(),
         label: z.string().max(100).optional(),
+        cron: z
+          .string()
+          .max(100)
+          .optional()
+          .refine((v) => v == null || v === "" || validateCron(v) == null, {
+            message: "Invalid cron expression",
+          }),
+        durationMinutes: z.number().int().min(5).max(24 * 60).optional(),
       })
     )
     .max(20)
@@ -123,9 +132,16 @@ export async function generateSemesterPlan(semesterId: string) {
   const nameById = new Map(modules.map((m) => [m.id, m.name]))
   const today = new Date().toISOString().slice(0, 10)
 
+  // Expand recurring/cron unavailability into concrete windows for the
+  // planning horizon — more reliable than asking the model to interpret rules.
+  const horizonEnd = new Date()
+  horizonEnd.setMonth(horizonEnd.getMonth() + 6)
+  const blockedWindows = expandAbsences(plan.availability, new Date(), horizonEnd)
+
   const promptData = {
     today,
     semester: { name: sem.name, start: sem.startDate, end: sem.endDate },
+    blockedWindows,
     modules: modules.map((m) => ({ name: m.name, examType: m.examType })),
     exams: exams.map((e) => ({
       module: e.moduleId ? nameById.get(e.moduleId) : null,
@@ -148,8 +164,8 @@ export async function generateSemesterPlan(semesterId: string) {
     prompt: `Create a semester study plan as concrete calendar sessions.
 
 Rules:
-- Only schedule sessions on weekdays/times inside "availability.weekly" windows, never inside blackout ranges, never before today (${today}).
-- "availability.recurring" lists recurring unavailability: never schedule a session that overlaps such a window on its weekday. interval 1 = every week; interval 2 = every second week starting at "anchor" (only dates with an even number of weeks distance from the anchor are affected).
+- Only schedule sessions on weekdays/times inside "availability.weekly" windows, never before today (${today}).
+- "blockedWindows" lists concrete unavailability: entries with from/to block that time range on that date; entries with from=null block the whole day. Never schedule a session that overlaps a blocked window.
 - Distribute study sessions across ALL modules, weighted towards modules with earlier exams.
 - Schedule work on each assignment BEFORE its dueDate (kind "assignment", title referencing the assignment).
 - In the 2-3 weeks before each exam add "review" sessions for that module (repetition of earlier topics).
