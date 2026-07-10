@@ -38,6 +38,7 @@ export function StudySession({
     4: 0,
   })
   const [startedAt] = React.useState(() => Date.now())
+  const [resultMinutes, setResultMinutes] = React.useState(1)
   const loggedRef = React.useRef(false)
 
   const current = queue[0]
@@ -48,6 +49,7 @@ export function StudySession({
     if (current || reviewed === 0 || loggedRef.current) return
     loggedRef.current = true
     const minutes = Math.max(1, Math.round((Date.now() - startedAt) / 60000))
+    setResultMinutes(minutes)
     void logStudySession({
       moduleId: moduleId ?? null,
       durationMinutes: minutes,
@@ -85,7 +87,7 @@ export function StudySession({
   }
 
   if (!current) {
-    const minutes = Math.max(1, Math.round((Date.now() - startedAt) / 60000))
+    const minutes = resultMinutes
     return (
       <div className="mx-auto flex min-h-[40vh] max-w-md flex-col items-center justify-center gap-4 text-center">
         <PartyPopper className="text-muted-foreground size-8" />
