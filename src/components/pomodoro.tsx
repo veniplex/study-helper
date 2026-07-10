@@ -48,10 +48,10 @@ const PHASE_STYLES: Record<
   { text: string; ring: string; pill: string; bar: string }
 > = {
   focus: {
-    text: "text-primary",
-    ring: "stroke-primary",
-    pill: "bg-primary/10 text-primary",
-    bar: "bg-primary",
+    text: "text-amber-600 dark:text-amber-400",
+    ring: "stroke-amber-500",
+    pill: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+    bar: "bg-amber-500",
   },
   break: {
     text: "text-emerald-600 dark:text-emerald-400",
@@ -276,7 +276,7 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
         )}
         <span className="sr-only">{t("title")}</span>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-4">
+      <PopoverContent align="end" className="w-[340px] max-w-[calc(100vw-2rem)] p-4">
         <div className="space-y-4">
           <div className="flex flex-col items-center gap-2">
             <span
@@ -326,7 +326,7 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
             </div>
           </div>
 
-          <div className="flex justify-center gap-1.5">
+          <div className="flex items-center justify-center gap-1.5">
             {running ? (
               <Button variant="outline" size="sm" onClick={pause}>
                 <Pause className="size-4" />
@@ -338,23 +338,28 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
                 {t("start")}
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => completePhase({ skip: true })}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              title={t("skip")}
+              onClick={() => completePhase({ skip: true })}
+            >
               <SkipForward className="size-4" />
-              {t("skip")}
+              <span className="sr-only">{t("skip")}</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={reset}>
+            <Button variant="ghost" size="icon-sm" title={t("reset")} onClick={reset}>
               <RotateCcw className="size-4" />
-              {t("reset")}
+              <span className="sr-only">{t("reset")}</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={stop}>
+            <Button variant="ghost" size="icon-sm" title={t("stop")} onClick={stop}>
               <Square className="size-4" />
-              {t("stop")}
+              <span className="sr-only">{t("stop")}</span>
             </Button>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1">
-              <Label htmlFor="pomo-focus" className="text-xs">
+          <div className="grid min-w-0 grid-cols-3 gap-2">
+            <div className="min-w-0 space-y-1">
+              <Label htmlFor="pomo-focus" className="block truncate text-xs">
                 {t("focusMinutes")}
               </Label>
               <Input
@@ -367,8 +372,8 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
                 onChange={(e) => setDuration("focusMin", Math.max(1, Number(e.target.value) || 25))}
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="pomo-break" className="text-xs">
+            <div className="min-w-0 space-y-1">
+              <Label htmlFor="pomo-break" className="block truncate text-xs">
                 {t("breakMinutes")}
               </Label>
               <Input
@@ -381,8 +386,8 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
                 onChange={(e) => setDuration("breakMin", Math.max(1, Number(e.target.value) || 5))}
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="pomo-long-break" className="text-xs">
+            <div className="min-w-0 space-y-1">
+              <Label htmlFor="pomo-long-break" className="block truncate text-xs">
                 {t("longBreakMinutes")}
               </Label>
               <Input
