@@ -44,6 +44,11 @@ export const uploadsSchema = z.object({
   maxUploadMb: z.number().int().min(1).max(10240).default(200),
 })
 
+export const vapidSchema = z.object({
+  publicKey: z.string().min(1),
+  privateKey: z.string().min(1),
+})
+
 export const aiProviderTypeSchema = z.enum([
   "anthropic",
   "openai",
@@ -91,13 +96,20 @@ const settingsSchemas = {
   branding: brandingSchema,
   uploads: uploadsSchema,
   ai: aiSettingsSchema,
+  "push.vapid": vapidSchema,
 } as const
 
 export type SettingKey = keyof typeof settingsSchemas
 export type SettingValue<K extends SettingKey> = z.infer<(typeof settingsSchemas)[K]>
 
 /** Settings whose values are encrypted at rest because they contain credentials. */
-const SECRET_KEYS: SettingKey[] = ["auth.socialProviders", "auth.oidcProviders", "smtp", "ai"]
+const SECRET_KEYS: SettingKey[] = [
+  "auth.socialProviders",
+  "auth.oidcProviders",
+  "smtp",
+  "ai",
+  "push.vapid",
+]
 
 const defaults: { [K in SettingKey]: SettingValue<K> } = {
   "auth.registrationMode": "open",
@@ -107,6 +119,7 @@ const defaults: { [K in SettingKey]: SettingValue<K> } = {
   branding: { appName: "StudyHelper" },
   uploads: { maxUploadMb: 200 },
   ai: { providers: [], monthlyTokenLimitPerUser: 0 },
+  "push.vapid": undefined as never, // generated on first use
 }
 
 // ---- Store -----------------------------------------------------------------

@@ -1,11 +1,12 @@
 import { and, eq, gte, sum } from "drizzle-orm"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import { aiUsageLog, passkey, userAiKey } from "@/db/schema"
+import { aiUsageLog, notificationPrefs, passkey, userAiKey } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { getSetting } from "@/lib/settings"
 import { daysAgo } from "@/lib/utils"
 import { AiKeySettings } from "@/components/settings/ai-key-settings"
+import { NotificationSettings } from "@/components/settings/notification-settings"
 import { SecuritySettings } from "@/components/settings/security-settings"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -14,7 +15,7 @@ export default async function SettingsPage() {
   const t = await getTranslations("settings")
   const thirtyDaysAgo = daysAgo(30)
 
-  const [passkeys, ai, userKeys, usage] = await Promise.all([
+  const [passkeys, ai, userKeys, usage, nPrefs] = await Promise.all([
     db
       .select({ id: passkey.id, name: passkey.name, createdAt: passkey.createdAt })
       .from(passkey)
@@ -30,6 +31,9 @@ export default async function SettingsPage() {
       .where(
         and(eq(aiUsageLog.userId, session.user.id), gte(aiUsageLog.createdAt, thirtyDaysAgo))
       ),
+    db.query.notificationPrefs.findFirst({
+      where: eq(notificationPrefs.userId, session.user.id),
+    }),
   ])
 
   const providers = (ai?.providers ?? []).map((p) => ({
@@ -46,6 +50,12 @@ export default async function SettingsPage() {
       <SecuritySettings
         twoFactorEnabled={Boolean(session.user.twoFactorEnabled)}
         passkeys={passkeys.map((p) => ({ ...p, createdAt: p.createdAt ?? new Date() }))}
+      />
+      <NotificationSettings
+        initial={{
+          emailReminders: nPrefs?.emailReminders ?? true,
+          pushReminders: nPrefs?.pushReminders ?? true,
+        }}
       />
       <AiKeySettings providers={providers} />
       <Card>

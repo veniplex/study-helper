@@ -5,12 +5,14 @@ import { env } from "@/lib/env"
 const globalForBoss = globalThis as unknown as { boss?: Promise<PgBoss> }
 
 export const QUEUE_EMBED_MATERIAL = "embed-material"
+export const QUEUE_SEND_REMINDERS = "send-reminders"
 
 async function start(): Promise<PgBoss> {
   const boss = new PgBoss({ connectionString: env.DATABASE_URL })
   boss.on("error", (error: Error) => console.error("[pg-boss]", error))
   await boss.start()
   await boss.createQueue(QUEUE_EMBED_MATERIAL)
+  await boss.createQueue(QUEUE_SEND_REMINDERS)
 
   await boss.work<{ materialId: string }>(QUEUE_EMBED_MATERIAL, async (jobs) => {
     const { processMaterial } = await import("@/lib/ai/rag")
@@ -18,6 +20,12 @@ async function start(): Promise<PgBoss> {
       await processMaterial(job.data.materialId)
     }
   })
+
+  await boss.work(QUEUE_SEND_REMINDERS, async () => {
+    const { sendDueReminders } = await import("./reminders")
+    await sendDueReminders()
+  })
+  await boss.schedule(QUEUE_SEND_REMINDERS, "*/5 * * * *")
 
   return boss
 }

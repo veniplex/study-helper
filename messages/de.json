@@ -189,6 +189,18 @@
       "saved": "Key gespeichert.",
       "deleted": "Key entfernt."
     },
+    "notifications": {
+      "title": "Benachrichtigungen",
+      "description": "Erinnerungen für Prüfungen, Deadlines und Termine",
+      "email": "E-Mail-Erinnerungen",
+      "push": "Push-Erinnerungen",
+      "subscribe": "Push auf diesem Gerät aktivieren",
+      "unsubscribe": "Push auf diesem Gerät deaktivieren",
+      "pushEnabled": "Push aktiviert.",
+      "pushDisabled": "Push deaktiviert.",
+      "unsupported": "Dieser Browser unterstützt keine Push-Benachrichtigungen.",
+      "denied": "Benachrichtigungen wurden im Browser blockiert."
+    },
     "usage": {
       "title": "Dein Token-Verbrauch (30 Tage)",
       "input": "Input",
@@ -579,6 +591,9 @@
     },
     "saved": "Gespeichert.",
     "generating": "Generiere …"
+  },
+  "offline": {
+    "synced": "{count} Offline-Änderungen synchronisiert."
   },
   "home": {
     "title": "Willkommen bei StudyHelper",

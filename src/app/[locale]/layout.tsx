@@ -25,9 +25,8 @@ export const metadata: Metadata = {
   description: "Open-source study companion: plan, learn and review with AI support.",
 }
 
-export function generateStaticParams() {
-  return routing.locales.map((locale) => ({ locale }))
-}
+// The whole app is session- and database-backed — never prerender at build time.
+export const dynamic = "force-dynamic"
 
 export default async function LocaleLayout({
   children,

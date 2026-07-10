@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { reviewCard } from "@/app/[locale]/(app)/learn/decks/actions"
+import { enqueue, isNetworkError } from "@/lib/offline/outbox"
 import type { ReviewRating } from "@/lib/learning/fsrs"
 
 export type StudyCard = { id: string; front: string; back: string }
@@ -34,7 +35,14 @@ export function StudySession({ deckId, cards }: { deckId: string; cards: StudyCa
       })
       setRevealed(false)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      if (isNetworkError(error)) {
+        // Offline: queue the review and continue optimistically
+        await enqueue("review-card", { cardId: current.id, rating })
+        setQueue((q) => (rating === 1 ? [...q.slice(1), current] : q.slice(1)))
+        setRevealed(false)
+      } else {
+        toast.error(error instanceof Error ? error.message : String(error))
+      }
     } finally {
       setPending(false)
     }

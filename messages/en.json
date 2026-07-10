@@ -189,6 +189,18 @@
       "saved": "Key saved.",
       "deleted": "Key removed."
     },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Reminders for exams, deadlines and events",
+      "email": "Email reminders",
+      "push": "Push reminders",
+      "subscribe": "Enable push on this device",
+      "unsubscribe": "Disable push on this device",
+      "pushEnabled": "Push enabled.",
+      "pushDisabled": "Push disabled.",
+      "unsupported": "This browser does not support push notifications.",
+      "denied": "Notifications are blocked in the browser."
+    },
     "usage": {
       "title": "Your token usage (30 days)",
       "input": "Input",
@@ -579,6 +591,9 @@
     },
     "saved": "Saved.",
     "generating": "Generating …"
+  },
+  "offline": {
+    "synced": "{count} offline changes synced."
   },
   "home": {
     "title": "Welcome to StudyHelper",

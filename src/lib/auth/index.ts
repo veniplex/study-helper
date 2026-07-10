@@ -107,10 +107,7 @@ export function bustAuthCache(): void {
   globalForAuth.authInstance = undefined
 }
 
-// Static instance for the better-auth CLI (schema generation only).
-// Runtime code must use getAuth().
-export const auth = buildAuth({
-  registrationMode: "open",
-  socialProviders: {},
-  oidcProviders: [],
-})
+// For CLI schema generation see src/lib/auth/cli.ts. Runtime code must use
+// getAuth() — building an instance eagerly at import time would require env
+// secrets during `next build`.
+export { buildAuth }

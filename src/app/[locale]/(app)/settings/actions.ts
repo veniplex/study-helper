@@ -36,6 +36,20 @@ export async function saveUserAiKey(input: unknown) {
   return { ok: true as const }
 }
 
+export async function saveNotificationPrefs(input: unknown) {
+  const session = await requireSession()
+  const data = z
+    .object({ emailReminders: z.boolean(), pushReminders: z.boolean() })
+    .parse(input)
+  const { notificationPrefs } = await import("@/db/schema")
+  await db
+    .insert(notificationPrefs)
+    .values({ userId: session.user.id, ...data })
+    .onConflictDoUpdate({ target: notificationPrefs.userId, set: data })
+  revalidatePath("/settings")
+  return { ok: true as const }
+}
+
 export async function deleteUserAiKey(providerId: string) {
   const session = await requireSession()
   await db

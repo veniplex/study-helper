@@ -6,6 +6,7 @@ import { useRouter } from "@/i18n/navigation"
 import { Badge } from "@/components/ui/badge"
 import { deleteTask, toggleTask } from "@/app/[locale]/(app)/learn/actions"
 import { DeleteButton } from "@/components/studies/delete-button"
+import { enqueue, isNetworkError } from "@/lib/offline/outbox"
 import { cn } from "@/lib/utils"
 
 export function TaskRow({
@@ -32,6 +33,10 @@ export function TaskRow({
       await toggleTask(task.id, !done)
       router.refresh()
     } catch (error) {
+      if (isNetworkError(error)) {
+        await enqueue("toggle-task", { taskId: task.id, done: !done })
+        return
+      }
       toast.error(error instanceof Error ? error.message : String(error))
     }
   }
