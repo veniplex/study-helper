@@ -64,6 +64,7 @@
       "password": "Password",
       "submit": "Create account",
       "hasAccount": "Already have an account?",
+      "inviteToken": "Invite code",
       "login": "Sign in",
       "error": "Registration failed.",
       "closed": "Registration is currently closed. Please contact the administrator."
@@ -115,6 +116,7 @@
       "registrationMode": "Registration",
       "registrationOpen": "Open — anyone can sign up",
       "registrationClosed": "Closed — only admins create accounts",
+      "registrationInvite": "Invite link only",
       "github": "GitHub login",
       "google": "Google login",
       "clientId": "Client ID",
@@ -129,6 +131,19 @@
       "removeProvider": "Remove",
       "redirectHint": "Redirect URL for this provider",
       "saved": "Settings saved."
+    },
+    "invites": {
+      "title": "Invite links",
+      "description": "Create links that let new users register (mode \"Invite link only\")",
+      "maxUses": "Max uses",
+      "expiresInDays": "Valid (days)",
+      "create": "Create link",
+      "empty": "No invites yet.",
+      "uses": "{used}/{max} used",
+      "expires": "expires {date}",
+      "inactive": "inactive",
+      "copyLink": "Copy link",
+      "copied": "Link copied."
     },
     "ai": {
       "title": "AI providers",

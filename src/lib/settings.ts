@@ -7,7 +7,7 @@ import { decrypt, encrypt } from "./crypto"
 
 // ---- Setting schemas -------------------------------------------------------
 
-export const registrationModeSchema = z.enum(["open", "closed"])
+export const registrationModeSchema = z.enum(["open", "closed", "invite"])
 
 export const socialProvidersSchema = z.object({
   github: z.object({ clientId: z.string(), clientSecret: z.string() }).optional(),

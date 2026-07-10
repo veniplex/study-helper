@@ -1,6 +1,11 @@
 "use server"
 
+import { randomBytes } from "node:crypto"
 import { revalidatePath } from "next/cache"
+import { eq } from "drizzle-orm"
+import { z } from "zod"
+import { db } from "@/db"
+import { invite } from "@/db/schema"
 import { requireAdmin } from "@/lib/auth/session"
 import { bustAuthCache } from "@/lib/auth"
 import { sendEmail } from "@/lib/email"
@@ -20,6 +25,37 @@ export async function saveRegistrationMode(mode: unknown) {
   await setSetting("auth.registrationMode", registrationModeSchema.parse(mode))
   bustAuthCache()
   revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
+const createInviteSchema = z.object({
+  maxUses: z.number().int().min(1).max(1000).default(1),
+  expiresInDays: z.number().int().min(1).max(365).optional().nullable(),
+})
+
+export async function createInvite(input: unknown) {
+  const session = await requireAdmin()
+  const data = createInviteSchema.parse(input)
+  const token = randomBytes(24).toString("base64url")
+  const [created] = await db
+    .insert(invite)
+    .values({
+      token,
+      createdBy: session.user.id,
+      maxUses: data.maxUses,
+      expiresAt: data.expiresInDays
+        ? new Date(Date.now() + data.expiresInDays * 24 * 60 * 60 * 1000)
+        : null,
+    })
+    .returning({ id: invite.id, token: invite.token })
+  revalidatePath("/admin/auth")
+  return { ok: true as const, id: created.id, token: created.token }
+}
+
+export async function deleteInvite(inviteId: string) {
+  await requireAdmin()
+  await db.delete(invite).where(eq(invite.id, inviteId))
+  revalidatePath("/admin/auth")
   return { ok: true as const }
 }
 

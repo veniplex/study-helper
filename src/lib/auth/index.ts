@@ -1,9 +1,10 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth"
+import { APIError, createAuthMiddleware } from "better-auth/api"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { nextCookies } from "better-auth/next-js"
 import { admin, genericOAuth, twoFactor } from "better-auth/plugins"
 import { passkey } from "@better-auth/passkey"
-import { count } from "drizzle-orm"
+import { count, eq, sql } from "drizzle-orm"
 import { db } from "@/db"
 import * as schema from "@/db/schema"
 import { env } from "@/lib/env"
@@ -11,7 +12,7 @@ import { sendEmail } from "@/lib/email"
 import { getSetting } from "@/lib/settings"
 
 type DynamicAuthConfig = {
-  registrationMode: "open" | "closed"
+  registrationMode: "open" | "closed" | "invite"
   socialProviders: Awaited<ReturnType<typeof getSetting<"auth.socialProviders">>>
   oidcProviders: Awaited<ReturnType<typeof getSetting<"auth.oidcProviders">>>
 }
@@ -40,6 +41,32 @@ function buildAuth(config: DynamicAuthConfig) {
     socialProviders: {
       ...(social.github ? { github: social.github } : {}),
       ...(social.google ? { google: social.google } : {}),
+    },
+    hooks: {
+      // Invite mode: sign-ups require a valid invite token (enforced server-side)
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/sign-up/email" || config.registrationMode !== "invite") return
+        const token = (ctx.body as { inviteToken?: string } | undefined)?.inviteToken
+        if (!token) {
+          throw new APIError("BAD_REQUEST", { message: "INVITE_REQUIRED" })
+        }
+        const row = await db.query.invite.findFirst({
+          where: eq(schema.invite.token, token),
+        })
+        if (!row || (row.expiresAt && row.expiresAt < new Date()) || row.usedCount >= row.maxUses) {
+          throw new APIError("BAD_REQUEST", { message: "INVITE_INVALID" })
+        }
+      }),
+      after: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/sign-up/email" || config.registrationMode !== "invite") return
+        const token = (ctx.body as { inviteToken?: string } | undefined)?.inviteToken
+        if (token) {
+          await db
+            .update(schema.invite)
+            .set({ usedCount: sql`${schema.invite.usedCount} + 1` })
+            .where(eq(schema.invite.token, token))
+        }
+      }),
     },
     databaseHooks: {
       user: {

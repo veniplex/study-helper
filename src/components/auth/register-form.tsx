@@ -19,7 +19,15 @@ import { Label } from "@/components/ui/label"
 import { authClient } from "@/lib/auth/client"
 import { SocialButtons, type SsoOptions } from "./social-buttons"
 
-export function RegisterForm({ sso }: { sso: SsoOptions }) {
+export function RegisterForm({
+  sso,
+  inviteMode = false,
+  inviteToken,
+}: {
+  sso: SsoOptions
+  inviteMode?: boolean
+  inviteToken?: string
+}) {
   const t = useTranslations("auth.register")
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
@@ -32,7 +40,9 @@ export function RegisterForm({ sso }: { sso: SsoOptions }) {
       name: String(form.get("name")),
       email: String(form.get("email")),
       password: String(form.get("password")),
-    })
+      // Extra field validated by a server-side better-auth hook in invite mode
+      ...(inviteMode ? { inviteToken: String(form.get("inviteToken") || "") } : {}),
+    } as Parameters<typeof authClient.signUp.email>[0])
     setPending(false)
     if (error) {
       toast.error(error.message ?? t("error"))
@@ -58,6 +68,17 @@ export function RegisterForm({ sso }: { sso: SsoOptions }) {
             <Label htmlFor="email">{t("email")}</Label>
             <Input id="email" name="email" type="email" autoComplete="email" required />
           </div>
+          {inviteMode && (
+            <div className="space-y-2">
+              <Label htmlFor="inviteToken">{t("inviteToken")}</Label>
+              <Input
+                id="inviteToken"
+                name="inviteToken"
+                defaultValue={inviteToken ?? ""}
+                required
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="password">{t("password")}</Label>
             <Input

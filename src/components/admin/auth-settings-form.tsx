@@ -50,7 +50,7 @@ export function AuthSettingsForm({
 }: {
   appUrl: string
   initial: {
-    registrationMode: "open" | "closed"
+    registrationMode: "open" | "closed" | "invite"
     social: SocialConfig
     oidc: OidcProvider[]
   }
@@ -98,15 +98,20 @@ export function AuthSettingsForm({
             <Label>{t("registrationMode")}</Label>
             <Select
               value={registrationMode}
-              onValueChange={(v) => setRegistrationMode(v as "open" | "closed")}
+              onValueChange={(v) => setRegistrationMode(v as "open" | "closed" | "invite")}
             >
               <SelectTrigger className="w-full max-w-md">
                 <SelectValue>
-                  {registrationMode === "open" ? t("registrationOpen") : t("registrationClosed")}
+                  {registrationMode === "open"
+                    ? t("registrationOpen")
+                    : registrationMode === "invite"
+                      ? t("registrationInvite")
+                      : t("registrationClosed")}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="open">{t("registrationOpen")}</SelectItem>
+                <SelectItem value="invite">{t("registrationInvite")}</SelectItem>
                 <SelectItem value="closed">{t("registrationClosed")}</SelectItem>
               </SelectContent>
             </Select>

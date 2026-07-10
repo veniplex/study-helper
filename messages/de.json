@@ -64,6 +64,7 @@
       "password": "Passwort",
       "submit": "Konto erstellen",
       "hasAccount": "Bereits ein Konto?",
+      "inviteToken": "Einladungscode",
       "login": "Anmelden",
       "error": "Registrierung fehlgeschlagen.",
       "closed": "Die Registrierung ist derzeit geschlossen. Wende dich an den Administrator."
@@ -115,6 +116,7 @@
       "registrationMode": "Registrierung",
       "registrationOpen": "Offen — jeder kann sich registrieren",
       "registrationClosed": "Geschlossen — nur Admins legen Konten an",
+      "registrationInvite": "Nur mit Einladungslink",
       "github": "GitHub Login",
       "google": "Google Login",
       "clientId": "Client-ID",
@@ -129,6 +131,19 @@
       "removeProvider": "Entfernen",
       "redirectHint": "Redirect-URL für diesen Provider",
       "saved": "Einstellungen gespeichert."
+    },
+    "invites": {
+      "title": "Einladungs-Links",
+      "description": "Links erzeugen, mit denen sich neue Nutzer registrieren können (Modus „Nur mit Einladungslink“)",
+      "maxUses": "Max. Nutzungen",
+      "expiresInDays": "Gültig (Tage)",
+      "create": "Link erzeugen",
+      "empty": "Noch keine Einladungen.",
+      "uses": "{used}/{max} genutzt",
+      "expires": "läuft ab am {date}",
+      "inactive": "inaktiv",
+      "copyLink": "Link kopieren",
+      "copied": "Link kopiert."
     },
     "ai": {
       "title": "KI-Provider",
