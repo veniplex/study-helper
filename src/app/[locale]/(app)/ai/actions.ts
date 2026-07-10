@@ -88,6 +88,23 @@ export async function updateConversationModule(
   return { ok: true as const }
 }
 
+/** Runs a user-confirmed AI write tool (called from the confirmation card). */
+export async function executeAiTool(name: string, input: unknown) {
+  const session = await requireSession()
+  const { WRITE_TOOL_NAMES } = await import("@/lib/ai/tools")
+  const { executeWriteTool } = await import("@/lib/ai/tool-executors")
+  if (!WRITE_TOOL_NAMES.includes(name as (typeof WRITE_TOOL_NAMES)[number])) {
+    throw new Error("Unknown tool")
+  }
+  const result = await executeWriteTool(
+    name as (typeof WRITE_TOOL_NAMES)[number],
+    input,
+    session.user.id
+  )
+  revalidatePath("/", "layout")
+  return result
+}
+
 export async function deleteConversation(conversationId: string) {
   const session = await requireSession()
   await db

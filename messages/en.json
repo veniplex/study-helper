@@ -459,6 +459,21 @@
     "expand": "Open fullscreen",
     "newConversation": "New conversation",
     "module": "Module",
+    "tool": {
+      "run": "Run",
+      "reject": "Reject",
+      "executed": "Created: {label}",
+      "rejected": "Rejected.",
+      "open": "Open",
+      "searchedMaterials": "Searched materials: “{query}”",
+      "usedContext": "Fetched study context",
+      "labels": {
+        "createDeckWithCards": "Create flashcard deck",
+        "createQuizWithQuestions": "Create quiz",
+        "createCalendarEvent": "Create event",
+        "createGoal": "Create learning goal"
+      }
+    },
     "suggestions": {
       "quiz": "Create a quiz on my current material",
       "quizModule": "Create a quiz for {module}",

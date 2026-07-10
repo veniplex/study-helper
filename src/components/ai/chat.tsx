@@ -2,9 +2,16 @@
 
 import * as React from "react"
 import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport, type UIMessage } from "ai"
-import { ArrowUp, Loader2, Sparkles } from "lucide-react"
+import {
+  DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithToolCalls,
+  type UIMessage,
+} from "ai"
+import { ArrowUp, Check, FileSearch, Loader2, Sparkles, Wrench, X } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { Link } from "@/i18n/navigation"
+import { executeAiTool } from "@/app/[locale]/(app)/ai/actions"
+import { WRITE_TOOL_NAMES } from "@/lib/ai/tools"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -17,6 +24,120 @@ import { Textarea } from "@/components/ui/textarea"
 import { Markdown } from "./markdown"
 import { describePageContext, usePageContext } from "./page-context"
 import { cn } from "@/lib/utils"
+
+function summarizeInput(input: unknown): { key: string; value: string }[] {
+  if (!input || typeof input !== "object") return []
+  return Object.entries(input as Record<string, unknown>)
+    .filter(([, v]) => v != null && v !== "")
+    .map(([key, value]) => ({
+      key,
+      value: Array.isArray(value)
+        ? `${value.length}`
+        : typeof value === "string"
+          ? value.length > 120
+            ? value.slice(0, 120) + "…"
+            : value
+          : String(value),
+    }))
+}
+
+type ToolOutput =
+  | { status: "executed"; label: string; href?: string }
+  | { status: "rejected" }
+
+function ToolCard({
+  toolName,
+  part,
+  onResolve,
+}: {
+  toolName: string
+  part: { state: string; input?: unknown; output?: unknown }
+  onResolve: (output: ToolOutput) => void
+}) {
+  const t = useTranslations("ai")
+  const [pending, setPending] = React.useState(false)
+
+  const resolvedOutput =
+    part.state === "output-available" ? (part.output as ToolOutput) : null
+
+  async function run() {
+    setPending(true)
+    try {
+      const result = await executeAiTool(toolName, part.input)
+      onResolve({ status: "executed", label: result.label, href: result.href })
+    } catch (error) {
+      onResolve({ status: "rejected" })
+      throw error
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <div className="rounded-lg border px-3.5 py-2.5 text-sm">
+      <p className="flex items-center gap-1.5 font-medium">
+        <Wrench className="size-3.5" />
+        {t(`tool.labels.${toolName}`)}
+      </p>
+      {part.state !== "output-available" && (
+        <dl className="text-muted-foreground mt-1.5 space-y-0.5 text-xs">
+          {summarizeInput(part.input).map(({ key, value }) => (
+            <div key={key} className="flex gap-1.5">
+              <dt className="shrink-0 font-medium">{key}:</dt>
+              <dd className="min-w-0 truncate">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {resolvedOutput ? (
+        <p
+          className={cn(
+            "mt-1.5 flex items-center gap-1.5 text-xs",
+            resolvedOutput.status === "executed"
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-muted-foreground"
+          )}
+        >
+          {resolvedOutput.status === "executed" ? (
+            <>
+              <Check className="size-3.5" />
+              {t("tool.executed", { label: resolvedOutput.label })}
+              {resolvedOutput.href && (
+                <Link href={resolvedOutput.href} className="underline underline-offset-2">
+                  {t("tool.open")}
+                </Link>
+              )}
+            </>
+          ) : (
+            <>
+              <X className="size-3.5" />
+              {t("tool.rejected")}
+            </>
+          )}
+        </p>
+      ) : part.state === "input-available" ? (
+        <div className="mt-2 flex gap-2">
+          <Button size="sm" disabled={pending} onClick={() => void run()}>
+            {pending && <Loader2 className="size-3.5 animate-spin" />}
+            {t("tool.run")}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={pending}
+            onClick={() => onResolve({ status: "rejected" })}
+          >
+            {t("tool.reject")}
+          </Button>
+        </div>
+      ) : (
+        <p className="text-muted-foreground mt-1.5 flex items-center gap-1.5 text-xs">
+          <Loader2 className="size-3 animate-spin" />
+        </p>
+      )}
+    </div>
+  )
+}
 
 export function Chat({
   conversationId,
@@ -41,14 +162,33 @@ export function Chat({
 
   const pageContext = usePageContext()
 
+  // Auto-continued requests (after tool confirmation) go through the transport
+  // body; per-send bodies are merged on top for regular sends. A stable holder
+  // object (updated in an effect) lets the transport read the latest values at
+  // request time.
+  const bodyRef = React.useRef({ conversationId, model, pageContext: "" })
+  React.useEffect(() => {
+    bodyRef.current = {
+      conversationId,
+      model,
+      pageContext: describePageContext(pageContext) ?? "",
+    }
+  })
   const [transport] = React.useState(
-    () => new DefaultChatTransport({ api: "/api/ai/chat" })
+    // The body callback runs at request time, not during render.
+    // eslint-disable-next-line react-hooks/refs
+    () =>
+      new DefaultChatTransport({
+        api: "/api/ai/chat",
+        body: () => bodyRef.current,
+      })
   )
 
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, status, error, addToolResult } = useChat({
     id: conversationId,
     messages: initialMessages,
     transport,
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
   })
 
   React.useEffect(() => {
@@ -101,31 +241,78 @@ export function Chat({
             )}
           </div>
         )}
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={cn(
-              "max-w-[85%] rounded-lg px-3.5 py-2.5",
-              m.role === "user"
-                ? "bg-primary text-primary-foreground ml-auto w-fit whitespace-pre-wrap text-sm"
-                : "bg-muted/50 mr-auto"
-            )}
-          >
-            {m.role === "user" ? (
-              m.parts
+        {messages.map((m) =>
+          m.role === "user" ? (
+            <div
+              key={m.id}
+              className="bg-primary text-primary-foreground ml-auto w-fit max-w-[85%] rounded-lg px-3.5 py-2.5 text-sm whitespace-pre-wrap"
+            >
+              {m.parts
                 .filter((p): p is { type: "text"; text: string } => p.type === "text")
                 .map((p) => p.text)
-                .join("")
-            ) : (
-              <Markdown>
-                {m.parts
-                  .filter((p): p is { type: "text"; text: string } => p.type === "text")
-                  .map((p) => p.text)
-                  .join("")}
-              </Markdown>
-            )}
-          </div>
-        ))}
+                .join("")}
+            </div>
+          ) : (
+            <div key={m.id} className="mr-auto max-w-[85%] space-y-2">
+              {m.parts.map((part, i) => {
+                if (part.type === "text") {
+                  return (
+                    <div key={i} className="bg-muted/50 rounded-lg px-3.5 py-2.5">
+                      <Markdown>{part.text}</Markdown>
+                    </div>
+                  )
+                }
+                if (part.type === "tool-searchMaterials" || part.type === "tool-getContext") {
+                  const label =
+                    part.type === "tool-searchMaterials"
+                      ? t("tool.searchedMaterials", {
+                          query:
+                            (part.input as { query?: string } | undefined)?.query ?? "…",
+                        })
+                      : t("tool.usedContext")
+                  return (
+                    <p
+                      key={i}
+                      className="text-muted-foreground flex items-center gap-1.5 px-1 text-xs"
+                    >
+                      <FileSearch className="size-3" />
+                      {label}
+                    </p>
+                  )
+                }
+                if (
+                  part.type.startsWith("tool-") &&
+                  WRITE_TOOL_NAMES.includes(
+                    part.type.slice(5) as (typeof WRITE_TOOL_NAMES)[number]
+                  )
+                ) {
+                  const toolPart = part as {
+                    type: string
+                    toolCallId: string
+                    state: string
+                    input?: unknown
+                    output?: unknown
+                  }
+                  return (
+                    <ToolCard
+                      key={toolPart.toolCallId}
+                      toolName={part.type.slice(5)}
+                      part={toolPart}
+                      onResolve={(output) =>
+                        void addToolResult({
+                          tool: part.type.slice(5),
+                          toolCallId: toolPart.toolCallId,
+                          output,
+                        })
+                      }
+                    />
+                  )
+                }
+                return null
+              })}
+            </div>
+          )
+        )}
         {status === "submitted" && (
           <div className="bg-muted/50 mr-auto flex w-fit items-center gap-2 rounded-lg px-3.5 py-2.5 text-sm">
             <Loader2 className="size-3.5 animate-spin" />

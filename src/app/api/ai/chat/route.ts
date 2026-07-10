@@ -1,13 +1,15 @@
 import { convertToModelMessages, stepCountIs, streamText, tool, type UIMessage } from "ai"
 import { z } from "zod"
-import { and, eq } from "drizzle-orm"
+import { and, asc, eq, gte, inArray } from "drizzle-orm"
 import { db } from "@/db"
-import { aiConversation, aiMessage } from "@/db/schema"
+import { aiConversation, aiMessage, studyEvent } from "@/db/schema"
 import { getSession } from "@/lib/auth/session"
 import { getLanguageModel } from "@/lib/ai/registry"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
 import { searchChunks } from "@/lib/ai/rag"
 import { MODE_PROMPTS, type ChatMode } from "@/lib/ai/modes"
+import { writeToolDescriptions, writeToolSchemas, WRITE_TOOL_NAMES } from "@/lib/ai/tools"
+import { getStudyContext } from "@/lib/studies/context"
 import { getSetting } from "@/lib/settings"
 
 export const maxDuration = 300
@@ -30,6 +32,7 @@ function buildSystemPrompt(
     pageContext
       ? `The user is currently looking at this page in the app: ${pageContext}. Use this as context when the question refers to "this module", "this page", or similar.`
       : "",
+    `You are an agent inside the StudyHelper app and can create things for the user with the tools ${WRITE_TOOL_NAMES.join(", ")}. Each write tool shows the user a confirmation card before anything is saved. Use getContext to look up the user's modules, exams and deadlines when you need ids or dates. When the user's request is ambiguous (e.g. which module or scope), ask a short clarifying question first instead of guessing. Infer the module from the conversation/page context when obvious.`,
   ]
     .filter(Boolean)
     .join(" ")
@@ -118,25 +121,76 @@ export async function POST(request: Request) {
       pageContext
     ),
     messages: await convertToModelMessages(body.messages),
-    stopWhen: stepCountIs(5),
-    tools: ragEnabled
-      ? {
-          searchMaterials: tool({
-            description:
-              "Search the user's uploaded study materials (lecture notes, slides, PDFs) for relevant passages.",
-            inputSchema: z.object({
-              query: z.string().describe("Search query in the language of the materials"),
+    stopWhen: stepCountIs(8),
+    tools: {
+      ...(ragEnabled
+        ? {
+            searchMaterials: tool({
+              description:
+                "Search the user's uploaded study materials (lecture notes, slides, PDFs) for relevant passages.",
+              inputSchema: z.object({
+                query: z.string().describe("Search query in the language of the materials"),
+              }),
+              execute: async ({ query }) => {
+                const hits = await searchChunks(userId, query, { moduleId, limit: 6 })
+                return hits.map((h) => ({
+                  source: h.materialName,
+                  excerpt: h.content.slice(0, 1500),
+                }))
+              },
             }),
-            execute: async ({ query }) => {
-              const hits = await searchChunks(userId, query, { moduleId, limit: 6 })
-              return hits.map((h) => ({
-                source: h.materialName,
-                excerpt: h.content.slice(0, 1500),
-              }))
-            },
-          }),
-        }
-      : undefined,
+          }
+        : {}),
+      getContext: tool({
+        description:
+          "Look up the user's study context: modules of the active semester (with ids), upcoming exams and deadlines. Use before creating things that need a moduleId or dates.",
+        inputSchema: z.object({}),
+        execute: async () => {
+          const ctx = await getStudyContext(userId)
+          const moduleIds = ctx.tree.flatMap((s) => s.modules.map((m) => m.id))
+          const events = moduleIds.length
+            ? await db.query.studyEvent.findMany({
+                where: and(
+                  eq(studyEvent.userId, userId),
+                  gte(studyEvent.startsAt, new Date()),
+                  inArray(studyEvent.moduleId, moduleIds)
+                ),
+                orderBy: [asc(studyEvent.startsAt)],
+                limit: 20,
+                columns: { title: true, type: true, startsAt: true, moduleId: true },
+              })
+            : []
+          return {
+            activeProgram: ctx.activeProgram?.name ?? null,
+            activeSemester: ctx.activeSemester?.name ?? null,
+            semesters: ctx.tree.map((s) => ({
+              id: s.id,
+              name: s.name,
+              modules: s.modules.map((m) => ({ id: m.id, name: m.name, status: m.status })),
+            })),
+            upcomingEvents: events,
+          }
+        },
+      }),
+      // Write tools: no execute — the client shows a confirmation card and
+      // runs the action only after the user approves.
+      createDeckWithCards: tool({
+        description: writeToolDescriptions.createDeckWithCards,
+        inputSchema: writeToolSchemas.createDeckWithCards,
+      }),
+      createQuizWithQuestions: tool({
+        description: writeToolDescriptions.createQuizWithQuestions,
+        inputSchema: writeToolSchemas.createQuizWithQuestions,
+      }),
+      createCalendarEvent: tool({
+        description: writeToolDescriptions.createCalendarEvent,
+        inputSchema: writeToolSchemas.createCalendarEvent,
+      }),
+      createGoal: tool({
+        description: writeToolDescriptions.createGoal,
+        inputSchema: writeToolSchemas.createGoal,
+      }),
+    },
     onFinish: async ({ totalUsage }) => {
       await logUsage(userId, body.model, "chat", {
         inputTokens: totalUsage.inputTokens,

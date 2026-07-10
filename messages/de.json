@@ -460,6 +460,21 @@
     "expand": "Als Vollbild öffnen",
     "newConversation": "Neue Unterhaltung",
     "module": "Modul",
+    "tool": {
+      "run": "Ausführen",
+      "reject": "Ablehnen",
+      "executed": "Erstellt: {label}",
+      "rejected": "Abgelehnt.",
+      "open": "Öffnen",
+      "searchedMaterials": "Materialien durchsucht: „{query}“",
+      "usedContext": "Studienkontext abgerufen",
+      "labels": {
+        "createDeckWithCards": "Karteikarten-Deck anlegen",
+        "createQuizWithQuestions": "Quiz anlegen",
+        "createCalendarEvent": "Termin anlegen",
+        "createGoal": "Lernziel anlegen"
+      }
+    },
     "suggestions": {
       "quiz": "Erstelle mir ein Quiz zu meinem aktuellen Stoff",
       "quizModule": "Erstelle mir ein Quiz zu {module}",

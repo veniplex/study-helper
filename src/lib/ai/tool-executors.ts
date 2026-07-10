@@ -1,0 +1,133 @@
+import "server-only"
+import { z } from "zod"
+import { db } from "@/db"
+import { deck, flashcard, learningGoal, question, quiz, studyEvent } from "@/db/schema"
+import { ownModule } from "@/lib/studies/access"
+import { writeToolSchemas, type WriteToolName } from "./tools"
+
+export type ToolExecutionResult = {
+  ok: true
+  /** Short human-readable confirmation, e.g. the created object's name. */
+  label: string
+  /** App-relative link to the created object (locale-less). */
+  href?: string
+  entityType: string
+  entityId: string
+}
+
+async function resolveModule(moduleId: string | null | undefined, userId: string) {
+  if (!moduleId) return null
+  const mod = await ownModule(moduleId, userId)
+  return mod
+}
+
+/**
+ * Executes a user-confirmed AI write tool. Ownership is enforced here —
+ * the model's input is never trusted directly.
+ */
+export async function executeWriteTool(
+  name: WriteToolName,
+  rawInput: unknown,
+  userId: string
+): Promise<ToolExecutionResult> {
+  switch (name) {
+    case "createDeckWithCards": {
+      const input = writeToolSchemas.createDeckWithCards.parse(rawInput)
+      const mod = await resolveModule(input.moduleId, userId)
+      const [created] = await db
+        .insert(deck)
+        .values({ userId, moduleId: mod?.id ?? null, name: input.name })
+        .returning({ id: deck.id })
+      await db.insert(flashcard).values(
+        input.cards.map((c) => ({ deckId: created.id, front: c.front, back: c.back }))
+      )
+      return {
+        ok: true,
+        label: `${input.name} (${input.cards.length})`,
+        href: mod ? `/studies/${mod.semester.programId}/${mod.id}/decks/${created.id}` : undefined,
+        entityType: "deck",
+        entityId: created.id,
+      }
+    }
+    case "createQuizWithQuestions": {
+      const input = writeToolSchemas.createQuizWithQuestions.parse(rawInput)
+      const mod = await resolveModule(input.moduleId, userId)
+      const [created] = await db
+        .insert(quiz)
+        .values({ userId, moduleId: mod?.id ?? null, title: input.title, aiGenerated: true })
+        .returning({ id: quiz.id })
+      await db.insert(question).values(
+        input.questions.map((q, i) => ({
+          quizId: created.id,
+          kind: q.kind,
+          prompt: q.prompt,
+          options: q.kind === "multiple_choice" ? (q.options ?? []) : null,
+          correctIndex: q.kind === "multiple_choice" ? (q.correctIndex ?? 0) : null,
+          referenceAnswer: q.referenceAnswer ?? null,
+          explanation: q.explanation ?? null,
+          sortOrder: i,
+        }))
+      )
+      return {
+        ok: true,
+        label: `${input.title} (${input.questions.length})`,
+        href: mod
+          ? `/studies/${mod.semester.programId}/${mod.id}/quizzes/${created.id}`
+          : undefined,
+        entityType: "quiz",
+        entityId: created.id,
+      }
+    }
+    case "createCalendarEvent": {
+      const input = writeToolSchemas.createCalendarEvent.parse(rawInput)
+      const startsAt = new Date(input.startsAt)
+      if (Number.isNaN(startsAt.getTime())) throw new Error("Invalid startsAt")
+      const mod = await resolveModule(input.moduleId, userId)
+      const [created] = await db
+        .insert(studyEvent)
+        .values({
+          userId,
+          title: input.title,
+          type: input.type,
+          startsAt,
+          endsAt: input.endsAt ? new Date(input.endsAt) : null,
+          location: input.location ?? null,
+          notes: input.notes ?? null,
+          moduleId: mod?.id ?? null,
+          reminderOffsets: [1440],
+        })
+        .returning({ id: studyEvent.id })
+      return {
+        ok: true,
+        label: input.title,
+        href: "/calendar",
+        entityType: "event",
+        entityId: created.id,
+      }
+    }
+    case "createGoal": {
+      const input = writeToolSchemas.createGoal.parse(rawInput)
+      const targetDate = input.targetDate
+        ? z.string().date().parse(input.targetDate)
+        : null
+      const mod = await resolveModule(input.moduleId, userId)
+      const [created] = await db
+        .insert(learningGoal)
+        .values({
+          userId,
+          moduleId: mod?.id ?? null,
+          title: input.title,
+          description: input.description ?? null,
+          targetDate,
+        })
+        .returning({ id: learningGoal.id })
+      return {
+        ok: true,
+        label: input.title,
+        href: mod ? `/studies/${mod.semester.programId}/${mod.id}` : "/",
+        entityType: "goal",
+        entityId: created.id,
+      }
+    }
+  }
+}
