@@ -65,7 +65,14 @@ export function ContextSwitcher({ context }: { context: StudyContext }) {
         <SelectContent>
           {context.programs.map((p) => (
             <SelectItem key={p.id} value={p.id}>
-              {p.name}
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate">{p.name}</span>
+                {(p.degreeType || p.institution) && (
+                  <span className="text-muted-foreground truncate text-xs">
+                    {[p.degreeType, p.institution].filter(Boolean).join(" · ")}
+                  </span>
+                )}
+              </span>
             </SelectItem>
           ))}
         </SelectContent>

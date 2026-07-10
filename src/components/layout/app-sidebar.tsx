@@ -285,6 +285,15 @@ function SidebarSemester({
           <span className="truncate">{semester.name}</span>
           {active && <span className="bg-primary ml-auto size-1.5 shrink-0 rounded-full" />}
         </button>
+        <button
+          type="button"
+          onClick={() => setAddModuleOpen(true)}
+          className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
+          title={tStudies("newModule")}
+        >
+          <Plus className="size-3.5" />
+          <span className="sr-only">{tStudies("newModule")}</span>
+        </button>
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -298,10 +307,6 @@ function SidebarSemester({
             <MoreHorizontal className="size-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48">
-            <DropdownMenuItem onClick={() => setAddModuleOpen(true)}>
-              <Plus className="size-4" />
-              {tStudies("newModule")}
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" />
               {tCommon("edit")}
