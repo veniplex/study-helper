@@ -37,6 +37,19 @@ const availabilitySchema = z.object({
       })
     )
     .max(30),
+  recurring: z
+    .array(
+      z.object({
+        weekday: z.number().int().min(0).max(6),
+        from: z.string().regex(/^\d{2}:\d{2}$/),
+        to: z.string().regex(/^\d{2}:\d{2}$/),
+        interval: z.union([z.literal(1), z.literal(2)]),
+        anchor: z.string().date().optional(),
+        label: z.string().max(100).optional(),
+      })
+    )
+    .max(20)
+    .optional(),
 })
 
 export async function saveAvailability(semesterId: string, input: unknown) {
@@ -136,6 +149,7 @@ export async function generateSemesterPlan(semesterId: string) {
 
 Rules:
 - Only schedule sessions on weekdays/times inside "availability.weekly" windows, never inside blackout ranges, never before today (${today}).
+- "availability.recurring" lists recurring unavailability: never schedule a session that overlaps such a window on its weekday. interval 1 = every week; interval 2 = every second week starting at "anchor" (only dates with an even number of weeks distance from the anchor are affected).
 - Distribute study sessions across ALL modules, weighted towards modules with earlier exams.
 - Schedule work on each assignment BEFORE its dueDate (kind "assignment", title referencing the assignment).
 - In the 2-3 weeks before each exam add "review" sessions for that module (repetition of earlier topics).

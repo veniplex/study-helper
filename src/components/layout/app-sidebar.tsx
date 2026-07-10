@@ -10,6 +10,7 @@ import {
   FileText,
   GraduationCap,
   Layers,
+  LayoutList,
   Loader2,
   MessageSquare,
   MoreHorizontal,
@@ -47,6 +48,7 @@ import {
 import { cn } from "@/lib/utils"
 
 const moduleTabs: { key: string; segment: string; icon: LucideIcon }[] = [
+  { key: "overview", segment: "", icon: LayoutList },
   { key: "materials", segment: "/materials", icon: FileText },
   { key: "assignments", segment: "/assignments", icon: ClipboardCheck },
   { key: "decks", segment: "/decks", icon: Layers },
@@ -143,13 +145,15 @@ function SidebarModule({
             : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
         )}
       >
-        <Link
-          href={href}
-          className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-1.5 text-sm font-medium"
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-1.5 text-left text-sm font-medium"
         >
           <BookOpen className="size-4 shrink-0" />
           <span className="truncate">{mod.name}</span>
-        </Link>
+        </button>
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -187,7 +191,8 @@ function SidebarModule({
         <div className="mt-0.5 mb-1 ml-4 space-y-0.5 border-l pl-2">
           {moduleTabs.map((tab) => {
             const tabHref = `${href}${tab.segment}`
-            const active = pathname.startsWith(tabHref)
+            const active =
+              tab.segment === "" ? pathname === href : pathname.startsWith(tabHref)
             return (
               <Link
                 key={tab.key}

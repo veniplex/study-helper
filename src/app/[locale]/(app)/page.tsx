@@ -1,32 +1,17 @@
-import { and, asc, eq, gte, isNull } from "drizzle-orm"
+import { asc, eq, gte } from "drizzle-orm"
 import { ArrowRight, CalendarDays, Check } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import {
-  assignment,
-  degreeProgram,
-  learningGoal,
-  semesterPlan,
-  studyEvent,
-  studyPlan,
-} from "@/db/schema"
+import { assignment, degreeProgram, semesterPlan, studyEvent } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
-import { earnedEcts, formatGrade, programAverage } from "@/lib/grades"
-import { getDashboardStats } from "@/lib/learning/stats-server"
-import { getModuleOptions } from "@/lib/studies/module-options"
+import { formatGrade, moduleGrade } from "@/lib/grades"
+import { getDashboardStats, getPreparednessByModule } from "@/lib/learning/stats-server"
+import { getStudyContext } from "@/lib/studies/context"
 import { Link } from "@/i18n/navigation"
 import { StatsCard } from "@/components/learn/stats-card"
 import { TodayPlanCard } from "@/components/plan/today-plan-card"
-import { GoalCard } from "@/components/learn/goal-card"
-import { GoalDialog } from "@/components/learn/goal-dialog"
-import { PlanDialog } from "@/components/learn/plan-dialogs"
 import { Badge } from "@/components/ui/badge"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const typeVariant = {
   exam: "destructive",
@@ -42,8 +27,7 @@ export default async function DashboardPage() {
   const tStudies = await getTranslations("studies")
   const format = await getFormatter()
 
-  const [events, programs, dueAssignments, generalGoals, generalPlans, modules] =
-    await Promise.all([
+  const [events, programs, dueAssignments, context] = await Promise.all([
     db.query.studyEvent.findMany({
       where: (e, { and }) => and(eq(e.userId, session.user.id), gte(e.startsAt, new Date())),
       orderBy: [asc(studyEvent.startsAt)],
@@ -61,18 +45,14 @@ export default async function DashboardPage() {
       limit: 5,
       with: { module: { columns: { name: true } } },
     }),
-    db.query.learningGoal.findMany({
-      where: and(eq(learningGoal.userId, session.user.id), isNull(learningGoal.moduleId)),
-      orderBy: [asc(learningGoal.targetDate), asc(learningGoal.createdAt)],
-    }),
-    db.query.studyPlan.findMany({
-      where: and(eq(studyPlan.userId, session.user.id), isNull(studyPlan.moduleId)),
-      orderBy: [asc(studyPlan.createdAt)],
-      with: { items: { columns: { id: true, done: true } } },
-    }),
-    getModuleOptions(session.user.id),
+    getStudyContext(session.user.id),
   ])
   const stats = await getDashboardStats(session.user.id)
+
+  const activeProgram = programs.find((p) => p.id === context.activeProgram?.id) ?? null
+  const activeModuleIds =
+    activeProgram?.semesters.flatMap((s) => s.modules.map((m) => m.id)) ?? []
+  const preparedness = await getPreparednessByModule(session.user.id, activeModuleIds)
 
   const today = new Date().toISOString().slice(0, 10)
   const todayPlanItems = await db.query.semesterPlanItem.findMany({
@@ -109,6 +89,13 @@ export default async function DashboardPage() {
     lecture: tCal("event.typeLecture"),
     other: tCal("event.typeOther"),
   } as const
+
+  function formatRange(start: string | null, end: string | null): string | null {
+    if (!start && !end) return null
+    const fmt = (d: string) => format.dateTime(new Date(d), { dateStyle: "medium" })
+    if (start && end) return `${fmt(start)} – ${fmt(end)}`
+    return fmt((start ?? end)!)
+  }
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
@@ -166,157 +153,118 @@ export default async function DashboardPage() {
         }))}
       />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">{t("upcoming")}</CardTitle>
-            <Link
-              href="/calendar"
-              className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
-            >
-              {t("viewCalendar")}
-              <ArrowRight className="size-3" />
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {events.length === 0 && dueAssignments.length === 0 ? (
-              <p className="text-muted-foreground text-sm">{t("noUpcoming")}</p>
-            ) : (
-              <ul className="space-y-2">
-                {events.map((e) => (
-                  <li key={e.id} className="flex flex-wrap items-center gap-2 text-sm">
-                    <Badge variant={typeVariant[e.type]}>{typeLabels[e.type]}</Badge>
-                    <span className="font-medium">{e.title}</span>
-                    <span className="text-muted-foreground ml-auto flex items-center gap-1 text-xs">
-                      <CalendarDays className="size-3" />
-                      {format.dateTime(e.startsAt, { dateStyle: "medium", timeStyle: "short" })}
-                    </span>
-                  </li>
-                ))}
-                {dueAssignments.map((a) => (
-                  <li key={a.id} className="flex flex-wrap items-center gap-2 text-sm">
-                    <Badge variant="default">{t("assignmentDue")}</Badge>
-                    <span className="font-medium">{a.title}</span>
-                    <span className="text-muted-foreground text-xs">{a.module.name}</span>
-                    <span className="text-muted-foreground ml-auto flex items-center gap-1 text-xs">
-                      <CalendarDays className="size-3" />
-                      {a.dueDate && format.dateTime(new Date(a.dueDate), { dateStyle: "medium" })}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">{t("programs")}</CardTitle>
-            <Link
-              href="/studies"
-              className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
-            >
-              {t("viewStudies")}
-              <ArrowRight className="size-3" />
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {programs.length === 0 ? (
-              <p className="text-muted-foreground text-sm">{tStudies("empty")}</p>
-            ) : (
-              <ul className="space-y-3">
-                {programs.map((p) => {
-                  const modules = p.semesters.flatMap((s) => s.modules)
-                  const ects = earnedEcts(modules)
-                  const avg = programAverage(modules)
-                  const progress = p.targetEcts ? Math.min(100, (ects / p.targetEcts) * 100) : null
-                  return (
-                    <li key={p.id}>
-                      <Link href={`/studies/${p.id}`} className="group block space-y-1.5">
-                        <div className="flex items-baseline justify-between gap-2 text-sm">
-                          <span className="font-medium group-hover:underline">{p.name}</span>
-                          <span className="text-muted-foreground text-xs">
-                            {ects}
-                            {p.targetEcts ? ` / ${p.targetEcts}` : ""} {tStudies("stats.ects")}
-                            {avg != null &&
-                              ` · Ø ${formatGrade(avg, p.gradingSystem)}`}
-                          </span>
-                        </div>
-                        {progress != null && (
-                          <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
-                            <div
-                              className="bg-primary h-full rounded-full transition-all"
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
-                        )}
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">{t("general")}</CardTitle>
-          <div className="flex flex-wrap gap-2">
-            <GoalDialog modules={modules} />
-            <PlanDialog modules={modules} basePath="" />
-          </div>
+          <CardTitle className="text-base">{t("upcoming")}</CardTitle>
+          <Link
+            href="/calendar"
+            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+          >
+            {t("viewCalendar")}
+            <ArrowRight className="size-3" />
+          </Link>
         </CardHeader>
-        <CardContent className="space-y-5">
-          {generalGoals.length === 0 && generalPlans.length === 0 ? (
-            <p className="text-muted-foreground text-sm">{t("generalEmpty")}</p>
+        <CardContent>
+          {events.length === 0 && dueAssignments.length === 0 ? (
+            <p className="text-muted-foreground text-sm">{t("noUpcoming")}</p>
           ) : (
-            <>
-              {generalGoals.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {generalGoals.map((g) => (
-                    <GoalCard
-                      key={g.id}
-                      goal={{
-                        id: g.id,
-                        title: g.title,
-                        description: g.description,
-                        progress: g.progress,
-                        targetDate: g.targetDate,
-                        moduleName: null,
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-              {generalPlans.length > 0 && (
-                <ul className="space-y-1.5">
-                  {generalPlans.map((plan) => {
-                    const doneCount = plan.items.filter((i) => i.done).length
+            <ul className="space-y-2">
+              {events.map((e) => (
+                <li key={e.id} className="flex flex-wrap items-center gap-2 text-sm">
+                  <Badge variant={typeVariant[e.type]}>{typeLabels[e.type]}</Badge>
+                  <span className="font-medium">{e.title}</span>
+                  <span className="text-muted-foreground ml-auto flex items-center gap-1 text-xs">
+                    <CalendarDays className="size-3" />
+                    {format.dateTime(e.startsAt, { dateStyle: "medium", timeStyle: "short" })}
+                  </span>
+                </li>
+              ))}
+              {dueAssignments.map((a) => (
+                <li key={a.id} className="flex flex-wrap items-center gap-2 text-sm">
+                  <Badge variant="default">{t("assignmentDue")}</Badge>
+                  <span className="font-medium">{a.title}</span>
+                  <span className="text-muted-foreground text-xs">{a.module.name}</span>
+                  <span className="text-muted-foreground ml-auto flex items-center gap-1 text-xs">
+                    <CalendarDays className="size-3" />
+                    {a.dueDate && format.dateTime(new Date(a.dueDate), { dateStyle: "medium" })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      {activeProgram &&
+        activeProgram.semesters.map((sem) => (
+          <Card key={sem.id}>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base">{sem.name}</CardTitle>
+                {formatRange(sem.startDate, sem.endDate) && (
+                  <p className="text-muted-foreground text-xs">
+                    {formatRange(sem.startDate, sem.endDate)}
+                  </p>
+                )}
+              </div>
+              <Link
+                href={`/plan/${sem.id}`}
+                className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+              >
+                {t("toPlan")}
+                <ArrowRight className="size-3" />
+              </Link>
+            </CardHeader>
+            <CardContent>
+              {sem.modules.length === 0 ? (
+                <p className="text-muted-foreground text-sm">{t("noModules")}</p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {sem.modules.map((mod) => {
+                    const grade = moduleGrade(mod.grades)
+                    const prep = preparedness.get(mod.id) ?? null
                     return (
-                      <li
-                        key={plan.id}
-                        className="flex items-center gap-2.5 rounded-md border px-3 py-2 text-sm"
-                      >
+                      <li key={mod.id} className="flex flex-wrap items-center gap-3 text-sm">
                         <Link
-                          href={`/plans/${plan.id}`}
+                          href={`/studies/${activeProgram.id}/${mod.id}`}
                           className="min-w-0 flex-1 truncate font-medium underline-offset-4 hover:underline"
                         >
-                          {plan.title}
+                          {mod.name}
                         </Link>
-                        <span className="text-muted-foreground text-xs">
-                          {doneCount}/{plan.items.length}
+                        {mod.ects != null && (
+                          <span className="text-muted-foreground text-xs">
+                            {mod.ects} {tStudies("stats.ects")}
+                          </span>
+                        )}
+                        <span className="text-muted-foreground w-14 text-right text-xs tabular-nums">
+                          {grade != null
+                            ? formatGrade(grade, activeProgram.gradingSystem)
+                            : "–"}
+                        </span>
+                        <span className="flex w-40 items-center gap-2">
+                          <span className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
+                            {prep != null && (
+                              <span
+                                className="bg-primary block h-full rounded-full"
+                                style={{ width: `${prep}%` }}
+                              />
+                            )}
+                          </span>
+                          <span
+                            className="text-muted-foreground w-9 text-right text-xs tabular-nums"
+                            title={t("preparednessHint")}
+                          >
+                            {prep != null ? `${prep}%` : "–"}
+                          </span>
                         </span>
                       </li>
                     )
                   })}
                 </ul>
               )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        ))}
     </div>
   )
 }

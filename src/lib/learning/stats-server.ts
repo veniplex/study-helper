@@ -57,6 +57,62 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
   }
 }
 
+/**
+ * Heuristic exam-preparedness score (0–100) per module, from the latest quiz
+ * score per quiz (60%) and the share of flashcards in FSRS review state (40%).
+ * null when there is no learning data yet.
+ */
+export async function getPreparednessByModule(
+  userId: string,
+  moduleIds: string[]
+): Promise<Map<string, number | null>> {
+  const result = new Map<string, number | null>()
+  if (moduleIds.length === 0) return result
+  for (const id of moduleIds) result.set(id, null)
+
+  const [quizzes, decks] = await Promise.all([
+    db.query.quiz.findMany({
+      where: and(eq(quiz.userId, userId), inArray(quiz.moduleId, moduleIds)),
+      columns: { id: true, moduleId: true },
+      with: {
+        attempts: {
+          where: (a, { isNotNull: nn }) => nn(a.finishedAt),
+          orderBy: (a, { desc: d }) => [d(a.startedAt)],
+          limit: 1,
+          columns: { score: true },
+        },
+      },
+    }),
+    db.query.deck.findMany({
+      where: and(eq(deck.userId, userId), inArray(deck.moduleId, moduleIds)),
+      columns: { id: true, moduleId: true },
+      with: { cards: { columns: { state: true } } },
+    }),
+  ])
+
+  for (const moduleId of moduleIds) {
+    const scores = quizzes
+      .filter((q) => q.moduleId === moduleId && q.attempts.length > 0)
+      .map((q) => Number(q.attempts[0].score ?? 0))
+    const cards = decks.filter((d) => d.moduleId === moduleId).flatMap((d) => d.cards)
+    const quizFactor = scores.length
+      ? scores.reduce((a, b) => a + b, 0) / scores.length / 100
+      : null
+    const cardFactor = cards.length
+      ? cards.filter((c) => c.state >= 2).length / cards.length
+      : null
+
+    if (quizFactor == null && cardFactor == null) continue
+    const parts: [number, number][] = []
+    if (quizFactor != null) parts.push([quizFactor, 0.6])
+    if (cardFactor != null) parts.push([cardFactor, 0.4])
+    const totalWeight = parts.reduce((s, [, w]) => s + w, 0)
+    const score = parts.reduce((s, [v, w]) => s + v * w, 0) / totalWeight
+    result.set(moduleId, Math.round(score * 100))
+  }
+  return result
+}
+
 export type ModuleStats = {
   dueCards: number
   lastQuizScore: number | null

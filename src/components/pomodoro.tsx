@@ -285,6 +285,17 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
         {running && (
           <>
             <span className="text-xs font-semibold tabular-nums">{fmt(remaining)}</span>
+            <span className="flex items-center gap-0.5">
+              {Array.from({ length: CYCLES_PER_ROUND }, (_, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "size-1 rounded-full",
+                    i < state.cycle ? "bg-current" : "bg-current/30"
+                  )}
+                />
+              ))}
+            </span>
             <span
               className={cn("absolute inset-x-0 bottom-0 h-0.5 origin-left", styles.bar)}
               style={{ transform: `scaleX(${progress})` }}

@@ -18,6 +18,17 @@ export type PlanAvailability = {
   weekly: { weekday: number; from: string; to: string }[]
   /** Date ranges where the user is unavailable (vacation etc.). */
   blackouts: { from: string; to: string; label?: string }[]
+  /** Recurring unavailability, e.g. every Tuesday 18:00–19:00 or every second
+   * Sunday. interval 1 = weekly, 2 = every second week (anchored at `anchor`). */
+  recurring?: {
+    weekday: number
+    from: string
+    to: string
+    interval: 1 | 2
+    /** First affected date for biweekly rhythms (ISO date). */
+    anchor?: string
+    label?: string
+  }[]
 }
 
 export type SemesterPlanItemKind = "study" | "review" | "assignment"

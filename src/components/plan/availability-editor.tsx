@@ -42,6 +42,7 @@ export function AvailabilityEditor({
     return base
   })
   const [blackouts, setBlackouts] = React.useState(initial?.blackouts ?? [])
+  const [recurring, setRecurring] = React.useState(initial?.recurring ?? [])
 
   function payload(): PlanAvailability {
     return {
@@ -51,6 +52,7 @@ export function AvailabilityEditor({
         to: weekly[d].to,
       })),
       blackouts: blackouts.filter((b) => b.from && b.to),
+      recurring: recurring.filter((r) => r.from && r.to),
     }
   }
 
@@ -177,6 +179,112 @@ export function AvailabilityEditor({
           >
             <Plus className="size-3.5" />
             {t("addBlackout")}
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium">{t("recurring")}</p>
+          {recurring.map((r, i) => (
+            <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
+              <select
+                value={r.weekday}
+                onChange={(e) =>
+                  setRecurring((list) =>
+                    list.map((x, j) =>
+                      j === i ? { ...x, weekday: Number(e.target.value) } : x
+                    )
+                  )
+                }
+                className="border-input bg-background h-8 rounded-md border px-2 text-sm"
+                aria-label={t("recurringWeekday")}
+              >
+                {WEEKDAYS.map((d) => (
+                  <option key={d} value={d}>
+                    {t(`weekdays.${d}`)}
+                  </option>
+                ))}
+              </select>
+              <Input
+                type="time"
+                value={r.from}
+                onChange={(e) =>
+                  setRecurring((list) =>
+                    list.map((x, j) => (j === i ? { ...x, from: e.target.value } : x))
+                  )
+                }
+                className="h-8 w-28"
+              />
+              <span className="text-muted-foreground">–</span>
+              <Input
+                type="time"
+                value={r.to}
+                onChange={(e) =>
+                  setRecurring((list) =>
+                    list.map((x, j) => (j === i ? { ...x, to: e.target.value } : x))
+                  )
+                }
+                className="h-8 w-28"
+              />
+              <select
+                value={r.interval}
+                onChange={(e) =>
+                  setRecurring((list) =>
+                    list.map((x, j) =>
+                      j === i ? { ...x, interval: Number(e.target.value) as 1 | 2 } : x
+                    )
+                  )
+                }
+                className="border-input bg-background h-8 rounded-md border px-2 text-sm"
+                aria-label={t("recurringInterval")}
+              >
+                <option value={1}>{t("everyWeek")}</option>
+                <option value={2}>{t("everySecondWeek")}</option>
+              </select>
+              {r.interval === 2 && (
+                <Input
+                  type="date"
+                  value={r.anchor ?? ""}
+                  onChange={(e) =>
+                    setRecurring((list) =>
+                      list.map((x, j) => (j === i ? { ...x, anchor: e.target.value } : x))
+                    )
+                  }
+                  title={t("anchorHint")}
+                  className="h-8 w-36"
+                />
+              )}
+              <Input
+                placeholder={t("blackoutLabel")}
+                value={r.label ?? ""}
+                onChange={(e) =>
+                  setRecurring((list) =>
+                    list.map((x, j) => (j === i ? { ...x, label: e.target.value } : x))
+                  )
+                }
+                className="h-8 w-36"
+              />
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setRecurring((list) => list.filter((_, j) => j !== i))}
+              >
+                <Trash2 className="size-3.5" />
+                <span className="sr-only">{t("removeBlackout")}</span>
+              </Button>
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setRecurring((list) => [
+                ...list,
+                { weekday: 2, from: "18:00", to: "19:00", interval: 1 as const, label: "" },
+              ])
+            }
+          >
+            <Plus className="size-3.5" />
+            {t("addRecurring")}
           </Button>
         </div>
 
