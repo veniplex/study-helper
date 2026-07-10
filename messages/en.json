@@ -379,6 +379,30 @@
     "general": "General",
     "generalEmpty": "No module-independent tasks, goals, or plans."
   },
+  "stats": {
+    "title": "Learning activity",
+    "streak": "Current streak",
+    "days": "{count, plural, one {day} other {days}}",
+    "weekTime": "Study time this week",
+    "thisWeek": "this week",
+    "activities": "{count} activities",
+    "dueCards": "Due cards",
+    "lastQuizScore": "Last quiz",
+    "studyTime": "Study time"
+  },
+  "pomodoro": {
+    "title": "Pomodoro timer",
+    "focus": "Focus",
+    "break": "Break",
+    "start": "Start",
+    "pause": "Pause",
+    "reset": "Reset",
+    "focusMinutes": "Focus (min)",
+    "breakMinutes": "Break (min)",
+    "module": "Module",
+    "focusDone": "Logged {minutes} minutes of focus time. 🎉",
+    "breakDone": "Break over — back to it!"
+  },
   "materials": {
     "title": "Materials",
     "empty": "No materials yet. Upload files or add links.",

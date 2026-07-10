@@ -25,7 +25,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex min-h-dvh flex-col">
         <AppSidebar context={context} />
         <div className="flex flex-1 flex-col pb-16 md:pb-0 md:pl-60">
-          <AppHeader user={user} />
+          <AppHeader
+            user={user}
+            modules={context.modules.map((m) => ({ id: m.id, name: m.name }))}
+          />
           <main className="flex-1 p-4 md:p-6">{children}</main>
         </div>
         <BottomNav />

@@ -253,6 +253,29 @@ export async function reorderPlanItems(planId: string, ids: unknown) {
   return { ok: true as const }
 }
 
+// ---- Study sessions (Pomodoro) ---------------------------------------------------
+
+const studySessionSchema = z.object({
+  moduleId: z.string().optional().nullable(),
+  durationMinutes: z.number().int().min(1).max(600),
+  kind: z.enum(["pomodoro", "manual"]).default("pomodoro"),
+})
+
+export async function logStudySession(input: unknown) {
+  const session = await requireSession()
+  const data = studySessionSchema.parse(input)
+  await ownModuleOrNull(data.moduleId, session.user.id)
+  const { studySession } = await import("@/db/schema")
+  await db.insert(studySession).values({
+    userId: session.user.id,
+    moduleId: data.moduleId || null,
+    durationMinutes: data.durationMinutes,
+    kind: data.kind,
+  })
+  revalidatePath("/")
+  return { ok: true as const }
+}
+
 // ---- AI study plan generation ---------------------------------------------------
 
 const generatePlanInputSchema = z.object({

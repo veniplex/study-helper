@@ -7,6 +7,7 @@ import { externalResource, learningGoal, studyModule } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { decrypt } from "@/lib/crypto"
 import { formatGrade, moduleGrade } from "@/lib/grades"
+import { getModuleStats } from "@/lib/learning/stats-server"
 import { deleteGrade, deleteResource } from "@/app/[locale]/(app)/studies/actions"
 import { DeleteButton } from "@/components/studies/delete-button"
 import { GradeDialog } from "@/components/studies/grade-dialog"
@@ -62,9 +63,31 @@ export default async function ModuleOverviewPage({
 
   const gradingSystem = mod.semester.program.gradingSystem
   const finalGrade = moduleGrade(mod.grades)
+  const stats = await getModuleStats(session.user.id, moduleId)
+  const tStats = await getTranslations("stats")
 
   return (
     <div className="space-y-6">
+      <dl className="grid grid-cols-3 gap-4">
+        {[
+          [tStats("dueCards"), String(stats.dueCards)],
+          [
+            tStats("lastQuizScore"),
+            stats.lastQuizScore != null ? `${stats.lastQuizScore}%` : "–",
+          ],
+          [
+            tStats("studyTime"),
+            `${Math.floor(stats.totalMinutes / 60)}h ${stats.totalMinutes % 60}m`,
+          ],
+        ].map(([label, value]) => (
+          <Card key={label} className="py-4">
+            <CardContent className="px-4">
+              <dt className="text-muted-foreground text-xs">{label}</dt>
+              <dd className="text-lg font-semibold">{value}</dd>
+            </CardContent>
+          </Card>
+        ))}
+      </dl>
       {(mod.instructor || mod.examType || mod.notes) && (
         <div>
           <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-sm">

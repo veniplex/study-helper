@@ -5,8 +5,10 @@ import { db } from "@/db"
 import { degreeProgram, learningGoal, studyEvent, studyPlan, studyTask } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { earnedEcts, formatGrade, programAverage } from "@/lib/grades"
+import { getDashboardStats } from "@/lib/learning/stats-server"
 import { getModuleOptions } from "@/lib/studies/module-options"
 import { Link } from "@/i18n/navigation"
+import { StatsCard } from "@/components/learn/stats-card"
 import { GoalCard } from "@/components/learn/goal-card"
 import { GoalDialog } from "@/components/learn/goal-dialog"
 import { PlanDialog } from "@/components/learn/plan-dialogs"
@@ -61,6 +63,7 @@ export default async function DashboardPage() {
     }),
     getModuleOptions(session.user.id),
   ])
+  const stats = await getDashboardStats(session.user.id)
 
   const openGeneralTasks = generalTasks.filter((t) => !t.parentId && t.status !== "done")
 
@@ -76,6 +79,8 @@ export default async function DashboardPage() {
       <h1 className="font-heading text-xl font-semibold tracking-tight">
         {t("greeting", { name: session.user.name.split(" ")[0] })}
       </h1>
+
+      <StatsCard stats={stats} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
