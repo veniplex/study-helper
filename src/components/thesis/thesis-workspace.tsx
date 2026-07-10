@@ -40,10 +40,13 @@ import { cn } from "@/lib/utils"
 const PHASES = ["topic", "exposé", "research", "writing", "revision", "submitted"] as const
 type Phase = (typeof PHASES)[number]
 
+export type SemesterOption = { id: string; label: string }
+
 export type ThesisData = {
   id: string
   title: string
   thesisType: string | null
+  semesterId: string | null
   phase: Phase
   researchQuestion: string | null
   outline: string | null
@@ -61,9 +64,11 @@ export type ThesisData = {
 export function ThesisWorkspace({
   thesis,
   aiAvailable,
+  semesters,
 }: {
   thesis: ThesisData
   aiAvailable: boolean
+  semesters: SemesterOption[]
 }) {
   const t = useTranslations("thesis")
   const tCommon = useTranslations("common")
@@ -73,6 +78,7 @@ export function ThesisWorkspace({
   const [researchQuestion, setResearchQuestion] = React.useState(thesis.researchQuestion ?? "")
   const [notes, setNotes] = React.useState(thesis.notes ?? "")
   const [dueDate, setDueDate] = React.useState(thesis.dueDate ?? "")
+  const [semesterId, setSemesterId] = React.useState(thesis.semesterId ?? "")
   const [addToCalendar, setAddToCalendar] = React.useState(true)
 
   async function run(key: string, fn: () => Promise<unknown>) {
@@ -94,6 +100,7 @@ export function ThesisWorkspace({
         researchQuestion: researchQuestion || null,
         notes: notes || null,
         dueDate: dueDate || null,
+        semesterId: semesterId || null,
       })
       toast.success(t("saved"))
     })
@@ -138,6 +145,24 @@ export function ThesisWorkspace({
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("semester")}</Label>
+            <Select value={semesterId} onValueChange={(v) => setSemesterId(v ?? "")}>
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  {semesters.find((s) => s.id === semesterId)?.label ?? t("noSemester")}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("noSemester")}</SelectItem>
+                {semesters.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex items-end">
             <Button onClick={save} disabled={pending === "save"}>

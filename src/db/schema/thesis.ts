@@ -1,6 +1,7 @@
 import { boolean, date, index, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { user } from "./auth"
+import { semester } from "./studies"
 
 export type ThesisPhase = "topic" | "exposé" | "research" | "writing" | "revision" | "submitted"
 
@@ -13,6 +14,7 @@ export const thesisProject = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    semesterId: text("semester_id").references(() => semester.id, { onDelete: "set null" }),
     title: text("title").notNull(),
     thesisType: text("thesis_type"), // Bachelor, Master, ...
     phase: text("phase").$type<ThesisPhase>().notNull().default("topic"),
@@ -48,8 +50,12 @@ export const thesisMilestone = pgTable(
   (t) => [index("thesis_milestone_thesisId_idx").on(t.thesisId)]
 )
 
-export const thesisProjectRelations = relations(thesisProject, ({ many }) => ({
+export const thesisProjectRelations = relations(thesisProject, ({ many, one }) => ({
   milestones: many(thesisMilestone),
+  semester: one(semester, {
+    fields: [thesisProject.semesterId],
+    references: [semester.id],
+  }),
 }))
 
 export const thesisMilestoneRelations = relations(thesisMilestone, ({ one }) => ({

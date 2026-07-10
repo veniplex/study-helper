@@ -619,6 +619,8 @@
     "empty": "No thesis project yet. Create one or get topic suggestions.",
     "new": "Create project",
     "projectTitle": "Title / working title",
+    "semester": "Semester",
+    "noSemester": "No semester",
     "type": "Type (e.g. Bachelor's thesis)",
     "dueDate": "Submission date",
     "phase": "Phase",

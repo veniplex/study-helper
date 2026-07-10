@@ -1,0 +1,2 @@
+ALTER TABLE "thesis_project" ADD COLUMN "semester_id" text;--> statement-breakpoint
+ALTER TABLE "thesis_project" ADD CONSTRAINT "thesis_project_semester_id_semester_id_fk" FOREIGN KEY ("semester_id") REFERENCES "public"."semester"("id") ON DELETE set null ON UPDATE no action;

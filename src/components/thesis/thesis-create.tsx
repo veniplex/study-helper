@@ -15,15 +15,24 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import type { SemesterOption } from "@/components/thesis/thesis-workspace"
 import { brainstormTopics, createThesis, updateThesis } from "@/app/[locale]/(app)/thesis/actions"
 
-export function ThesisCreateDialog() {
+export function ThesisCreateDialog({ semesters }: { semesters: SemesterOption[] }) {
   const t = useTranslations("thesis")
   const tCommon = useTranslations("common")
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
+  const [semesterId, setSemesterId] = React.useState("")
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -34,6 +43,7 @@ export function ThesisCreateDialog() {
         title: String(form.get("title")),
         thesisType: String(form.get("thesisType") || "") || null,
         dueDate: String(form.get("dueDate") || "") || null,
+        semesterId: semesterId || null,
       })
       setOpen(false)
       router.refresh()
@@ -68,6 +78,24 @@ export function ThesisCreateDialog() {
               <Label htmlFor="tc-due">{t("dueDate")}</Label>
               <Input id="tc-due" name="dueDate" type="date" />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("semester")}</Label>
+            <Select value={semesterId} onValueChange={(v) => setSemesterId(v ?? "")}>
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  {semesters.find((s) => s.id === semesterId)?.label ?? t("noSemester")}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("noSemester")}</SelectItem>
+                {semesters.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

@@ -30,11 +30,21 @@ const thesisSchema = z.object({
   title: z.string().min(1).max(400),
   thesisType: z.string().max(50).optional().nullable(),
   dueDate: z.string().date().optional().nullable(),
+  semesterId: z.string().optional().nullable(),
 })
+
+async function assertOwnSemester(semesterId: string, userId: string) {
+  const row = await db.query.semester.findFirst({
+    where: (s, { eq }) => eq(s.id, semesterId),
+    with: { program: true },
+  })
+  if (!row || row.program.userId !== userId) throw new Error("Not found")
+}
 
 export async function createThesis(input: unknown) {
   const session = await requireSession()
   const data = thesisSchema.parse(input)
+  if (data.semesterId) await assertOwnSemester(data.semesterId, session.user.id)
   const [created] = await db
     .insert(thesisProject)
     .values({
@@ -42,6 +52,7 @@ export async function createThesis(input: unknown) {
       title: data.title,
       thesisType: data.thesisType ?? null,
       dueDate: data.dueDate ?? null,
+      semesterId: data.semesterId ?? null,
     })
     .returning({ id: thesisProject.id })
   revalidatePath("/thesis")
@@ -59,6 +70,7 @@ export async function updateThesis(thesisId: string, input: unknown) {
   const session = await requireSession()
   await ownThesis(thesisId, session.user.id)
   const data = thesisUpdateSchema.parse(input)
+  if (data.semesterId) await assertOwnSemester(data.semesterId, session.user.id)
   await db.update(thesisProject).set(data).where(eq(thesisProject.id, thesisId))
   revalidatePath("/thesis")
   return { ok: true as const }

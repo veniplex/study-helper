@@ -619,6 +619,8 @@
     "empty": "Noch kein Thesis-Projekt. Lege eins an oder lass dir Themen vorschlagen.",
     "new": "Projekt anlegen",
     "projectTitle": "Titel / Arbeitstitel",
+    "semester": "Semester",
+    "noSemester": "Kein Semester",
     "type": "Art (z. B. Bachelorarbeit)",
     "dueDate": "Abgabedatum",
     "phase": "Phase",

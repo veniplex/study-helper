@@ -12,15 +12,22 @@ export default async function ThesisPage() {
   const session = await requireSession()
   const t = await getTranslations("thesis")
 
-  const [projects, { defaultModel }] = await Promise.all([
+  const [projects, { defaultModel }, programs] = await Promise.all([
     db.query.thesisProject.findMany({
       where: eq(thesisProject.userId, session.user.id),
       orderBy: [desc(thesisProject.updatedAt)],
       with: { milestones: { orderBy: [asc(thesisMilestone.dueDate)] } },
     }),
     listAvailableModels(),
+    db.query.degreeProgram.findMany({
+      where: (p, { eq }) => eq(p.userId, session.user.id),
+      with: { semesters: { columns: { id: true, name: true } } },
+    }),
   ])
   const aiAvailable = Boolean(defaultModel)
+  const semesters = programs.flatMap((p) =>
+    p.semesters.map((s) => ({ id: s.id, label: `${p.name} · ${s.name}` }))
+  )
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
@@ -28,7 +35,7 @@ export default async function ThesisPage() {
         <h1 className="font-heading text-xl font-semibold tracking-tight">{t("title")}</h1>
         <div className="flex gap-2">
           <BrainstormDialog aiAvailable={aiAvailable} />
-          <ThesisCreateDialog />
+          <ThesisCreateDialog semesters={semesters} />
         </div>
       </div>
 
@@ -41,7 +48,12 @@ export default async function ThesisPage() {
         </div>
       ) : (
         projects.map((p) => (
-          <ThesisWorkspace key={p.id} thesis={p as ThesisData} aiAvailable={aiAvailable} />
+          <ThesisWorkspace
+            key={p.id}
+            thesis={p as ThesisData}
+            aiAvailable={aiAvailable}
+            semesters={semesters}
+          />
         ))
       )}
     </div>
