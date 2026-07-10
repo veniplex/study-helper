@@ -41,7 +41,7 @@ export async function createTask(input: unknown) {
     moduleId: data.moduleId || null,
     parentId: data.parentId || null,
   })
-  revalidatePath("/learn")
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -59,7 +59,7 @@ export async function updateTask(taskId: string, input: unknown) {
       ...(data.moduleId !== undefined ? { moduleId: data.moduleId || null } : {}),
     })
     .where(and(eq(studyTask.id, taskId), eq(studyTask.userId, session.user.id)))
-  revalidatePath("/learn")
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -69,7 +69,7 @@ export async function toggleTask(taskId: string, done: boolean) {
     .update(studyTask)
     .set({ status: done ? "done" : "open", completedAt: done ? new Date() : null })
     .where(and(eq(studyTask.id, taskId), eq(studyTask.userId, session.user.id)))
-  revalidatePath("/learn")
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -102,7 +102,7 @@ export async function deleteTask(taskId: string) {
   await db
     .delete(studyTask)
     .where(and(eq(studyTask.id, taskId), eq(studyTask.userId, session.user.id)))
-  revalidatePath("/learn")
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -126,7 +126,7 @@ export async function createGoal(input: unknown) {
     targetDate: data.targetDate ?? null,
     moduleId: data.moduleId || null,
   })
-  revalidatePath("/learn/goals")
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -137,7 +137,7 @@ export async function updateGoalProgress(goalId: string, progress: number) {
     .update(learningGoal)
     .set({ progress: value })
     .where(and(eq(learningGoal.id, goalId), eq(learningGoal.userId, session.user.id)))
-  revalidatePath("/learn/goals")
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -146,7 +146,7 @@ export async function deleteGoal(goalId: string) {
   await db
     .delete(learningGoal)
     .where(and(eq(learningGoal.id, goalId), eq(learningGoal.userId, session.user.id)))
-  revalidatePath("/learn/goals")
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -171,7 +171,7 @@ export async function createPlan(input: unknown) {
       moduleId: data.moduleId || null,
     })
     .returning({ id: studyPlan.id })
-  revalidatePath("/learn/plans")
+  revalidatePath("/", "layout")
   return { ok: true as const, id: created.id }
 }
 
@@ -180,7 +180,7 @@ export async function deletePlan(planId: string) {
   await db
     .delete(studyPlan)
     .where(and(eq(studyPlan.id, planId), eq(studyPlan.userId, session.user.id)))
-  revalidatePath("/learn/plans")
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -210,7 +210,7 @@ export async function addPlanItem(planId: string, input: unknown) {
     scheduledDate: data.scheduledDate ?? null,
     durationMinutes: data.durationMinutes ?? null,
   })
-  revalidatePath(`/learn/plans/${planId}`)
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -222,7 +222,7 @@ export async function togglePlanItem(itemId: string, done: boolean) {
   })
   if (!item || item.plan.userId !== session.user.id) throw new Error("Not found")
   await db.update(studyPlanItem).set({ done }).where(eq(studyPlanItem.id, itemId))
-  revalidatePath(`/learn/plans/${item.planId}`)
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -234,7 +234,7 @@ export async function deletePlanItem(itemId: string) {
   })
   if (!item || item.plan.userId !== session.user.id) throw new Error("Not found")
   await db.delete(studyPlanItem).where(eq(studyPlanItem.id, itemId))
-  revalidatePath(`/learn/plans/${item.planId}`)
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -367,6 +367,6 @@ Create study sessions distributed between today and the exam date (include buffe
     )
   }
 
-  revalidatePath("/learn/plans")
+  revalidatePath("/", "layout")
   return { ok: true as const, id: created.id }
 }

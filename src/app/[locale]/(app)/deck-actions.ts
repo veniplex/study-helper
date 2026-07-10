@@ -32,14 +32,14 @@ export async function createDeck(input: unknown) {
       moduleId: data.moduleId || null,
     })
     .returning({ id: deck.id })
-  revalidatePath("/learn/decks")
+  revalidatePath("/", "layout")
   return { ok: true as const, id: created.id }
 }
 
 export async function deleteDeck(deckId: string) {
   const session = await requireSession()
   await db.delete(deck).where(and(eq(deck.id, deckId), eq(deck.userId, session.user.id)))
-  revalidatePath("/learn/decks")
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -61,7 +61,7 @@ export async function addCard(deckId: string, input: unknown) {
   await ownDeck(deckId, session.user.id)
   const data = cardSchema.parse(input)
   await db.insert(flashcard).values({ deckId, front: data.front, back: data.back })
-  revalidatePath(`/learn/decks/${deckId}`)
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -73,7 +73,7 @@ export async function deleteCard(cardId: string) {
   })
   if (!card || card.deck.userId !== session.user.id) throw new Error("Not found")
   await db.delete(flashcard).where(eq(flashcard.id, cardId))
-  revalidatePath(`/learn/decks/${card.deckId}`)
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -158,6 +158,6 @@ Write in the same language as the topic.${context}`,
       cards.map((c) => ({ deckId: data.deckId, front: c.front, back: c.back }))
     )
   }
-  revalidatePath(`/learn/decks/${data.deckId}`)
+  revalidatePath("/", "layout")
   return { ok: true as const, count: cards.length }
 }

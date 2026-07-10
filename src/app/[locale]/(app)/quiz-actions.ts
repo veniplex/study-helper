@@ -35,14 +35,14 @@ export async function createQuiz(input: unknown) {
     .insert(quiz)
     .values({ userId: session.user.id, title: data.title, moduleId: data.moduleId || null })
     .returning({ id: quiz.id })
-  revalidatePath("/learn/quizzes")
+  revalidatePath("/", "layout")
   return { ok: true as const, id: created.id }
 }
 
 export async function deleteQuiz(quizId: string) {
   const session = await requireSession()
   await db.delete(quiz).where(and(eq(quiz.id, quizId), eq(quiz.userId, session.user.id)))
-  revalidatePath("/learn/quizzes")
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -75,7 +75,7 @@ export async function addQuestion(quizId: string, input: unknown) {
     referenceAnswer: data.kind === "free_text" ? data.referenceAnswer : null,
     explanation: data.explanation ?? null,
   })
-  revalidatePath(`/learn/quizzes/${quizId}`)
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -87,7 +87,7 @@ export async function deleteQuestion(questionId: string) {
   })
   if (!row || row.quiz.userId !== session.user.id) throw new Error("Not found")
   await db.delete(question).where(eq(question.id, questionId))
-  revalidatePath(`/learn/quizzes/${row.quizId}`)
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -177,7 +177,7 @@ Each question gets a short explanation of the correct answer. Write in the same 
     )
   }
 
-  revalidatePath("/learn/quizzes")
+  revalidatePath("/", "layout")
   return { ok: true as const, id: created.id }
 }
 
@@ -288,7 +288,7 @@ Judge leniently on wording but strictly on content. Reply with correct=true/fals
     )
   }
 
-  revalidatePath("/learn/quizzes")
+  revalidatePath("/", "layout")
   return { score, results }
 }
 

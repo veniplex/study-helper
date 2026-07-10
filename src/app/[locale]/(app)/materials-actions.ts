@@ -28,7 +28,7 @@ export async function createLinkMaterial(input: unknown) {
     url: data.url,
     folder: data.folder ?? null,
   })
-  revalidatePath("/materials")
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -40,6 +40,6 @@ export async function deleteMaterial(materialId: string) {
   if (!row) throw new Error("Not found")
   if (row.storagePath) await deleteFile(row.storagePath)
   await db.delete(material).where(eq(material.id, materialId))
-  revalidatePath("/materials")
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
