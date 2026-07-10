@@ -10,6 +10,7 @@
     "learn": "Learn",
     "calendar": "Calendar",
     "ai": "AI Assistant",
+    "thesis": "Thesis",
     "settings": "Settings",
     "admin": "Admin"
   },
@@ -387,7 +388,29 @@
     "placeholder": "Type a message … (Enter to send)",
     "thinking": "Thinking …",
     "error": "Error",
-    "noModel": "No model available"
+    "noModel": "No model available",
+    "modes": {
+      "general": {
+        "label": "General chat",
+        "description": "Questions about your studies and materials"
+      },
+      "homework-hints": {
+        "label": "Homework: hints",
+        "description": "Socratic help — hints instead of solutions"
+      },
+      "homework-solution": {
+        "label": "Homework: solution",
+        "description": "Complete solution with all steps"
+      },
+      "writing": {
+        "label": "Writing assistant",
+        "description": "Papers & theses: outline, style, feedback"
+      },
+      "thesis": {
+        "label": "Thesis coach",
+        "description": "Topic finding, research question, exposé, methodology"
+      }
+    }
   },
   "learn": {
     "title": "Learn",
@@ -519,6 +542,43 @@
       "explanation": "Explanation (optional)",
       "submit": "Add question"
     }
+  },
+  "thesis": {
+    "title": "Thesis",
+    "empty": "No thesis project yet. Create one or get topic suggestions.",
+    "new": "Create project",
+    "projectTitle": "Title / working title",
+    "type": "Type (e.g. Bachelor's thesis)",
+    "dueDate": "Submission date",
+    "phase": "Phase",
+    "phases": {
+      "topic": "Topic finding",
+      "exposé": "Exposé",
+      "research": "Research",
+      "writing": "Writing",
+      "revision": "Revision",
+      "submitted": "Submitted"
+    },
+    "researchQuestion": "Research question",
+    "notes": "Notes",
+    "outline": "Outline",
+    "generateOutline": "Generate outline with AI",
+    "milestones": "Milestones",
+    "addMilestone": "Add milestone",
+    "generateMilestones": "Generate milestone plan with AI",
+    "addToCalendar": "Add milestones to calendar",
+    "milestoneTitle": "Title",
+    "milestoneDate": "Date",
+    "brainstorm": "Topic brainstorming",
+    "brainstormDialog": {
+      "title": "Find thesis topics with AI",
+      "interests": "Interests, degree program, constraints",
+      "submit": "Suggest topics",
+      "generating": "Generating suggestions …",
+      "useTopic": "Use as project"
+    },
+    "saved": "Saved.",
+    "generating": "Generating …"
   },
   "home": {
     "title": "Welcome to StudyHelper",

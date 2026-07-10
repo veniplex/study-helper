@@ -57,6 +57,20 @@
       "when": 1783630986951,
       "tag": "0007_exotic_goliath",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783650226122,
+      "tag": "0008_tired_serpent_society",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1783650869996,
+      "tag": "0009_silent_wind_dancer",
+      "breakpoints": true
     }
   ]
 }

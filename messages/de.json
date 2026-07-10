@@ -10,6 +10,7 @@
     "learn": "Lernen",
     "calendar": "Kalender",
     "ai": "KI-Assistent",
+    "thesis": "Abschlussarbeit",
     "settings": "Einstellungen",
     "admin": "Admin"
   },
@@ -387,7 +388,29 @@
     "placeholder": "Nachricht schreiben … (Enter zum Senden)",
     "thinking": "Denkt nach …",
     "error": "Fehler",
-    "noModel": "Kein Modell verfügbar"
+    "noModel": "Kein Modell verfügbar",
+    "modes": {
+      "general": {
+        "label": "Allgemeiner Chat",
+        "description": "Fragen zu deinem Studium und deinen Materialien"
+      },
+      "homework-hints": {
+        "label": "Hausaufgaben: Hinweise",
+        "description": "Sokratische Hilfe — Tipps statt Lösungen"
+      },
+      "homework-solution": {
+        "label": "Hausaufgaben: Lösung",
+        "description": "Komplette Lösung mit Rechenweg"
+      },
+      "writing": {
+        "label": "Schreib-Assistent",
+        "description": "Hausarbeiten & Abschlussarbeiten: Gliederung, Stil, Feedback"
+      },
+      "thesis": {
+        "label": "Thesis-Coach",
+        "description": "Themenfindung, Forschungsfrage, Exposé, Methodik"
+      }
+    }
   },
   "learn": {
     "title": "Lernen",
@@ -519,6 +542,43 @@
       "explanation": "Erklärung (optional)",
       "submit": "Frage hinzufügen"
     }
+  },
+  "thesis": {
+    "title": "Abschlussarbeit",
+    "empty": "Noch kein Thesis-Projekt. Lege eins an oder lass dir Themen vorschlagen.",
+    "new": "Projekt anlegen",
+    "projectTitle": "Titel / Arbeitstitel",
+    "type": "Art (z. B. Bachelorarbeit)",
+    "dueDate": "Abgabedatum",
+    "phase": "Phase",
+    "phases": {
+      "topic": "Themenfindung",
+      "exposé": "Exposé",
+      "research": "Recherche",
+      "writing": "Schreiben",
+      "revision": "Überarbeitung",
+      "submitted": "Abgegeben"
+    },
+    "researchQuestion": "Forschungsfrage",
+    "notes": "Notizen",
+    "outline": "Gliederung",
+    "generateOutline": "Gliederung mit KI erstellen",
+    "milestones": "Meilensteine",
+    "addMilestone": "Meilenstein hinzufügen",
+    "generateMilestones": "Meilensteinplan mit KI erstellen",
+    "addToCalendar": "Meilensteine in den Kalender eintragen",
+    "milestoneTitle": "Titel",
+    "milestoneDate": "Datum",
+    "brainstorm": "Themen-Brainstorming",
+    "brainstormDialog": {
+      "title": "Thesis-Themen mit KI finden",
+      "interests": "Interessen, Studiengang, Rahmenbedingungen",
+      "submit": "Themen vorschlagen",
+      "generating": "Generiere Vorschläge …",
+      "useTopic": "Als Projekt übernehmen"
+    },
+    "saved": "Gespeichert.",
+    "generating": "Generiere …"
   },
   "home": {
     "title": "Willkommen bei StudyHelper",

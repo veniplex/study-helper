@@ -4,6 +4,7 @@ import {
   FolderOpen,
   GraduationCap,
   LayoutDashboard,
+  ScrollText,
   Settings,
   Sparkles,
   type LucideIcon,
@@ -11,7 +12,7 @@ import {
 
 export type NavItem = {
   /** Translation key under the `nav` namespace */
-  key: "dashboard" | "studies" | "materials" | "learn" | "calendar" | "ai" | "settings"
+  key: "dashboard" | "studies" | "materials" | "learn" | "calendar" | "ai" | "thesis" | "settings"
   href: string
   icon: LucideIcon
   /** Shown in the mobile bottom navigation */
@@ -25,5 +26,6 @@ export const navItems: NavItem[] = [
   { key: "learn", href: "/learn", icon: Brain, mobile: true },
   { key: "calendar", href: "/calendar", icon: Calendar, mobile: true },
   { key: "ai", href: "/ai", icon: Sparkles, mobile: true },
+  { key: "thesis", href: "/thesis", icon: ScrollText },
   { key: "settings", href: "/settings", icon: Settings },
 ]

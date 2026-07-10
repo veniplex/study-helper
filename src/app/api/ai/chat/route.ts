@@ -7,16 +7,22 @@ import { getSession } from "@/lib/auth/session"
 import { getLanguageModel } from "@/lib/ai/registry"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
 import { searchChunks } from "@/lib/ai/rag"
+import { MODE_PROMPTS, type ChatMode } from "@/lib/ai/modes"
 import { getSetting } from "@/lib/settings"
 
 export const maxDuration = 300
 
-function buildSystemPrompt(moduleName: string | null | undefined, ragEnabled: boolean): string {
+function buildSystemPrompt(
+  moduleName: string | null | undefined,
+  ragEnabled: boolean,
+  mode: ChatMode
+): string {
   return [
     "You are StudyHelper, an AI study assistant for university students.",
     "Answer in the language the user writes in.",
     "Use Markdown. Use LaTeX math ($...$ inline, $$...$$ display) where helpful.",
     moduleName ? `The current conversation is about the module "${moduleName}".` : "",
+    MODE_PROMPTS[mode] ?? "",
     ragEnabled
       ? "You can search the user's uploaded study materials with the searchMaterials tool. Use it whenever a question may relate to their course content, and cite the source material names in your answer."
       : "",
@@ -98,7 +104,11 @@ export async function POST(request: Request) {
 
   const result = streamText({
     model,
-    system: buildSystemPrompt(conversation.module?.name, ragEnabled),
+    system: buildSystemPrompt(
+      conversation.module?.name,
+      ragEnabled,
+      (conversation.mode as ChatMode) ?? "general"
+    ),
     messages: await convertToModelMessages(body.messages),
     stopWhen: stepCountIs(5),
     tools: ragEnabled

@@ -1,0 +1,1 @@
+ALTER TABLE "ai_conversation" ADD COLUMN "mode" text DEFAULT 'general' NOT NULL;

@@ -16,6 +16,8 @@ export const aiConversation = pgTable(
     title: text("title").notNull().default("New conversation"),
     /** "providerId:modelId" of the last used model */
     model: text("model"),
+    /** Assistant mode: general | homework-hints | homework-solution | writing | thesis */
+    mode: text("mode").notNull().default("general"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
