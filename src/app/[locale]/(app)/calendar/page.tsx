@@ -1,4 +1,4 @@
-import { asc, desc, eq, gte, lt } from "drizzle-orm"
+import { asc, eq } from "drizzle-orm"
 import { CalendarDays, MapPin } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import { db } from "@/db"
@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/auth/session"
 import { env } from "@/lib/env"
 import { deleteEvent } from "./actions"
 import { DeleteButton } from "@/components/studies/delete-button"
+import { CalendarView } from "@/components/calendar/calendar-view"
 import { EventDialog, type ModuleOption } from "@/components/calendar/event-dialog"
 import { IcsCard } from "@/components/calendar/ics-card"
 import { Badge } from "@/components/ui/badge"
@@ -30,16 +31,10 @@ export default async function CalendarPage() {
   const format = await getFormatter()
   const now = new Date()
 
-  const [upcoming, past, prefs, programs] = await Promise.all([
+  const [allEvents, prefs, programs] = await Promise.all([
     db.query.studyEvent.findMany({
-      where: (e, { and }) => and(eq(e.userId, session.user.id), gte(e.startsAt, now)),
+      where: eq(studyEvent.userId, session.user.id),
       orderBy: [asc(studyEvent.startsAt)],
-      with: { module: true },
-    }),
-    db.query.studyEvent.findMany({
-      where: (e, { and }) => and(eq(e.userId, session.user.id), lt(e.startsAt, now)),
-      orderBy: [desc(studyEvent.startsAt)],
-      limit: 10,
       with: { module: true },
     }),
     db.query.userPrefs.findFirst({ where: eq(userPrefs.userId, session.user.id) }),
@@ -48,6 +43,7 @@ export default async function CalendarPage() {
       with: { semesters: { with: { modules: true } } },
     }),
   ])
+  const upcoming = allEvents.filter((e) => e.startsAt >= now)
 
   const modules: ModuleOption[] = programs.flatMap((p) =>
     p.semesters.flatMap((s) => s.modules.map((m) => ({ id: m.id, name: m.name })))
@@ -108,6 +104,21 @@ export default async function CalendarPage() {
         <EventDialog modules={modules} />
       </div>
 
+      <CalendarView
+        modules={modules}
+        events={allEvents.map((e) => ({
+          id: e.id,
+          title: e.title,
+          type: e.type,
+          startsAt: toLocalInputValue(e.startsAt),
+          endsAt: e.endsAt ? toLocalInputValue(e.endsAt) : null,
+          location: e.location,
+          notes: e.notes,
+          moduleId: e.moduleId,
+          reminderOffsets: e.reminderOffsets,
+        }))}
+      />
+
       {upcoming.length === 0 ? (
         <Card>
           <CardContent className="text-muted-foreground py-8 text-center text-sm">
@@ -115,18 +126,10 @@ export default async function CalendarPage() {
           </CardContent>
         </Card>
       ) : (
-        <ul className="space-y-2">
-          {upcoming.map((e) => (
-            <EventRow key={e.id} event={e} />
-          ))}
-        </ul>
-      )}
-
-      {past.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-muted-foreground text-sm font-medium">{t("past")}</h2>
-          <ul className="space-y-2 opacity-70">
-            {past.map((e) => (
+          <h2 className="text-muted-foreground text-sm font-medium">{t("upcoming")}</h2>
+          <ul className="space-y-2">
+            {upcoming.map((e) => (
               <EventRow key={e.id} event={e} />
             ))}
           </ul>

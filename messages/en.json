@@ -343,6 +343,7 @@
     "newEvent": "Add event",
     "editEvent": "Edit event",
     "empty": "No upcoming events.",
+    "upcoming": "Upcoming events",
     "past": "Past events",
     "event": {
       "title": "Title",

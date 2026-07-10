@@ -47,14 +47,25 @@ export type ModuleOption = { id: string; name: string }
 export function EventDialog({
   event,
   modules,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   event?: EventData
   modules: ModuleOption[]
+  /** Controlled mode (no trigger rendered) — used by the calendar view. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const t = useTranslations("calendar")
   const tCommon = useTranslations("common")
   const router = useRouter()
-  const [open, setOpen] = React.useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+  const controlled = controlledOpen !== undefined
+  const open = controlled ? controlledOpen : uncontrolledOpen
+  const setOpen = (v: boolean) => {
+    if (controlled) onOpenChange?.(v)
+    else setUncontrolledOpen(v)
+  }
   const [pending, setPending] = React.useState(false)
   const [type, setType] = React.useState<EventType>(event?.type ?? "exam")
   const [moduleId, setModuleId] = React.useState<string>(event?.moduleId ?? "")
@@ -97,16 +108,18 @@ export function EventDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={isEdit ? <Button variant="ghost" size="icon-sm" /> : <Button />}>
-        {isEdit ? (
-          <Pencil className="size-3.5" />
-        ) : (
-          <>
-            <Plus className="size-4" />
-            {t("newEvent")}
-          </>
-        )}
-      </DialogTrigger>
+      {!controlled && (
+        <DialogTrigger render={isEdit ? <Button variant="ghost" size="icon-sm" /> : <Button />}>
+          {isEdit ? (
+            <Pencil className="size-3.5" />
+          ) : (
+            <>
+              <Plus className="size-4" />
+              {t("newEvent")}
+            </>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? t("editEvent") : t("newEvent")}</DialogTitle>

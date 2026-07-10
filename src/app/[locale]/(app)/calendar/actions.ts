@@ -60,6 +60,26 @@ export async function updateEvent(eventId: string, input: unknown) {
   return { ok: true as const }
 }
 
+const moveSchema = z.object({
+  startsAt: z.string().datetime({ local: true }).or(z.string().datetime()),
+  endsAt: z.string().datetime({ local: true }).or(z.string().datetime()).optional().nullable(),
+})
+
+/** Drag & drop / resize in the calendar view: only shifts the times. */
+export async function moveEvent(eventId: string, input: unknown) {
+  const session = await requireSession()
+  const data = moveSchema.parse(input)
+  await db
+    .update(studyEvent)
+    .set({
+      startsAt: new Date(data.startsAt),
+      endsAt: data.endsAt ? new Date(data.endsAt) : null,
+    })
+    .where(and(eq(studyEvent.id, eventId), eq(studyEvent.userId, session.user.id)))
+  revalidatePath("/calendar")
+  return { ok: true as const }
+}
+
 export async function deleteEvent(eventId: string) {
   const session = await requireSession()
   await db

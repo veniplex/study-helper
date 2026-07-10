@@ -343,6 +343,7 @@
     "newEvent": "Termin anlegen",
     "editEvent": "Termin bearbeiten",
     "empty": "Keine anstehenden Termine.",
+    "upcoming": "Nächste Termine",
     "past": "Vergangene Termine",
     "event": {
       "title": "Titel",
