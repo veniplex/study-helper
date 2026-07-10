@@ -1,7 +1,7 @@
 import { requireSession } from "@/lib/auth/session"
 import { listAvailableModels } from "@/lib/ai/registry"
 import { getStudyContext } from "@/lib/studies/context"
-import { FloatingChat } from "@/components/ai/floating-chat"
+import { ChatDock } from "@/components/ai/chat-dock"
 import { PageContextProvider } from "@/components/ai/page-context"
 import { AppHeader } from "@/components/layout/app-header"
 import { AppSidebar } from "@/components/layout/app-sidebar"
@@ -32,7 +32,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <main className="flex-1 p-4 md:p-6">{children}</main>
         </div>
         <BottomNav context={context} />
-        <FloatingChat models={models} initialModel={defaultModel} />
+        <ChatDock
+          models={models}
+          initialModel={defaultModel}
+          modules={context.modules.map((m) => ({ id: m.id, name: m.name }))}
+        />
       </div>
     </PageContextProvider>
   )

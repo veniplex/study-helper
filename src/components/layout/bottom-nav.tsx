@@ -4,6 +4,7 @@ import * as React from "react"
 import { useTranslations } from "next-intl"
 import { Link, usePathname } from "@/i18n/navigation"
 import { navItems } from "@/config/nav"
+import { CHAT_OPEN_EVENT } from "@/components/ai/chat-dock"
 import { ModuleSheet } from "./module-sheet"
 import type { StudyContext } from "@/lib/studies/context"
 import { cn } from "@/lib/utils"
@@ -28,12 +29,23 @@ export function BottomNav({ context }: { context: StudyContext }) {
         {items.map((item) => {
           const active =
             item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
-          const link = (
-            <Link key={item.key} href={item.href} className={linkClass(active)}>
-              <item.icon className={cn("size-5", active && "stroke-[2.25]")} />
-              {t(item.key)}
-            </Link>
-          )
+          const link =
+            item.key === "ai" ? (
+              <button
+                key={item.key}
+                type="button"
+                className={linkClass(false)}
+                onClick={() => window.dispatchEvent(new Event(CHAT_OPEN_EVENT))}
+              >
+                <item.icon className="size-5" />
+                {t(item.key)}
+              </button>
+            ) : (
+              <Link key={item.key} href={item.href} className={linkClass(active)}>
+                <item.icon className={cn("size-5", active && "stroke-[2.25]")} />
+                {t(item.key)}
+              </Link>
+            )
           // Module sheet sits between dashboard and calendar
           if (item.key === "dashboard") {
             return (

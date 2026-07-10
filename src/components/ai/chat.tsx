@@ -24,12 +24,15 @@ export function Chat({
   models,
   initialModel,
   className,
+  suggestions,
 }: {
   conversationId: string
   initialMessages: UIMessage[]
   models: { ref: string; label: string }[]
   initialModel: string | null
   className?: string
+  /** Prompt suggestions shown as pills while the chat is empty. */
+  suggestions?: string[]
 }) {
   const t = useTranslations("ai")
   const [model, setModel] = React.useState(initialModel ?? models[0]?.ref ?? "")
@@ -79,9 +82,23 @@ export function Chat({
     >
       <div className="flex-1 space-y-4 overflow-y-auto pb-4">
         {messages.length === 0 && (
-          <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 text-sm">
+          <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-3 px-2 text-sm">
             <Sparkles className="size-6" />
             {t("emptyChat")}
+            {suggestions && suggestions.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-1.5 pt-1">
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setInput(s)}
+                    className="hover:border-primary/50 hover:text-foreground rounded-full border px-3 py-1 text-xs transition-colors"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {messages.map((m) => (

@@ -40,6 +40,54 @@ export async function getConversationMessages(conversationId: string) {
   }))
 }
 
+/** Recent conversations for the chat dock switcher. */
+export async function listConversations() {
+  const session = await requireSession()
+  const rows = await db.query.aiConversation.findMany({
+    where: eq(aiConversation.userId, session.user.id),
+    orderBy: (c, { desc }) => [desc(c.updatedAt)],
+    limit: 30,
+    with: { module: { columns: { id: true, name: true } } },
+  })
+  return rows.map((c) => ({
+    id: c.id,
+    title: c.title,
+    moduleName: c.module?.name ?? null,
+    moduleId: c.moduleId,
+    updatedAt: c.updatedAt.toISOString(),
+  }))
+}
+
+export async function renameConversation(conversationId: string, title: string) {
+  const session = await requireSession()
+  const clean = title.trim().slice(0, 200)
+  if (!clean) throw new Error("Title required")
+  await db
+    .update(aiConversation)
+    .set({ title: clean })
+    .where(
+      and(eq(aiConversation.id, conversationId), eq(aiConversation.userId, session.user.id))
+    )
+  revalidatePath("/ai")
+  return { ok: true as const }
+}
+
+export async function updateConversationModule(
+  conversationId: string,
+  moduleId: string | null
+) {
+  const session = await requireSession()
+  if (moduleId) await ownModule(moduleId, session.user.id)
+  await db
+    .update(aiConversation)
+    .set({ moduleId })
+    .where(
+      and(eq(aiConversation.id, conversationId), eq(aiConversation.userId, session.user.id))
+    )
+  revalidatePath("/ai")
+  return { ok: true as const }
+}
+
 export async function deleteConversation(conversationId: string) {
   const session = await requireSession()
   await db
