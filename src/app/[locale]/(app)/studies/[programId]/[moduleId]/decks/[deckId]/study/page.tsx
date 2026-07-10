@@ -1,40 +1,80 @@
 import { notFound } from "next/navigation"
-import { and, asc, eq, lte } from "drizzle-orm"
+import { and, asc, desc, eq, gt, lte, sql } from "drizzle-orm"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { deck, flashcard } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { StudySession } from "@/components/learn/study-session"
 
+export type StudyMode = "due" | "order" | "random" | "wrong" | "least"
+
 export default async function ModuleStudyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ programId: string; moduleId: string; deckId: string }>
+  searchParams: Promise<{ mode?: string; count?: string }>
 }) {
   const { programId, moduleId, deckId } = await params
+  const { mode: rawMode, count: rawCount } = await searchParams
   const session = await requireSession()
   const t = await getTranslations("learn.decks")
+
+  const mode: StudyMode = ["due", "order", "random", "wrong", "least"].includes(rawMode ?? "")
+    ? (rawMode as StudyMode)
+    : "due"
+  const count = Math.min(Math.max(Number(rawCount) || 50, 1), 100)
 
   const deckRow = await db.query.deck.findFirst({
     where: and(eq(deck.id, deckId), eq(deck.userId, session.user.id)),
   })
   if (!deckRow || deckRow.moduleId !== moduleId) notFound()
 
-  const dueCards = await db.query.flashcard.findMany({
-    where: and(eq(flashcard.deckId, deckId), lte(flashcard.due, new Date())),
-    orderBy: [asc(flashcard.due)],
-    limit: 50,
-    columns: { id: true, front: true, back: true },
-  })
+  const base = { columns: { id: true, front: true, back: true } as const, limit: count }
+  const cards = await (() => {
+    switch (mode) {
+      case "order":
+        return db.query.flashcard.findMany({
+          ...base,
+          where: eq(flashcard.deckId, deckId),
+          orderBy: [asc(flashcard.createdAt)],
+        })
+      case "random":
+        return db.query.flashcard.findMany({
+          ...base,
+          where: eq(flashcard.deckId, deckId),
+          orderBy: sql`random()`,
+        })
+      case "wrong":
+        return db.query.flashcard.findMany({
+          ...base,
+          where: and(eq(flashcard.deckId, deckId), gt(flashcard.lapses, 0)),
+          orderBy: [desc(flashcard.lapses)],
+        })
+      case "least":
+        return db.query.flashcard.findMany({
+          ...base,
+          where: eq(flashcard.deckId, deckId),
+          orderBy: [asc(flashcard.reps), asc(flashcard.createdAt)],
+        })
+      default:
+        return db.query.flashcard.findMany({
+          ...base,
+          where: and(eq(flashcard.deckId, deckId), lte(flashcard.due, new Date())),
+          orderBy: [asc(flashcard.due)],
+        })
+    }
+  })()
 
-  if (dueCards.length === 0) {
+  if (cards.length === 0) {
     return <p className="text-muted-foreground py-12 text-center text-sm">{t("noDue")}</p>
   }
 
   return (
     <StudySession
       backHref={`/studies/${programId}/${moduleId}/decks/${deckId}`}
-      cards={dueCards}
+      cards={cards}
+      moduleId={moduleId}
     />
   )
 }

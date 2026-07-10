@@ -6,6 +6,7 @@ import { question, quiz, quizAttempt } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { Link } from "@/i18n/navigation"
 import { QuestionForm } from "@/components/learn/question-form"
+import { QuestionList } from "@/components/learn/question-list"
 import { QuizRunner, type RunnerQuestion } from "@/components/learn/quiz-runner"
 import { Button } from "@/components/ui/button"
 
@@ -88,6 +89,18 @@ export default async function ModuleQuizDetailPage({
       <p className="text-muted-foreground text-sm">
         {t("questions", { count: quizRow.questions.length })}
       </p>
+
+      <QuestionList
+        questions={quizRow.questions.map((q) => ({
+          id: q.id,
+          kind: q.kind,
+          prompt: q.prompt,
+          options: q.options,
+          correctIndex: q.correctIndex,
+          referenceAnswer: q.referenceAnswer,
+          explanation: q.explanation,
+        }))}
+      />
 
       <QuestionForm quizId={quizId} />
 

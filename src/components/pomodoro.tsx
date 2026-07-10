@@ -191,6 +191,23 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
     [router, t]
   )
 
+  // Learning sessions can auto-start a focus phase for their module
+  React.useEffect(() => {
+    function onStart(e: Event) {
+      const moduleId = (e as CustomEvent<{ moduleId?: string }>).detail?.moduleId ?? ""
+      setNow(Date.now())
+      setState((s) => ({
+        ...s,
+        phase: "focus",
+        moduleId: moduleId || s.moduleId,
+        endsAt: Date.now() + s.focusMin * 60 * 1000,
+        remainingMs: s.focusMin * 60 * 1000,
+      }))
+    }
+    window.addEventListener("studyhelper:pomodoro-start", onStart)
+    return () => window.removeEventListener("studyhelper:pomodoro-start", onStart)
+  }, [])
+
   // Tick while running; complete the phase when time is up
   const endsAt = state.endsAt
   React.useEffect(() => {

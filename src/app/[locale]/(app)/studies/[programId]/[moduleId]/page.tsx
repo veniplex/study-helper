@@ -12,6 +12,8 @@ import { deleteGrade, deleteResource } from "@/app/[locale]/(app)/studies/action
 import { DeleteButton } from "@/components/studies/delete-button"
 import { GradeDialog } from "@/components/studies/grade-dialog"
 import { ResourceDialog } from "@/components/studies/resource-dialog"
+import { AnalyzeButton } from "@/components/learn/analyze-button"
+import { SessionStartDialog } from "@/components/learn/session-start-dialog"
 import { GoalCard } from "@/components/learn/goal-card"
 import { GoalDialog } from "@/components/learn/goal-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -66,8 +68,30 @@ export default async function ModuleOverviewPage({
   const stats = await getModuleStats(session.user.id, moduleId)
   const tStats = await getTranslations("stats")
 
+  const [decks, quizzes] = await Promise.all([
+    db.query.deck.findMany({
+      where: (d, { and: a, eq: e }) =>
+        a(e(d.userId, session.user.id), e(d.moduleId, moduleId)),
+      columns: { id: true, name: true },
+    }),
+    db.query.quiz.findMany({
+      where: (q, { and: a, eq: e }) =>
+        a(e(q.userId, session.user.id), e(q.moduleId, moduleId)),
+      columns: { id: true, title: true },
+    }),
+  ])
+
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap justify-end gap-2">
+        <AnalyzeButton moduleId={moduleId} />
+        <SessionStartDialog
+          basePath={`/studies/${programId}/${moduleId}`}
+          moduleId={moduleId}
+          decks={decks}
+          quizzes={quizzes}
+        />
+      </div>
       <dl className="grid grid-cols-3 gap-4">
         {[
           [tStats("dueCards"), String(stats.dueCards)],

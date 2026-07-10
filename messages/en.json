@@ -715,7 +715,10 @@
       "correctIndex": "Correct option (1–4)",
       "referenceAnswer": "Reference answer",
       "explanation": "Explanation (optional)",
-      "submit": "Add question"
+      "submit": "Add question",
+      "editTitle": "Edit question",
+      "options": "Answer options (mark the correct one)",
+      "correct": "Correct answer"
     }
   },
   "thesis": {
@@ -774,6 +777,28 @@
     "noSemesters": "No semesters yet.",
     "noProgram": "No degree program yet.",
     "createProgram": "Create degree program"
+  },
+  "learnSession": {
+    "title": "Start learning session",
+    "start": "Learning session",
+    "source": "What to study?",
+    "cards": "Flashcards",
+    "quiz": "Quiz",
+    "deck": "Deck",
+    "mode": "Query mode",
+    "modes": {
+      "due": "Due (recommended)",
+      "random": "All, shuffled",
+      "order": "In order",
+      "wrong": "Previously wrong",
+      "least": "Least practiced"
+    },
+    "count": "Count",
+    "withPomodoro": "Start pomodoro timer too",
+    "result": "{count} cards in ~{minutes} min",
+    "analyze": "What should I deepen?",
+    "analyzeTitle": "AI analysis",
+    "analyzing": "Analyzing your learning history …"
   },
   "moduleTabs": {
     "overview": "Overview",

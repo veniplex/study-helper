@@ -108,6 +108,57 @@ export async function addQuestion(quizId: string, input: unknown) {
   return { ok: true as const }
 }
 
+export async function updateQuiz(quizId: string, input: unknown) {
+  const session = await requireSession()
+  const before = await ownQuiz(quizId, session.user.id)
+  const data = quizSchema.pick({ title: true }).parse(input)
+  await db.update(quiz).set({ title: data.title }).where(eq(quiz.id, quizId))
+  await logAudit({
+    userId: session.user.id,
+    operation: "update",
+    entityType: "quiz",
+    entityId: quizId,
+    entityLabel: data.title,
+    before,
+    after: { ...before, title: data.title },
+  })
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
+export async function updateQuestion(questionId: string, input: unknown) {
+  const session = await requireSession()
+  const row = await db.query.question.findFirst({
+    where: eq(question.id, questionId),
+    with: { quiz: true },
+  })
+  if (!row || row.quiz.userId !== session.user.id) throw new Error("Not found")
+  const data = questionSchema.parse(input)
+  await db
+    .update(question)
+    .set({
+      kind: data.kind,
+      prompt: data.prompt,
+      options: data.kind === "multiple_choice" ? data.options : null,
+      correctIndex: data.kind === "multiple_choice" ? data.correctIndex : null,
+      referenceAnswer: data.kind === "free_text" ? data.referenceAnswer : null,
+      explanation: data.explanation ?? null,
+    })
+    .where(eq(question.id, questionId))
+  const { quiz: _quiz2, ...questionRow } = row // eslint-disable-line @typescript-eslint/no-unused-vars
+  await logAudit({
+    userId: session.user.id,
+    operation: "update",
+    entityType: "question",
+    entityId: questionId,
+    entityLabel: data.prompt.slice(0, 80),
+    before: questionRow,
+    after: { ...questionRow, ...data },
+  })
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
 export async function deleteQuestion(questionId: string) {
   const session = await requireSession()
   const row = await db.query.question.findFirst({
@@ -325,6 +376,16 @@ Judge leniently on wording but strictly on content. Reply with correct=true/fals
       }))
     )
   }
+
+  // Count the quiz run as a study session for the module's learning stats
+  const quizRow = byId.size > 0 ? await ownQuiz(data.quizId, session.user.id) : null
+  const { studySession } = await import("@/db/schema")
+  await db.insert(studySession).values({
+    userId: session.user.id,
+    moduleId: quizRow?.moduleId ?? null,
+    durationMinutes: Math.max(1, Math.round(results.length * 0.75)),
+    kind: "quiz",
+  })
 
   revalidatePath("/", "layout")
   return { score, results }

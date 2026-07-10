@@ -13,7 +13,10 @@ export const studySession = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     moduleId: text("module_id").references(() => studyModule.id, { onDelete: "set null" }),
-    kind: text("kind").$type<"pomodoro" | "manual">().notNull().default("pomodoro"),
+    kind: text("kind")
+      .$type<"pomodoro" | "manual" | "cards" | "quiz">()
+      .notNull()
+      .default("pomodoro"),
     durationMinutes: integer("duration_minutes").notNull(),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   },

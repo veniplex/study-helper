@@ -715,7 +715,10 @@
       "correctIndex": "Richtige Option (1–4)",
       "referenceAnswer": "Musterantwort",
       "explanation": "Erklärung (optional)",
-      "submit": "Frage hinzufügen"
+      "submit": "Frage hinzufügen",
+      "editTitle": "Frage bearbeiten",
+      "options": "Antwortoptionen (richtige markieren)",
+      "correct": "Richtige Antwort"
     }
   },
   "thesis": {
@@ -774,6 +777,28 @@
     "noSemesters": "Noch keine Semester angelegt.",
     "noProgram": "Noch kein Studiengang angelegt.",
     "createProgram": "Studiengang anlegen"
+  },
+  "learnSession": {
+    "title": "Lernsession starten",
+    "start": "Lernsession",
+    "source": "Womit lernen?",
+    "cards": "Karteikarten",
+    "quiz": "Quiz",
+    "deck": "Deck",
+    "mode": "Abfragemodus",
+    "modes": {
+      "due": "Fällige (empfohlen)",
+      "random": "Alle zufällig",
+      "order": "Nach Reihenfolge",
+      "wrong": "Zuvor falsch beantwortete",
+      "least": "Am seltensten abgefragt"
+    },
+    "count": "Anzahl",
+    "withPomodoro": "Pomodoro-Timer mitstarten",
+    "result": "{count} Karten in ~{minutes} Min. gelernt",
+    "analyze": "Was sollte ich vertiefen?",
+    "analyzeTitle": "KI-Auswertung",
+    "analyzing": "Analysiere deine Lernhistorie …"
   },
   "moduleTabs": {
     "overview": "Übersicht",

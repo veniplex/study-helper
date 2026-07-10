@@ -283,7 +283,7 @@ export async function reorderPlanItems(planId: string, ids: unknown) {
 const studySessionSchema = z.object({
   moduleId: z.string().optional().nullable(),
   durationMinutes: z.number().int().min(1).max(600),
-  kind: z.enum(["pomodoro", "manual"]).default("pomodoro"),
+  kind: z.enum(["pomodoro", "manual", "cards", "quiz"]).default("pomodoro"),
 })
 
 export async function logStudySession(input: unknown) {
@@ -394,4 +394,103 @@ Create study sessions distributed between today and the exam date (include buffe
 
   revalidatePath("/", "layout")
   return { ok: true as const, id: created.id }
+}
+
+// ---- AI progress analysis --------------------------------------------------------
+
+/**
+ * Analyzes the user's full learning history for a module (quiz attempts,
+ * flashcard reviews, study time) and returns a Markdown recommendation of what
+ * to deepen — explicitly noting improvements over time.
+ */
+export async function analyzeProgress(moduleId: string) {
+  const session = await requireSession()
+  await assertWithinLimit(session.user.id)
+  await ownModule(moduleId, session.user.id)
+
+  const { generateText } = await import("ai")
+  const { quiz, flashcard, deck, studySession } = await import("@/db/schema")
+  const { desc, gte, sql: dsql } = await import("drizzle-orm")
+
+  const since = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000)
+
+  const [quizzes, problemCards, sessions] = await Promise.all([
+    db.query.quiz.findMany({
+      where: and(eq(quiz.userId, session.user.id), eq(quiz.moduleId, moduleId)),
+      with: {
+        attempts: {
+          orderBy: (a) => [desc(a.startedAt)],
+          limit: 10,
+          with: { answers: { with: { question: { columns: { prompt: true } } } } },
+        },
+      },
+    }),
+    db
+      .select({
+        front: flashcard.front,
+        lapses: flashcard.lapses,
+        reps: flashcard.reps,
+      })
+      .from(flashcard)
+      .innerJoin(deck, eq(flashcard.deckId, deck.id))
+      .where(and(eq(deck.userId, session.user.id), eq(deck.moduleId, moduleId)))
+      .orderBy(desc(flashcard.lapses))
+      .limit(15),
+    db.query.studySession.findMany({
+      where: and(
+        eq(studySession.userId, session.user.id),
+        eq(studySession.moduleId, moduleId),
+        gte(studySession.startedAt, since)
+      ),
+      orderBy: (s) => [desc(s.startedAt)],
+      limit: 50,
+    }),
+  ])
+  void dsql
+
+  const data = {
+    quizzes: quizzes.map((q) => ({
+      title: q.title,
+      attempts: q.attempts
+        .filter((a) => a.finishedAt)
+        .map((a) => ({
+          date: a.startedAt.toISOString().slice(0, 10),
+          score: Number(a.score ?? 0),
+          wrongQuestions: a.answers
+            .filter((ans) => ans.correct === false)
+            .map((ans) => ans.question.prompt.slice(0, 120)),
+        })),
+    })),
+    problemFlashcards: problemCards
+      .filter((c) => c.lapses > 0)
+      .map((c) => ({ front: c.front.slice(0, 120), lapses: c.lapses, reps: c.reps })),
+    studySessions: sessions.map((s) => ({
+      date: s.startedAt.toISOString().slice(0, 10),
+      minutes: s.durationMinutes,
+      kind: s.kind,
+    })),
+  }
+
+  const { defaultModel } = await listAvailableModels()
+  if (!defaultModel) throw new Error("No AI model configured")
+  const model = await getLanguageModel(defaultModel, session.user.id)
+
+  const { text, usage } = await generateText({
+    model,
+    prompt: `You are a study coach. Analyze this learning history for one university module and tell the student what to deepen next.
+Requirements:
+- Answer in the language of the quiz/flashcard content (German if mixed).
+- Look at trends ACROSS attempts over time: explicitly mention topics where the student has already improved, and topics that keep going wrong.
+- Recommend 2-4 concrete focus areas with a short reason each.
+- Keep it under 250 words, use Markdown with a short bullet list.
+
+Data (JSON): ${JSON.stringify(data).slice(0, 20000)}`,
+  })
+
+  await logUsage(session.user.id, defaultModel, "analysis", {
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+  })
+
+  return { ok: true as const, analysis: text }
 }
