@@ -40,14 +40,25 @@ type ModuleData = {
 export function ModuleDialog({
   semesterId,
   module,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   semesterId: string
   module?: ModuleData
+  /** Controlled mode (no trigger rendered) — used by the sidebar menus. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const t = useTranslations("studies")
   const tCommon = useTranslations("common")
   const router = useRouter()
-  const [open, setOpen] = React.useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+  const controlled = controlledOpen !== undefined
+  const open = controlled ? controlledOpen : uncontrolledOpen
+  const setOpen = (v: boolean) => {
+    if (controlled) onOpenChange?.(v)
+    else setUncontrolledOpen(v)
+  }
   const [pending, setPending] = React.useState(false)
   const [status, setStatus] = React.useState<ModuleStatus>(module?.status ?? "planned")
   const isEdit = Boolean(module?.id)
@@ -87,20 +98,22 @@ export function ModuleDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          isEdit ? <Button variant="ghost" size="icon-sm" /> : <Button variant="outline" size="sm" />
-        }
-      >
-        {isEdit ? (
-          <Pencil className="size-3.5" />
-        ) : (
-          <>
-            <Plus className="size-4" />
-            {t("newModule")}
-          </>
-        )}
-      </DialogTrigger>
+      {!controlled && (
+        <DialogTrigger
+          render={
+            isEdit ? <Button variant="ghost" size="icon-sm" /> : <Button variant="outline" size="sm" />
+          }
+        >
+          {isEdit ? (
+            <Pencil className="size-3.5" />
+          ) : (
+            <>
+              <Plus className="size-4" />
+              {t("newModule")}
+            </>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? t("editModule") : t("newModule")}</DialogTitle>

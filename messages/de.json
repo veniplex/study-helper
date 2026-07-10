@@ -334,6 +334,7 @@
       }
     },
     "deleteConfirm": "Wirklich löschen? Alle enthaltenen Daten gehen verloren.",
+    "managePrograms": "Studiengänge verwalten",
     "created": "Angelegt.",
     "updated": "Gespeichert.",
     "deleted": "Gelöscht."

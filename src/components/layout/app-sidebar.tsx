@@ -5,15 +5,18 @@ import {
   BookOpen,
   BrainCircuit,
   ChevronRight,
-  ClipboardList,
   FileText,
   GraduationCap,
   Layers,
-  ListChecks,
+  Loader2,
   MessageSquare,
+  MoreHorizontal,
+  Pencil,
+  Plus,
   ScrollText,
   Settings,
   Shield,
+  Trash2,
   type LucideIcon,
 } from "lucide-react"
 import { useTranslations } from "next-intl"
@@ -21,16 +24,30 @@ import { toast } from "sonner"
 import { Link, usePathname, useRouter } from "@/i18n/navigation"
 import { navItems } from "@/config/nav"
 import { setActiveContext } from "@/app/[locale]/(app)/context-actions"
+import { deleteModule, deleteSemester } from "@/app/[locale]/(app)/studies/actions"
+import { ModuleDialog } from "@/components/studies/module-dialog"
+import { SemesterDialog } from "@/components/studies/semester-dialog"
 import { ContextSwitcher } from "./context-switcher"
-import type { StudyContext, SemesterNode } from "@/lib/studies/context"
+import type { SemesterModule, SemesterNode, StudyContext } from "@/lib/studies/context"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
 const moduleTabs: { key: string; segment: string; icon: LucideIcon }[] = [
   { key: "materials", segment: "/materials", icon: FileText },
-  { key: "tasks", segment: "/tasks", icon: ListChecks },
   { key: "decks", segment: "/decks", icon: Layers },
   { key: "quizzes", segment: "/quizzes", icon: BrainCircuit },
-  { key: "plans", segment: "/plans", icon: ClipboardList },
   { key: "chat", segment: "/chat", icon: MessageSquare },
 ]
 
@@ -42,25 +59,82 @@ const itemClass = (active: boolean) =>
       : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
   )
 
+function ConfirmDeleteDialog({
+  open,
+  onOpenChange,
+  label,
+  onConfirm,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  label: string
+  onConfirm: () => Promise<void>
+}) {
+  const t = useTranslations("studies")
+  const tCommon = useTranslations("common")
+  const [pending, setPending] = React.useState(false)
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{label}</DialogTitle>
+        </DialogHeader>
+        <p className="text-muted-foreground text-sm">{t("deleteConfirm")}</p>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {tCommon("cancel")}
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={pending}
+            onClick={async () => {
+              setPending(true)
+              try {
+                await onConfirm()
+                onOpenChange(false)
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : String(error))
+              } finally {
+                setPending(false)
+              }
+            }}
+          >
+            {pending && <Loader2 className="size-4 animate-spin" />}
+            {tCommon("delete")}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function SidebarModule({
-  href,
-  name,
+  programId,
+  semesterId,
+  module: mod,
   open,
   onToggle,
 }: {
-  href: string
-  name: string
+  programId: string
+  semesterId: string
+  module: SemesterModule
   open: boolean
   onToggle: () => void
 }) {
   const t = useTranslations("moduleTabs")
+  const tCommon = useTranslations("common")
+  const router = useRouter()
   const pathname = usePathname()
+  const href = `/studies/${programId}/${mod.id}`
+  const [editOpen, setEditOpen] = React.useState(false)
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
 
   return (
     <div>
       <div
         className={cn(
-          "flex items-center rounded-md transition-colors",
+          "group flex items-center rounded-md transition-colors",
           pathname === href
             ? "bg-sidebar-accent text-sidebar-accent-foreground"
             : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
@@ -71,13 +145,36 @@ function SidebarModule({
           className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-1.5 text-sm font-medium"
         >
           <BookOpen className="size-4 shrink-0" />
-          <span className="truncate">{name}</span>
+          <span className="truncate">{mod.name}</span>
         </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
+                aria-label={mod.name}
+              />
+            }
+          >
+            <MoreHorizontal className="size-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-44">
+            <DropdownMenuItem onClick={() => setEditOpen(true)}>
+              <Pencil className="size-4" />
+              {tCommon("edit")}
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4" />
+              {tCommon("delete")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <button
           type="button"
           onClick={onToggle}
           className="text-muted-foreground hover:text-foreground mr-1 rounded p-1"
-          aria-label={name}
+          aria-label={mod.name}
           aria-expanded={open}
         >
           <ChevronRight className={cn("size-4 transition-transform", open && "rotate-90")} />
@@ -106,6 +203,21 @@ function SidebarModule({
           })}
         </div>
       )}
+      <ModuleDialog
+        semesterId={semesterId}
+        module={mod}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        label={mod.name}
+        onConfirm={async () => {
+          await deleteModule(mod.id)
+          router.refresh()
+        }}
+      />
     </div>
   )
 }
@@ -124,10 +236,15 @@ function SidebarSemester({
   onOpen: () => void
 }) {
   const tContext = useTranslations("context")
+  const tStudies = useTranslations("studies")
+  const tCommon = useTranslations("common")
+  const router = useRouter()
   const pathname = usePathname()
   const [openModule, setOpenModule] = React.useState<string | null>(null)
+  const [editOpen, setEditOpen] = React.useState(false)
+  const [addModuleOpen, setAddModuleOpen] = React.useState(false)
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
 
-  // Auto-open the module the user is currently inside
   const currentModule = semester.modules.find((m) =>
     pathname.startsWith(`/studies/${programId}/${m.id}`)
   )
@@ -139,28 +256,62 @@ function SidebarSemester({
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-expanded={open}
+      <div
         className={cn(
-          "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm font-medium transition-colors",
+          "group flex items-center rounded-md transition-colors",
           active
             ? "text-foreground"
             : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
         )}
       >
-        <ChevronRight className={cn("size-4 shrink-0 transition-transform", open && "rotate-90")} />
-        <span className="truncate">{semester.name}</span>
-        {active && <span className="bg-primary ml-auto size-1.5 shrink-0 rounded-full" />}
-      </button>
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm font-medium"
+        >
+          <ChevronRight
+            className={cn("size-4 shrink-0 transition-transform", open && "rotate-90")}
+          />
+          <span className="truncate">{semester.name}</span>
+          {active && <span className="bg-primary ml-auto size-1.5 shrink-0 rounded-full" />}
+        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground mr-1 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
+                aria-label={semester.name}
+              />
+            }
+          >
+            <MoreHorizontal className="size-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuItem onClick={() => setAddModuleOpen(true)}>
+              <Plus className="size-4" />
+              {tStudies("newModule")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setEditOpen(true)}>
+              <Pencil className="size-4" />
+              {tCommon("edit")}
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4" />
+              {tCommon("delete")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       {open && (
         <div className="mt-0.5 mb-1 ml-3 space-y-0.5">
           {semester.modules.map((mod) => (
             <SidebarModule
               key={mod.id}
-              href={`/studies/${programId}/${mod.id}`}
-              name={mod.name}
+              programId={programId}
+              semesterId={semester.id}
+              module={mod}
               open={openModule === mod.id || currentModule?.id === mod.id}
               onToggle={() => setOpenModule(openModule === mod.id ? null : mod.id)}
             />
@@ -185,6 +336,27 @@ function SidebarSemester({
           )}
         </div>
       )}
+      <SemesterDialog
+        programId={programId}
+        semester={{
+          id: semester.id,
+          name: semester.name,
+          startDate: semester.startDate,
+          endDate: semester.endDate,
+        }}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+      <ModuleDialog semesterId={semester.id} open={addModuleOpen} onOpenChange={setAddModuleOpen} />
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        label={semester.name}
+        onConfirm={async () => {
+          await deleteSemester(semester.id)
+          router.refresh()
+        }}
+      />
     </div>
   )
 }
@@ -193,11 +365,13 @@ export function AppSidebar({ context, isAdmin }: { context: StudyContext; isAdmi
   const t = useTranslations("nav")
   const tApp = useTranslations("app")
   const tContext = useTranslations("context")
+  const tStudies = useTranslations("studies")
   const pathname = usePathname()
   const router = useRouter()
   const [openSemester, setOpenSemester] = React.useState<string | null>(
     context.activeSemester?.id ?? null
   )
+  const [newSemesterOpen, setNewSemesterOpen] = React.useState(false)
 
   function openAndActivate(semesterId: string) {
     if (openSemester === semesterId) {
@@ -214,13 +388,7 @@ export function AppSidebar({ context, isAdmin }: { context: StudyContext; isAdmi
     }
   }
 
-  const sectionLabel = (label: string) => (
-    <p className="text-muted-foreground px-3 pb-1 text-[11px] font-medium tracking-wide uppercase">
-      {label}
-    </p>
-  )
-
-  const mainItems = navItems.filter((item) => item.key !== "settings")
+  const topItems = navItems.filter((item) => item.key !== "ai")
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
@@ -234,9 +402,35 @@ export function AppSidebar({ context, isAdmin }: { context: StudyContext; isAdmi
       <ContextSwitcher context={context} />
 
       <nav className="flex flex-1 flex-col overflow-y-auto p-3">
+        <div className="mb-3 space-y-1">
+          {topItems.map((item) => {
+            const active =
+              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+            return (
+              <Link key={item.key} href={item.href} className={itemClass(active)}>
+                <item.icon className="size-4.5 shrink-0" />
+                {t(item.key)}
+              </Link>
+            )
+          })}
+        </div>
+
         {context.activeProgram && (
-          <div className="mb-3 space-y-0.5">
-            {sectionLabel(tContext("semester"))}
+          <div className="space-y-0.5 border-t pt-3">
+            <div className="flex items-center justify-between px-3 pb-1">
+              <p className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
+                {tContext("semester")}
+              </p>
+              <button
+                type="button"
+                onClick={() => setNewSemesterOpen(true)}
+                className="text-muted-foreground hover:text-foreground rounded p-0.5"
+                title={tStudies("newSemester")}
+              >
+                <Plus className="size-3.5" />
+                <span className="sr-only">{tStudies("newSemester")}</span>
+              </button>
+            </div>
             {context.tree.map((sem) => (
               <SidebarSemester
                 key={sem.id}
@@ -252,22 +446,13 @@ export function AppSidebar({ context, isAdmin }: { context: StudyContext; isAdmi
                 {tContext("noSemesters")}
               </p>
             )}
+            <SemesterDialog
+              programId={context.activeProgram.id}
+              open={newSemesterOpen}
+              onOpenChange={setNewSemesterOpen}
+            />
           </div>
         )}
-
-        <div className="space-y-1 border-t pt-3">
-          {sectionLabel(tContext("general"))}
-          {mainItems.map((item) => {
-            const active =
-              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
-            return (
-              <Link key={item.key} href={item.href} className={itemClass(active)}>
-                <item.icon className="size-4.5 shrink-0" />
-                {t(item.key)}
-              </Link>
-            )
-          })}
-        </div>
 
         <div className="mt-auto space-y-1 border-t pt-3">
           <Link href="/settings" className={itemClass(pathname.startsWith("/settings"))}>

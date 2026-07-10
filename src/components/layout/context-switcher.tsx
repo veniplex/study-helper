@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { setActiveContext } from "@/app/[locale]/(app)/context-actions"
+import { ProgramManageDialog } from "@/components/studies/program-manage-dialog"
 import type { StudyContext } from "@/lib/studies/context"
 
 export function ContextSwitcher({ context }: { context: StudyContext }) {
@@ -52,7 +53,7 @@ export function ContextSwitcher({ context }: { context: StudyContext }) {
   }
 
   return (
-    <div className="space-y-1.5 border-b p-3">
+    <div className="flex items-center gap-1 border-b p-3">
       <Select
         value={context.activeProgram?.id ?? ""}
         onValueChange={(v) => v && change(v, null)}
@@ -69,6 +70,7 @@ export function ContextSwitcher({ context }: { context: StudyContext }) {
           ))}
         </SelectContent>
       </Select>
+      <ProgramManageDialog programs={context.programs} />
     </div>
   )
 }
