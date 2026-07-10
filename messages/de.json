@@ -651,6 +651,14 @@
     "saved": "Gespeichert.",
     "generating": "Generiere …"
   },
+  "onboarding": {
+    "title": "Erste Schritte",
+    "intro": "Richte dein Studium ein, um Module, Materialien und Lernwerkzeuge zu nutzen.",
+    "step_program": "Studiengang anlegen",
+    "step_semester": "Semester hinzufügen",
+    "step_module": "Module anlegen",
+    "cta": "Jetzt einrichten"
+  },
   "context": {
     "program": "Studiengang",
     "semester": "Semester",

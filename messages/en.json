@@ -651,6 +651,14 @@
     "saved": "Saved.",
     "generating": "Generating …"
   },
+  "onboarding": {
+    "title": "Getting started",
+    "intro": "Set up your studies to use modules, materials and learning tools.",
+    "step_program": "Create a degree program",
+    "step_semester": "Add a semester",
+    "step_module": "Create modules",
+    "cta": "Set up now"
+  },
   "context": {
     "program": "Degree program",
     "semester": "Semester",

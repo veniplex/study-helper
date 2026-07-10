@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
+import { Plus } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
-import { useRouter } from "@/i18n/navigation"
+import { Link, useRouter } from "@/i18n/navigation"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
@@ -31,7 +33,23 @@ export function ContextSwitcher({ context }: { context: StudyContext }) {
     }
   }
 
-  if (context.programs.length === 0) return null
+  if (context.programs.length === 0) {
+    return (
+      <div className="space-y-2 border-b p-3">
+        <p className="text-muted-foreground text-xs">{t("noProgram")}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          nativeButton={false}
+          render={<Link href="/studies" />}
+        >
+          <Plus className="size-3.5" />
+          {t("createProgram")}
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-1.5 border-b p-3">

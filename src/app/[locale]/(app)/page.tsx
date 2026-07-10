@@ -1,5 +1,5 @@
 import { and, asc, eq, gte, isNull } from "drizzle-orm"
-import { ArrowRight, CalendarDays } from "lucide-react"
+import { ArrowRight, CalendarDays, Check } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { degreeProgram, learningGoal, studyEvent, studyPlan, studyTask } from "@/db/schema"
@@ -67,6 +67,16 @@ export default async function DashboardPage() {
 
   const openGeneralTasks = generalTasks.filter((t) => !t.parentId && t.status !== "done")
 
+  const hasProgram = programs.length > 0
+  const hasSemester = programs.some((p) => p.semesters.length > 0)
+  const hasModule = programs.some((p) => p.semesters.some((s) => s.modules.length > 0))
+  const onboardingSteps = [
+    { key: "program", done: hasProgram },
+    { key: "semester", done: hasSemester },
+    { key: "module", done: hasModule },
+  ] as const
+  const tOnboarding = await getTranslations("onboarding")
+
   const typeLabels = {
     exam: tCal("event.typeExam"),
     deadline: tCal("event.typeDeadline"),
@@ -79,6 +89,42 @@ export default async function DashboardPage() {
       <h1 className="font-heading text-xl font-semibold tracking-tight">
         {t("greeting", { name: session.user.name.split(" ")[0] })}
       </h1>
+
+      {!hasModule && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{tOnboarding("title")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-muted-foreground text-sm">{tOnboarding("intro")}</p>
+            <ol className="space-y-2">
+              {onboardingSteps.map((step, i) => (
+                <li key={step.key} className="flex items-center gap-3 text-sm">
+                  <span
+                    className={
+                      step.done
+                        ? "flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
+                        : "bg-muted text-muted-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                    }
+                  >
+                    {step.done ? <Check className="size-3.5" /> : i + 1}
+                  </span>
+                  <span className={step.done ? "text-muted-foreground line-through" : "font-medium"}>
+                    {tOnboarding(`step_${step.key}`)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <Link
+              href={hasProgram ? `/studies/${programs[0]!.id}` : "/studies"}
+              className="text-primary inline-flex items-center gap-1 text-sm font-medium hover:underline"
+            >
+              {tOnboarding("cta")}
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       <StatsCard stats={stats} />
 
