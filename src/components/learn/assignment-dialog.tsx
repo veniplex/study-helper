@@ -9,7 +9,7 @@ import {
   createAssignment,
   updateAssignment,
 } from "@/app/[locale]/(app)/assignment-actions"
-import type { AssignmentStatus } from "@/db/schema/assignments"
+import type { AssignmentKind, AssignmentStatus } from "@/db/schema/assignments"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -31,6 +31,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 
 const STATUSES: AssignmentStatus[] = ["open", "submitted", "graded"]
+const KINDS: AssignmentKind[] = ["graded", "practice"]
 
 export type AssignmentData = {
   id?: string
@@ -38,6 +39,7 @@ export type AssignmentData = {
   description: string | null
   dueDate: string | null
   status: AssignmentStatus
+  kind: AssignmentKind
   pointsAchieved: string | null
   pointsMax: string | null
   materialIds: string[]
@@ -58,6 +60,7 @@ export function AssignmentDialog({
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
   const [status, setStatus] = React.useState<AssignmentStatus>(assignment?.status ?? "open")
+  const [kind, setKind] = React.useState<AssignmentKind>(assignment?.kind ?? "graded")
   const [materialIds, setMaterialIds] = React.useState<string[]>(assignment?.materialIds ?? [])
   const isEdit = Boolean(assignment?.id)
 
@@ -69,6 +72,7 @@ export function AssignmentDialog({
       description: String(form.get("description") || "") || null,
       dueDate: String(form.get("dueDate") || "") || null,
       status,
+      kind,
       pointsAchieved: form.get("pointsAchieved")
         ? Number(form.get("pointsAchieved"))
         : null,
@@ -138,6 +142,21 @@ export function AssignmentDialog({
                   {STATUSES.map((s) => (
                     <SelectItem key={s} value={s}>
                       {t(`status.${s}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>{t("fields.kind")}</Label>
+              <Select value={kind} onValueChange={(v) => setKind(v as AssignmentKind)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue>{t(`kind.${kind}`)}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {KINDS.map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {t(`kind.${k}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -210,7 +210,12 @@
       "status": "Status",
       "pointsAchieved": "Erreichte Punkte",
       "pointsMax": "Max. Punkte",
-      "materials": "Verknüpfte Materialien"
+      "materials": "Verknüpfte Materialien",
+      "kind": "Art"
+    },
+    "kind": {
+      "graded": "Bewertet (zählt zum Bonus)",
+      "practice": "Übung (nur Selbsteinschätzung)"
     }
   },
   "audit": {
@@ -218,7 +223,10 @@
     "empty": "Keine Einträge.",
     "filterActor": "Alle Akteure",
     "filterOperation": "Alle Operationen",
-    "actor": { "user": "Du", "ai": "KI" },
+    "actor": {
+      "user": "Du",
+      "ai": "KI"
+    },
     "operation": {
       "create": "Erstellt",
       "update": "Geändert",
@@ -438,7 +446,41 @@
     "managePrograms": "Studiengänge verwalten",
     "created": "Angelegt.",
     "updated": "Gespeichert.",
-    "deleted": "Gelöscht."
+    "deleted": "Gelöscht.",
+    "assessment": {
+      "title": "Abschlussleistung",
+      "addAttempt": "Versuch eintragen",
+      "editAttempt": "Versuch bearbeiten",
+      "attemptOf": "Versuch {n} von {max}",
+      "gradeLabel": "Endnote",
+      "result": "Ergebnis",
+      "noAttempts": "Noch kein Ergebnis erfasst.",
+      "maxReached": "Maximale Versuchszahl erreicht.",
+      "attemptCol": "Versuch",
+      "percentCol": "Ergebnis (%)",
+      "dateCol": "Datum",
+      "gradeCol": "Note",
+      "passedCol": "Bestanden",
+      "noteCol": "Notiz",
+      "passYes": "bestanden",
+      "passNo": "nicht bestanden",
+      "passUnknown": "offen",
+      "bonusApplied": "inkl. +{points} % Bonus",
+      "legacy": "Frühere Noten",
+      "percentField": "Ergebnis in %",
+      "dateField": "Datum",
+      "passedField": "Bestanden",
+      "noteField": "Notiz"
+    },
+    "bonus": {
+      "title": "Bonus-Fortschritt",
+      "avg": "Ø Ergebnis",
+      "share": "Erledigt",
+      "met": "Bonus aktiv",
+      "notMet": "Bonus noch nicht erreicht",
+      "rulePercent": "+{value} Prozentpunkte",
+      "ruleSteps": "{value} Notenschritte besser"
+    }
   },
   "calendar": {
     "title": "Kalender",

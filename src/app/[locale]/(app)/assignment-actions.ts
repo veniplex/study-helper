@@ -14,6 +14,7 @@ const assignmentSchema = z.object({
   description: z.string().max(4000).optional().nullable(),
   dueDate: z.string().date().optional().nullable(),
   status: z.enum(["open", "submitted", "graded"]).default("open"),
+  kind: z.enum(["graded", "practice"]).default("graded"),
   pointsAchieved: z.number().min(0).max(100000).optional().nullable(),
   pointsMax: z.number().min(0).max(100000).optional().nullable(),
   materialIds: z.array(z.string()).max(50).default([]),
@@ -55,6 +56,7 @@ export async function createAssignment(moduleId: string, input: unknown) {
       description: data.description ?? null,
       dueDate: data.dueDate ?? null,
       status: data.status,
+      kind: data.kind,
       pointsAchieved: data.pointsAchieved != null ? String(data.pointsAchieved) : null,
       pointsMax: data.pointsMax != null ? String(data.pointsMax) : null,
     })
@@ -83,6 +85,7 @@ export async function updateAssignment(assignmentId: string, input: unknown) {
       description: data.description ?? null,
       dueDate: data.dueDate ?? null,
       status: data.status,
+      kind: data.kind,
       pointsAchieved: data.pointsAchieved != null ? String(data.pointsAchieved) : null,
       pointsMax: data.pointsMax != null ? String(data.pointsMax) : null,
     })

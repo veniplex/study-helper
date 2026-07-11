@@ -210,7 +210,12 @@
       "status": "Status",
       "pointsAchieved": "Points achieved",
       "pointsMax": "Max points",
-      "materials": "Linked materials"
+      "materials": "Linked materials",
+      "kind": "Type"
+    },
+    "kind": {
+      "graded": "Graded (counts toward bonus)",
+      "practice": "Practice (self-assessment only)"
     }
   },
   "audit": {
@@ -218,7 +223,10 @@
     "empty": "No entries.",
     "filterActor": "All actors",
     "filterOperation": "All operations",
-    "actor": { "user": "You", "ai": "AI" },
+    "actor": {
+      "user": "You",
+      "ai": "AI"
+    },
     "operation": {
       "create": "Created",
       "update": "Updated",
@@ -438,7 +446,41 @@
     "managePrograms": "Manage degree programs",
     "created": "Created.",
     "updated": "Saved.",
-    "deleted": "Deleted."
+    "deleted": "Deleted.",
+    "assessment": {
+      "title": "Final assessment",
+      "addAttempt": "Log attempt",
+      "editAttempt": "Edit attempt",
+      "attemptOf": "Attempt {n} of {max}",
+      "gradeLabel": "Final grade",
+      "result": "Result",
+      "noAttempts": "No result recorded yet.",
+      "maxReached": "Maximum number of attempts reached.",
+      "attemptCol": "Attempt",
+      "percentCol": "Result (%)",
+      "dateCol": "Date",
+      "gradeCol": "Grade",
+      "passedCol": "Passed",
+      "noteCol": "Note",
+      "passYes": "passed",
+      "passNo": "not passed",
+      "passUnknown": "open",
+      "bonusApplied": "incl. +{points}% bonus",
+      "legacy": "Earlier grades",
+      "percentField": "Result in %",
+      "dateField": "Date",
+      "passedField": "Passed",
+      "noteField": "Note"
+    },
+    "bonus": {
+      "title": "Bonus progress",
+      "avg": "Avg result",
+      "share": "Completed",
+      "met": "Bonus active",
+      "notMet": "Bonus not reached yet",
+      "rulePercent": "+{value} percent points",
+      "ruleSteps": "{value} grade steps better"
+    }
   },
   "calendar": {
     "title": "Calendar",

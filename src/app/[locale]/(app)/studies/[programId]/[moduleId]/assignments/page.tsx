@@ -56,6 +56,9 @@ export default async function ModuleAssignmentsPage({
               <li key={a.id} className="space-y-1.5 rounded-md border px-3 py-2.5 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={statusVariant[a.status]}>{t(`status.${a.status}`)}</Badge>
+                  {a.kind === "practice" && (
+                    <Badge variant="outline">{t("kind.practice")}</Badge>
+                  )}
                   <span className="font-medium">{a.title}</span>
                   {a.pointsMax != null && (
                     <span className="text-muted-foreground text-xs tabular-nums">
@@ -84,6 +87,7 @@ export default async function ModuleAssignmentsPage({
                         description: a.description,
                         dueDate: a.dueDate,
                         status: a.status,
+                        kind: a.kind,
                         pointsAchieved: a.pointsAchieved,
                         pointsMax: a.pointsMax,
                         materialIds: a.materials.map((m) => m.material.id),

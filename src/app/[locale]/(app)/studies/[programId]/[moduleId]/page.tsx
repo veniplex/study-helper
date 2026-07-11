@@ -1,18 +1,18 @@
 import { notFound } from "next/navigation"
 import { asc, eq } from "drizzle-orm"
 import { ExternalLink, KeyRound } from "lucide-react"
-import { getFormatter, getTranslations } from "next-intl/server"
+import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { externalResource, moduleContact, studyModule } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { decrypt } from "@/lib/crypto"
-import { formatGrade, moduleGrade } from "@/lib/grades"
+import { getModuleFinalGrade } from "@/lib/studies/grades-server"
 import { getModuleStats } from "@/lib/learning/stats-server"
-import { deleteGrade, deleteResource } from "@/app/[locale]/(app)/studies/actions"
+import { deleteResource } from "@/app/[locale]/(app)/studies/actions"
 import { DeleteButton } from "@/components/studies/delete-button"
-import { GradeDialog } from "@/components/studies/grade-dialog"
 import { ResourceDialog } from "@/components/studies/resource-dialog"
 import { AnalyzeButton } from "@/components/learn/analyze-button"
+import { ModuleAssessmentCard } from "@/components/learn/module-assessment-card"
 import { ModuleContactsCard } from "@/components/learn/module-contacts-card"
 import { SessionStartDialog } from "@/components/learn/session-start-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -32,13 +32,13 @@ export default async function ModuleOverviewPage({
   const { programId, moduleId } = await params
   const session = await requireSession()
   const t = await getTranslations("studies")
-  const format = await getFormatter()
 
   const mod = await db.query.studyModule.findFirst({
     where: eq(studyModule.id, moduleId),
     with: {
       semester: { with: { program: true } },
       grades: { orderBy: (g) => [asc(g.attempt), asc(g.createdAt)] },
+      assessment: { with: { attempts: { orderBy: (a) => [asc(a.attempt)] } } },
     },
   })
   if (
@@ -60,7 +60,7 @@ export default async function ModuleOverviewPage({
   })
 
   const gradingSystem = mod.semester.program.gradingSystem
-  const finalGrade = moduleGrade(mod.grades)
+  const finalGrade = await getModuleFinalGrade(moduleId)
   const stats = await getModuleStats(session.user.id, moduleId)
   const tStats = await getTranslations("stats")
 
@@ -118,59 +118,36 @@ export default async function ModuleOverviewPage({
         </div>
       )}
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>{t("grades.title")}</CardTitle>
-            {finalGrade != null && (
-              <CardDescription>
-                {t("grades.final")}: <strong>{formatGrade(finalGrade, gradingSystem)}</strong>
-              </CardDescription>
-            )}
-          </div>
-          <GradeDialog moduleId={mod.id} />
-        </CardHeader>
-        <CardContent>
-          {mod.grades.length === 0 ? (
-            <p className="text-muted-foreground text-sm">{t("grades.empty")}</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-muted-foreground border-b text-left">
-                    <th className="py-2 pr-4 font-medium">{t("grades.value")}</th>
-                    <th className="py-2 pr-4 font-medium">{t("grades.weight")}</th>
-                    <th className="py-2 pr-4 font-medium">{t("grades.attempt")}</th>
-                    <th className="py-2 pr-4 font-medium">{t("grades.date")}</th>
-                    <th className="py-2 pr-4 font-medium">{t("grades.note")}</th>
-                    <th className="py-2 text-right font-medium"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mod.grades.map((g) => (
-                    <tr key={g.id} className="border-b last:border-0">
-                      <td className="py-2.5 pr-4 font-medium">
-                        {formatGrade(Number(g.value), gradingSystem)}
-                      </td>
-                      <td className="py-2.5 pr-4">{Number(g.weight)}</td>
-                      <td className="py-2.5 pr-4">{g.attempt}</td>
-                      <td className="py-2.5 pr-4">
-                        {g.gradedAt
-                          ? format.dateTime(new Date(g.gradedAt), { dateStyle: "medium" })
-                          : "–"}
-                      </td>
-                      <td className="text-muted-foreground py-2.5 pr-4">{g.note ?? ""}</td>
-                      <td className="py-2.5 text-right">
-                        <DeleteButton action={deleteGrade.bind(null, g.id)} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {finalGrade && (
+        <ModuleAssessmentCard
+          moduleId={mod.id}
+          assessmentType={mod.assessment?.type ?? "exam"}
+          maxAttempts={mod.maxAttempts}
+          passFail={mod.passFail}
+          gradingSystem={gradingSystem}
+          attempts={(mod.assessment?.attempts ?? []).map((a) => ({
+            id: a.id,
+            attempt: a.attempt,
+            resultPercent: a.resultPercent,
+            date: a.date,
+            passed: a.passed,
+            note: a.note,
+          }))}
+          final={finalGrade}
+          legacyGrades={mod.grades.map((g) => ({
+            id: g.id,
+            value: g.value,
+            weight: g.weight,
+            attempt: g.attempt,
+            gradedAt: g.gradedAt,
+            note: g.note,
+          }))}
+          bonusType={mod.bonusType}
+          bonusValue={mod.bonusValue}
+          bonusMinAvgPercent={mod.bonusMinAvgPercent}
+          bonusMinCompletedShare={mod.bonusMinCompletedShare}
+        />
+      )}
 
       <ModuleContactsCard moduleId={mod.id} contacts={contacts} />
 
