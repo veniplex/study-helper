@@ -1,10 +1,14 @@
+import * as React from "react"
 import { notFound } from "next/navigation"
 import { and, asc, eq } from "drizzle-orm"
+import { Settings } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { degreeProgram } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
-import { earnedEcts, formatGrade, moduleGrade, programAverage } from "@/lib/grades"
+import { earnedEcts, formatGrade, programAverageFromFinals } from "@/lib/grades"
+import { getModuleFinalGrades } from "@/lib/studies/grades-server"
+import { getModuleColorClasses, getModuleIcon } from "@/lib/module-visuals"
 import { Link } from "@/i18n/navigation"
 import {
   deleteModule,
@@ -13,18 +17,16 @@ import {
 } from "@/app/[locale]/(app)/studies/actions"
 import { DeleteButton } from "@/components/studies/delete-button"
 import { ModuleDialog } from "@/components/studies/module-dialog"
+import { ModuleStatusBadge } from "@/components/learn/module-status-badge"
 import { SortableModuleTable } from "@/components/studies/sortable-module-table"
 import { ProgramDialog } from "@/components/studies/program-dialog"
 import { SemesterDialog } from "@/components/studies/semester-dialog"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 
-const statusVariant = {
-  planned: "outline",
-  active: "secondary",
-  passed: "default",
-  failed: "destructive",
-} as const
+function ModuleGlyph({ iconKey, className }: { iconKey: string | null; className?: string }) {
+  return React.createElement(getModuleIcon(iconKey), { className })
+}
 
 export default async function ProgramPage({
   params,
@@ -43,7 +45,7 @@ export default async function ProgramPage({
         with: {
           modules: {
             orderBy: (m) => [asc(m.sortOrder), asc(m.createdAt)],
-            with: { grades: true },
+            with: { grades: true, assessment: { columns: { type: true } } },
           },
         },
       },
@@ -51,13 +53,18 @@ export default async function ProgramPage({
   })
   if (!program) notFound()
 
+  const finalGrades = await getModuleFinalGrades(programId)
   const allModules = program.semesters.flatMap((s) => s.modules)
-  const statusLabels = {
-    planned: t("module.statusPlanned"),
-    active: t("module.statusActive"),
-    passed: t("module.statusPassed"),
-    failed: t("module.statusFailed"),
-  } as const
+  const average = programAverageFromFinals(
+    allModules.map((m) => ({ finalGrade: finalGrades.get(m.id)?.grade ?? null, ects: m.ects }))
+  )
+
+  function gradeCell(moduleId: string, passFail: boolean): string {
+    const final = finalGrades.get(moduleId)
+    if (!final) return "–"
+    if (passFail) return final.passed == null ? "–" : final.passed ? "✓" : "✗"
+    return final.grade != null ? formatGrade(final.grade, program!.gradingSystem) : "–"
+  }
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
@@ -69,6 +76,13 @@ export default async function ProgramPage({
           </p>
         </div>
         <div className="flex items-center gap-1">
+          <Link
+            href={`/studies/${program.id}/settings`}
+            className="text-muted-foreground hover:text-foreground flex items-center gap-1 rounded-md px-2 py-1 text-sm"
+          >
+            <Settings className="size-4" />
+            {t("programSettings.title")}
+          </Link>
           <ProgramDialog program={program} />
           <DeleteButton action={deleteProgram.bind(null, program.id)} redirectTo="/studies" />
         </div>
@@ -80,7 +94,7 @@ export default async function ProgramPage({
             t("stats.ects"),
             `${earnedEcts(allModules)}${program.targetEcts ? ` / ${program.targetEcts}` : ""}`,
           ],
-          [t("stats.average"), formatGrade(programAverage(allModules), program.gradingSystem)],
+          [t("stats.average"), average != null ? formatGrade(average, program.gradingSystem) : "–"],
           [t("stats.modules"), String(allModules.length)],
           [t("stats.semesters"), String(program.semesters.length)],
         ].map(([label, value]) => (
@@ -127,41 +141,52 @@ export default async function ProgramPage({
                         <th className="py-2 text-right font-medium"></th>
                       </tr>
                     }
-                    rows={sem.modules.map((mod) => ({
-                      id: mod.id,
-                      cells: (
-                        <>
-                          <td className="py-2.5 pr-4">
-                            <Link
-                              href={`/studies/${program.id}/${mod.id}`}
-                              className="font-medium underline-offset-4 hover:underline"
-                            >
-                              {mod.name}
-                            </Link>
-                            {mod.code && (
-                              <span className="text-muted-foreground ml-2 text-xs">
-                                {mod.code}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-2.5 pr-4">{mod.ects ?? "–"}</td>
-                          <td className="py-2.5 pr-4">
-                            {formatGrade(moduleGrade(mod.grades), program.gradingSystem)}
-                          </td>
-                          <td className="py-2.5 pr-4">
-                            <Badge variant={statusVariant[mod.status]}>
-                              {statusLabels[mod.status]}
-                            </Badge>
-                          </td>
-                          <td className="py-2.5 text-right">
-                            <div className="flex justify-end gap-1">
-                              <ModuleDialog semesterId={sem.id} module={mod} />
-                              <DeleteButton action={deleteModule.bind(null, mod.id)} />
-                            </div>
-                          </td>
-                        </>
-                      ),
-                    }))}
+                    rows={sem.modules.map((mod) => {
+                      const color = getModuleColorClasses(mod.color)
+                      return {
+                        id: mod.id,
+                        cells: (
+                          <>
+                            <td className="py-2.5 pr-4">
+                              <Link
+                                href={`/studies/${program.id}/${mod.id}`}
+                                className="flex items-center gap-2 font-medium underline-offset-4 hover:underline"
+                              >
+                                <span
+                                  className={cn(
+                                    "flex size-6 shrink-0 items-center justify-center rounded",
+                                    color.soft,
+                                    color.text
+                                  )}
+                                >
+                                  <ModuleGlyph iconKey={mod.icon} className="size-3.5" />
+                                </span>
+                                {mod.name}
+                                {mod.code && (
+                                  <span className="text-muted-foreground text-xs">{mod.code}</span>
+                                )}
+                              </Link>
+                            </td>
+                            <td className="py-2.5 pr-4 tabular-nums">{mod.ects ?? "–"}</td>
+                            <td className="py-2.5 pr-4 tabular-nums">
+                              {gradeCell(mod.id, mod.passFail)}
+                            </td>
+                            <td className="py-2.5 pr-4">
+                              <ModuleStatusBadge status={mod.status} />
+                            </td>
+                            <td className="py-2.5 text-right">
+                              <div className="flex justify-end gap-1">
+                                <ModuleDialog
+                                  semesterId={sem.id}
+                                  module={{ ...mod, assessmentType: mod.assessment?.type ?? "exam" }}
+                                />
+                                <DeleteButton action={deleteModule.bind(null, mod.id)} />
+                              </div>
+                            </td>
+                          </>
+                        ),
+                      }
+                    })}
                   />
                 </div>
               )}
