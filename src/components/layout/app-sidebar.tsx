@@ -26,6 +26,7 @@ import { Link, usePathname, useRouter } from "@/i18n/navigation"
 import { navItems } from "@/config/nav"
 import { deleteModule, deleteSemester } from "@/app/[locale]/(app)/studies/actions"
 import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
+import { EntityContextMenu } from "@/components/entity-context-menu"
 import { ModuleDialog } from "@/components/studies/module-dialog"
 import { SemesterDialog } from "@/components/studies/semester-dialog"
 import { ContextSwitcher } from "./context-switcher"
@@ -92,6 +93,19 @@ function SidebarModule({
 
   return (
     <div>
+      <EntityContextMenu
+        label={mod.name}
+        items={[
+          { label: tCommon("edit"), icon: Pencil, onSelect: () => setEditOpen(true) },
+          {
+            label: tCommon("delete"),
+            icon: Trash2,
+            destructive: true,
+            onSelect: () => setDeleteOpen(true),
+            separatorBefore: true,
+          },
+        ]}
+      >
       <div
         className={cn(
           "group flex items-center rounded-md transition-colors",
@@ -153,6 +167,7 @@ function SidebarModule({
           <ChevronRight className={cn("size-4 transition-transform", open && "rotate-90")} />
         </button>
       </div>
+      </EntityContextMenu>
       {open && (
         <div className="mt-0.5 mb-1 ml-4 space-y-0.5 border-l pl-2">
           {moduleTabs
@@ -235,6 +250,19 @@ function SidebarSemester({
 
   return (
     <div>
+      <EntityContextMenu
+        label={semester.name}
+        items={[
+          { label: tStudies("newModule"), icon: Plus, onSelect: () => setAddModuleOpen(true) },
+          { label: tCommon("edit"), icon: Pencil, onSelect: () => setEditOpen(true), separatorBefore: true },
+          {
+            label: tCommon("delete"),
+            icon: Trash2,
+            destructive: true,
+            onSelect: () => setDeleteOpen(true),
+          },
+        ]}
+      >
       <div
         className={cn(
           "group flex items-center rounded-md transition-colors",
@@ -287,6 +315,7 @@ function SidebarSemester({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      </EntityContextMenu>
       {open && (
         <div className="mt-0.5 mb-1 ml-3 space-y-0.5">
           {/* A thesis-only semester has no study-plan to generate */}
