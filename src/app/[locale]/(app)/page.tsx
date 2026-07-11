@@ -1,4 +1,5 @@
-import { asc, eq, gte } from "drizzle-orm"
+import * as React from "react"
+import { asc, eq, gte, lte } from "drizzle-orm"
 import { ArrowRight, CalendarDays, Check } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import { db } from "@/db"
@@ -27,11 +28,17 @@ export default async function DashboardPage() {
   const tStudies = await getTranslations("studies")
   const format = await getFormatter()
 
+  const now = new Date()
+  const horizon = new Date(now)
+  horizon.setDate(horizon.getDate() + 7)
+  const horizonKey = horizon.toISOString().slice(0, 10)
+  const todayKey = now.toISOString().slice(0, 10)
+
   const [events, programs, dueAssignments, context] = await Promise.all([
     db.query.studyEvent.findMany({
-      where: (e, { and }) => and(eq(e.userId, session.user.id), gte(e.startsAt, new Date())),
+      where: (e, { and }) =>
+        and(eq(e.userId, session.user.id), gte(e.startsAt, now), lte(e.startsAt, horizon)),
       orderBy: [asc(studyEvent.startsAt)],
-      limit: 5,
       with: { module: true },
     }),
     db.query.degreeProgram.findMany({
@@ -39,10 +46,15 @@ export default async function DashboardPage() {
       with: { semesters: { with: { modules: { with: { grades: true } } } } },
     }),
     db.query.assignment.findMany({
-      where: (a, { and, isNotNull, ne }) =>
-        and(eq(a.userId, session.user.id), isNotNull(a.dueDate), ne(a.status, "graded")),
+      where: (a, { and, isNotNull, ne, gte: gteFn, lte: lteFn }) =>
+        and(
+          eq(a.userId, session.user.id),
+          isNotNull(a.dueDate),
+          ne(a.status, "graded"),
+          gteFn(a.dueDate, todayKey),
+          lteFn(a.dueDate, horizonKey)
+        ),
       orderBy: [asc(assignment.dueDate)],
-      limit: 5,
       with: { module: { columns: { name: true } } },
     }),
     getStudyContext(session.user.id),
@@ -95,6 +107,71 @@ export default async function DashboardPage() {
     const fmt = (d: string) => format.dateTime(new Date(d), { dateStyle: "medium" })
     if (start && end) return `${fmt(start)} – ${fmt(end)}`
     return fmt((start ?? end)!)
+  }
+
+  type AgendaItem =
+    | {
+        kind: "event"
+        id: string
+        title: string
+        type: keyof typeof typeVariant
+        at: Date
+        allDay: boolean
+        moduleName: string | null
+      }
+    | { kind: "assignment"; id: string; title: string; moduleName: string }
+
+  const dayKeyOf = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, "0")
+    const day = String(d.getDate()).padStart(2, "0")
+    return `${y}-${m}-${day}`
+  }
+  const labelToday = dayKeyOf(now)
+  const tomorrow = new Date(now)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const labelTomorrow = dayKeyOf(tomorrow)
+
+  const agendaMap = new Map<string, AgendaItem[]>()
+  for (const e of events) {
+    const k = dayKeyOf(e.startsAt)
+    const arr = agendaMap.get(k) ?? []
+    arr.push({
+      kind: "event",
+      id: e.id,
+      title: e.title,
+      type: e.type,
+      at: e.startsAt,
+      allDay: e.allDay,
+      moduleName: e.module?.name ?? null,
+    })
+    agendaMap.set(k, arr)
+  }
+  for (const a of dueAssignments) {
+    const k = a.dueDate!
+    const arr = agendaMap.get(k) ?? []
+    arr.push({ kind: "assignment", id: a.id, title: a.title, moduleName: a.module.name })
+    agendaMap.set(k, arr)
+  }
+  const agendaDays = [...agendaMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, items]) => ({
+      key,
+      items: items.sort((x, y) => {
+        const ax = x.kind === "event" && !x.allDay ? x.at.getTime() : 0
+        const ay = y.kind === "event" && !y.allDay ? y.at.getTime() : 0
+        return ax - ay
+      }),
+    }))
+
+  const dayLabel = (key: string): string => {
+    if (key === labelToday) return t("today")
+    if (key === labelTomorrow) return t("tomorrow")
+    return format.dateTime(new Date(`${key}T00:00`), {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    })
   }
 
   return (
@@ -155,7 +232,7 @@ export default async function DashboardPage() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">{t("upcoming")}</CardTitle>
+          <CardTitle className="text-base">{t("next7Days")}</CardTitle>
           <Link
             href="/calendar"
             className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
@@ -165,32 +242,47 @@ export default async function DashboardPage() {
           </Link>
         </CardHeader>
         <CardContent>
-          {events.length === 0 && dueAssignments.length === 0 ? (
+          {agendaDays.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t("noUpcoming")}</p>
           ) : (
-            <ul className="space-y-2">
-              {events.map((e) => (
-                <li key={e.id} className="flex flex-wrap items-center gap-2 text-sm">
-                  <Badge variant={typeVariant[e.type]}>{typeLabels[e.type]}</Badge>
-                  <span className="font-medium">{e.title}</span>
-                  <span className="text-muted-foreground ml-auto flex items-center gap-1 text-xs">
-                    <CalendarDays className="size-3" />
-                    {format.dateTime(e.startsAt, { dateStyle: "medium", timeStyle: "short" })}
-                  </span>
-                </li>
+            <div className="space-y-4">
+              {agendaDays.map((day) => (
+                <div key={day.key} className="space-y-2">
+                  <p className="text-muted-foreground border-b pb-1 text-xs font-semibold tracking-wide capitalize">
+                    {dayLabel(day.key)}
+                  </p>
+                  <ul className="space-y-2">
+                    {day.items.map((item) =>
+                      item.kind === "event" ? (
+                        <li
+                          key={`e-${item.id}`}
+                          className="flex flex-wrap items-center gap-2 text-sm"
+                        >
+                          <Badge variant={typeVariant[item.type]}>{typeLabels[item.type]}</Badge>
+                          <span className="font-medium">{item.title}</span>
+                          {item.moduleName && (
+                            <span className="text-muted-foreground text-xs">{item.moduleName}</span>
+                          )}
+                          <span className="text-muted-foreground ml-auto flex items-center gap-1 text-xs tabular-nums">
+                            <CalendarDays className="size-3" />
+                            {item.allDay ? t("allDay") : format.dateTime(item.at, { timeStyle: "short" })}
+                          </span>
+                        </li>
+                      ) : (
+                        <li
+                          key={`a-${item.id}`}
+                          className="flex flex-wrap items-center gap-2 text-sm"
+                        >
+                          <Badge variant="default">{t("assignmentDue")}</Badge>
+                          <span className="font-medium">{item.title}</span>
+                          <span className="text-muted-foreground text-xs">{item.moduleName}</span>
+                        </li>
+                      )
+                    )}
+                  </ul>
+                </div>
               ))}
-              {dueAssignments.map((a) => (
-                <li key={a.id} className="flex flex-wrap items-center gap-2 text-sm">
-                  <Badge variant="default">{t("assignmentDue")}</Badge>
-                  <span className="font-medium">{a.title}</span>
-                  <span className="text-muted-foreground text-xs">{a.module.name}</span>
-                  <span className="text-muted-foreground ml-auto flex items-center gap-1 text-xs">
-                    <CalendarDays className="size-3" />
-                    {a.dueDate && format.dateTime(new Date(a.dueDate), { dateStyle: "medium" })}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -219,48 +311,61 @@ export default async function DashboardPage() {
               {sem.modules.length === 0 ? (
                 <p className="text-muted-foreground text-sm">{t("noModules")}</p>
               ) : (
-                <ul className="space-y-2.5">
-                  {sem.modules.map((mod) => {
-                    const grade = moduleGrade(mod.grades)
-                    const prep = preparedness.get(mod.id) ?? null
-                    return (
-                      <li key={mod.id} className="flex flex-wrap items-center gap-3 text-sm">
-                        <Link
-                          href={`/studies/${activeProgram.id}/${mod.id}`}
-                          className="min-w-0 flex-1 truncate font-medium underline-offset-4 hover:underline"
-                        >
-                          {mod.name}
-                        </Link>
-                        {mod.ects != null && (
-                          <span className="text-muted-foreground text-xs">
-                            {mod.ects} {tStudies("stats.ects")}
-                          </span>
-                        )}
-                        <span className="text-muted-foreground w-14 text-right text-xs tabular-nums">
-                          {grade != null
-                            ? formatGrade(grade, activeProgram.gradingSystem)
-                            : "–"}
-                        </span>
-                        <span className="flex w-40 items-center gap-2">
-                          <span className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
-                            {prep != null && (
-                              <span
-                                className="bg-primary block h-full rounded-full"
-                                style={{ width: `${prep}%` }}
-                              />
-                            )}
-                          </span>
-                          <span
-                            className="text-muted-foreground w-9 text-right text-xs tabular-nums"
-                            title={t("preparednessHint")}
+                <div className="overflow-x-auto">
+                  <div className="grid min-w-[32rem] grid-cols-[1fr_4rem_4rem_11rem] items-center gap-x-3 gap-y-2 text-sm">
+                    <span />
+                    <span className="text-muted-foreground text-right text-xs font-medium">
+                      {tStudies("stats.ects")}
+                    </span>
+                    <span className="text-muted-foreground text-right text-xs font-medium">
+                      {t("columnGrade")}
+                    </span>
+                    <span
+                      className="text-muted-foreground text-xs font-medium"
+                      title={t("preparednessHint")}
+                    >
+                      {t("columnPreparedness")}
+                    </span>
+                    {sem.modules.map((mod) => {
+                      const grade = moduleGrade(mod.grades)
+                      const prep = preparedness.get(mod.id) ?? null
+                      return (
+                        <React.Fragment key={mod.id}>
+                          <Link
+                            href={`/studies/${activeProgram.id}/${mod.id}`}
+                            className="min-w-0 truncate font-medium underline-offset-4 hover:underline"
                           >
-                            {prep != null ? `${prep}%` : "–"}
+                            {mod.name}
+                          </Link>
+                          <span className="text-muted-foreground text-right text-xs tabular-nums">
+                            {mod.ects ?? "–"}
                           </span>
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
+                          <span className="text-muted-foreground text-right text-xs tabular-nums">
+                            {grade != null
+                              ? formatGrade(grade, activeProgram.gradingSystem)
+                              : "–"}
+                          </span>
+                          <span className="flex items-center gap-2">
+                            <span className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
+                              {prep != null && (
+                                <span
+                                  className="bg-primary block h-full rounded-full"
+                                  style={{ width: `${prep}%` }}
+                                />
+                              )}
+                            </span>
+                            <span
+                              className="text-muted-foreground w-9 text-right text-xs tabular-nums"
+                              title={t("preparednessHint")}
+                            >
+                              {prep != null ? `${prep}%` : "–"}
+                            </span>
+                          </span>
+                        </React.Fragment>
+                      )
+                    })}
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

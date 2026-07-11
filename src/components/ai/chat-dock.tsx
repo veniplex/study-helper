@@ -15,7 +15,7 @@ import {
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import type { UIMessage } from "ai"
-import { useRouter } from "@/i18n/navigation"
+import { usePathname, useRouter } from "@/i18n/navigation"
 import {
   createConversation,
   deleteConversation,
@@ -58,6 +58,8 @@ export function ChatDock({
 }) {
   const t = useTranslations("ai")
   const router = useRouter()
+  const pathname = usePathname()
+  const isFullscreenChat = pathname.startsWith("/ai/")
   const rawPageContext = usePageContext()
   const pageContext = rawPageContext ?? { moduleId: null, moduleName: null }
   const [open, setOpen] = React.useState(false)
@@ -342,7 +344,12 @@ export function ChatDock({
           </div>
         </div>
       )}
-      <div className="fixed right-5 bottom-5 z-50 hidden lg:block">
+      <div
+        className={cn(
+          "fixed right-5 bottom-5 z-50 hidden lg:block",
+          isFullscreenChat && "lg:hidden"
+        )}
+      >
         <Button
           size="icon"
           className="size-12 rounded-full shadow-lg"

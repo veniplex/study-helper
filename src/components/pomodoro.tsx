@@ -10,7 +10,7 @@ import { ModuleSelect, type ModuleOption } from "@/components/learn/module-selec
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
 const STORAGE_KEY = "studyhelper.pomodoro"
@@ -27,6 +27,8 @@ type PersistedState = {
   longBreakMin: number
   /** Completed focus intervals in the current round (0..CYCLES_PER_ROUND). */
   cycle: number
+  /** Current round number (1-based). A round ends after the long break. */
+  round: number
   moduleId: string
   sound: boolean
 }
@@ -39,6 +41,7 @@ const DEFAULTS: PersistedState = {
   breakMin: 5,
   longBreakMin: 15,
   cycle: 0,
+  round: 1,
   moduleId: "",
   sound: true,
 }
@@ -161,6 +164,7 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
         ...prev,
         phase: nextPhase,
         cycle: nextPhase === "focus" && finishedPhase === "longBreak" ? 0 : cycle,
+        round: finishedPhase === "longBreak" ? prev.round + 1 : prev.round,
         endsAt: autoRun ? base + nextMs : null,
         remainingMs: nextMs,
       }))
@@ -241,6 +245,7 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
       ...s,
       phase: "focus",
       cycle: 0,
+      round: 1,
       endsAt: null,
       remainingMs: s.focusMin * 60 * 1000,
     }))
@@ -269,8 +274,8 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
   const C = 2 * Math.PI * R
 
   return (
-    <Popover>
-      <PopoverTrigger
+    <Dialog>
+      <DialogTrigger
         render={
           <button
             type="button"
@@ -284,6 +289,9 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
         <Timer className="size-4" />
         {running && (
           <>
+            <span className="rounded-full bg-current/15 px-1 text-[10px] font-bold tabular-nums">
+              {t("roundShort", { n: state.round })}
+            </span>
             <span className="text-xs font-semibold tabular-nums">{fmt(remaining)}</span>
             <span className="flex items-center gap-0.5">
               {Array.from({ length: CYCLES_PER_ROUND }, (_, i) => (
@@ -303,18 +311,24 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
           </>
         )}
         <span className="sr-only">{t("title")}</span>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[340px] max-w-[calc(100vw-2rem)] p-4">
+      </DialogTrigger>
+      <DialogContent className="w-[340px] max-w-[calc(100vw-2rem)] sm:max-w-[340px]">
+        <DialogTitle className="sr-only">{t("title")}</DialogTitle>
         <div className="space-y-4">
           <div className="flex flex-col items-center gap-2">
-            <span
-              className={cn(
-                "rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide",
-                styles.pill
-              )}
-            >
-              {phaseLabel}
-            </span>
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide",
+                  styles.pill
+                )}
+              >
+                {phaseLabel}
+              </span>
+              <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                {t("round", { n: state.round })}
+              </span>
+            </div>
             <div className="relative">
               <svg width="140" height="140" viewBox="0 0 120 120" className="-rotate-90">
                 <circle
@@ -452,7 +466,7 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
             </Button>
           </div>
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   )
 }

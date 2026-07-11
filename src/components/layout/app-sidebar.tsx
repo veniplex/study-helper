@@ -47,6 +47,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
+const OPEN_SEMESTER_KEY = "studyhelper.openSemester"
+
 const moduleTabs: { key: string; segment: string; icon: LucideIcon }[] = [
   { key: "overview", segment: "", icon: LayoutList },
   { key: "materials", segment: "/materials", icon: FileText },
@@ -283,7 +285,6 @@ function SidebarSemester({
             className={cn("size-4 shrink-0 transition-transform", open && "rotate-90")}
           />
           <span className="truncate">{semester.name}</span>
-          {active && <span className="bg-primary ml-auto size-1.5 shrink-0 rounded-full" />}
         </button>
         <button
           type="button"
@@ -399,12 +400,25 @@ export function AppSidebar({ context, isAdmin }: { context: StudyContext; isAdmi
   )
   const [newSemesterOpen, setNewSemesterOpen] = React.useState(false)
 
+  // Restore the semester the user last had open (client-only).
+  React.useEffect(() => {
+    const saved = window.localStorage.getItem(OPEN_SEMESTER_KEY)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (saved) setOpenSemester(saved)
+  }, [])
+
+  function persistOpen(next: string | null) {
+    setOpenSemester(next)
+    if (next) window.localStorage.setItem(OPEN_SEMESTER_KEY, next)
+    else window.localStorage.removeItem(OPEN_SEMESTER_KEY)
+  }
+
   function openAndActivate(semesterId: string) {
     if (openSemester === semesterId) {
-      setOpenSemester(null)
+      persistOpen(null)
       return
     }
-    setOpenSemester(semesterId)
+    persistOpen(semesterId)
     if (context.activeProgram && semesterId !== context.activeSemester?.id) {
       setActiveContext({ programId: context.activeProgram.id, semesterId })
         .then(() => router.refresh())
