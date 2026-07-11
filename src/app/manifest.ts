@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next"
 import { getAppName } from "@/lib/settings"
 
+// Reads the branding setting from the DB — never prerender at build time.
+export const dynamic = "force-dynamic"
+
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const appName = await getAppName()
   return {
