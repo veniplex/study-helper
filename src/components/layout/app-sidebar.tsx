@@ -10,6 +10,7 @@ import {
   GraduationCap,
   Layers,
   LayoutList,
+  LogOut,
   MessageSquare,
   MoreHorizontal,
   Pencil,
@@ -31,7 +32,8 @@ import { ContextSwitcher } from "./context-switcher"
 import { SidebarResizeHandle } from "./sidebar-resize-handle"
 import { LocaleSwitcher } from "./locale-switcher"
 import { ThemeToggle } from "./theme-toggle"
-import { UserMenu } from "./user-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { authClient } from "@/lib/auth/client"
 import type { SemesterModule, SemesterNode, StudyContext } from "@/lib/studies/context"
 import { getModuleColorClasses, getModuleIcon, STATUS_DOT } from "@/lib/module-visuals"
 import { APP_VERSION, REPO_URL } from "@/lib/version"
@@ -374,7 +376,22 @@ export function AppSidebar({
   const t = useTranslations("nav")
   const tContext = useTranslations("context")
   const tStudies = useTranslations("studies")
+  const tAuth = useTranslations("auth")
   const pathname = usePathname()
+  const router = useRouter()
+
+  const userInitials = user.name
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase()
+
+  async function logout() {
+    await authClient.signOut()
+    router.push("/login")
+    router.refresh()
+  }
   // Each semester keeps its own open/closed state (no accordion auto-close).
   // Default-open the current semester; persisted across reloads.
   const defaultOpen = context.currentSemesterId ?? context.activeSemester?.id ?? null
@@ -485,8 +502,26 @@ export function AppSidebar({
               {t("admin")}
             </Link>
           )}
-          <div className="flex items-center gap-1 px-1 pt-1">
-            <UserMenu {...user} isAdmin={isAdmin} />
+          <div className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5">
+            <Avatar className="size-8 shrink-0">
+              {user.image ? <AvatarImage src={user.image} alt={user.name} /> : null}
+              <AvatarFallback>{userInitials || "?"}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{user.name}</p>
+              <p className="text-muted-foreground truncate text-xs">{user.email}</p>
+            </div>
+            <button
+              type="button"
+              onClick={logout}
+              title={tAuth("logout")}
+              className="text-muted-foreground hover:text-foreground rounded p-1.5"
+            >
+              <LogOut className="size-4" />
+              <span className="sr-only">{tAuth("logout")}</span>
+            </button>
+          </div>
+          <div className="flex items-center gap-1 px-1">
             <LocaleSwitcher />
             <ThemeToggle />
             <a
