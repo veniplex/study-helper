@@ -16,8 +16,81 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { addCard, createDeck, generateCards, updateDeck } from "@/app/[locale]/(app)/deck-actions"
+import {
+  addCard,
+  createDeck,
+  generateCards,
+  updateCard,
+  updateDeck,
+} from "@/app/[locale]/(app)/deck-actions"
 import { ModuleSelect, type ModuleOption } from "./module-select"
+
+/** Controlled edit dialog for a flashcard's front/back (used by row menus). */
+export function EditCardDialog({
+  cardId,
+  initialFront,
+  initialBack,
+  open,
+  onOpenChange,
+}: {
+  cardId: string
+  initialFront: string
+  initialBack: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const t = useTranslations("learn.decks")
+  const tCommon = useTranslations("common")
+  const router = useRouter()
+  const [pending, setPending] = React.useState(false)
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const form = new FormData(e.currentTarget)
+    setPending(true)
+    try {
+      await updateCard(cardId, {
+        front: String(form.get("front")),
+        back: String(form.get("back")),
+      })
+      onOpenChange(false)
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("editCard")}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="ec-front">{t("front")}</Label>
+            <Textarea id="ec-front" name="front" rows={2} defaultValue={initialFront} required />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ec-back">{t("back")}</Label>
+            <Textarea id="ec-back" name="back" rows={2} defaultValue={initialBack} required />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {tCommon("cancel")}
+            </Button>
+            <Button type="submit" disabled={pending}>
+              {pending && <Loader2 className="size-4 animate-spin" />}
+              {tCommon("save")}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 /** Controlled edit dialog for a deck's name/description (used by row menus). */
 export function EditDeckDialog({

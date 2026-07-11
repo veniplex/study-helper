@@ -799,7 +799,9 @@
         "useMaterials": "Consider uploaded materials",
         "submit": "Generate",
         "generating": "Generating study plan …"
-      }
+      },
+      "editItem": "Edit study item",
+      "itemDescription": "Description"
     },
     "decks": {
       "new": "Create deck",
@@ -828,7 +830,8 @@
         "submit": "Generate",
         "generating": "Generating cards …"
       },
-      "edit": "Edit"
+      "edit": "Edit",
+      "editCard": "Edit flashcard"
     },
     "quizzes": {
       "new": "Create quiz",
@@ -926,7 +929,8 @@
     "newAttemptConfirm": "The current thesis will be archived as failed and a new attempt with a new topic begins. Continue?",
     "previousAttempts": "Previous attempts ({count})",
     "noProgram": "Create a degree program first to plan a thesis.",
-    "attemptOf": "Attempt {n} of {max}"
+    "attemptOf": "Attempt {n} of {max}",
+    "editMilestone": "Edit milestone"
   },
   "onboarding": {
     "title": "Get started",

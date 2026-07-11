@@ -26,16 +26,14 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Markdown } from "@/components/ai/markdown"
 import { DeleteButton } from "@/components/studies/delete-button"
+import { ThesisMilestoneRow } from "@/components/thesis/thesis-milestone-row"
 import {
   addMilestone,
-  deleteMilestone,
   deleteThesis,
   generateMilestones,
   generateOutline,
-  toggleMilestone,
   updateThesis,
 } from "@/app/[locale]/(app)/thesis/actions"
-import { cn } from "@/lib/utils"
 
 const PHASES = ["topic", "exposé", "research", "writing", "revision", "submitted"] as const
 type Phase = (typeof PHASES)[number]
@@ -250,19 +248,10 @@ export function ThesisWorkspace({
         <CardContent className="space-y-3">
           <ul className="space-y-1.5">
             {thesis.milestones.map((m) => (
-              <li key={m.id} className="flex flex-wrap items-center gap-2.5 rounded-md border px-3 py-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={m.done}
-                  onChange={() => run(`ms-${m.id}`, () => toggleMilestone(m.id, !m.done))}
-                  className="accent-primary size-4 cursor-pointer"
-                />
-                <span className={cn("font-medium", m.done && "text-muted-foreground line-through")}>
-                  {m.title}
-                </span>
-                <span className="text-muted-foreground ml-auto text-xs">{m.dueDate ?? ""}</span>
-                <DeleteButton action={deleteMilestone.bind(null, m.id)} />
-              </li>
+              <ThesisMilestoneRow
+                key={m.id}
+                milestone={{ id: m.id, title: m.title, dueDate: m.dueDate, done: m.done }}
+              />
             ))}
           </ul>
           <form

@@ -6,9 +6,8 @@ import { deck, flashcard } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { listAvailableModels } from "@/lib/ai/registry"
 import { Link } from "@/i18n/navigation"
-import { deleteCard } from "@/app/[locale]/(app)/deck-actions"
 import { AddCardForm, GenerateCardsDialog } from "@/components/learn/deck-dialogs"
-import { DeleteButton } from "@/components/studies/delete-button"
+import { FlashcardRow } from "@/components/learn/flashcard-row"
 import { Button } from "@/components/ui/button"
 
 export default async function ModuleDeckDetailPage({
@@ -50,16 +49,7 @@ export default async function ModuleDeckDetailPage({
 
       <ul className="space-y-1.5">
         {deckRow.cards.map((card) => (
-          <li
-            key={card.id}
-            className="grid gap-1 rounded-md border px-3 py-2 text-sm sm:grid-cols-[1fr_1fr_auto] sm:items-center sm:gap-3"
-          >
-            <span className="font-medium">{card.front}</span>
-            <span className="text-muted-foreground">{card.back}</span>
-            <span className="flex justify-end">
-              <DeleteButton action={deleteCard.bind(null, card.id)} />
-            </span>
-          </li>
+          <FlashcardRow key={card.id} card={{ id: card.id, front: card.front, back: card.back }} />
         ))}
       </ul>
 

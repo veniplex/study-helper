@@ -799,7 +799,9 @@
         "useMaterials": "Hochgeladene Materialien berücksichtigen",
         "submit": "Generieren",
         "generating": "Generiere Lernplan …"
-      }
+      },
+      "editItem": "Lerneinheit bearbeiten",
+      "itemDescription": "Beschreibung"
     },
     "decks": {
       "new": "Deck anlegen",
@@ -828,7 +830,8 @@
         "submit": "Generieren",
         "generating": "Generiere Karten …"
       },
-      "edit": "Bearbeiten"
+      "edit": "Bearbeiten",
+      "editCard": "Karteikarte bearbeiten"
     },
     "quizzes": {
       "new": "Quiz anlegen",
@@ -926,7 +929,8 @@
     "newAttemptConfirm": "Die aktuelle Abschlussarbeit wird als nicht bestanden archiviert und ein neuer Versuch mit neuem Thema beginnt. Fortfahren?",
     "previousAttempts": "Frühere Versuche ({count})",
     "noProgram": "Lege zuerst einen Studiengang an, um eine Abschlussarbeit zu planen.",
-    "attemptOf": "Versuch {n} von {max}"
+    "attemptOf": "Versuch {n} von {max}",
+    "editMilestone": "Meilenstein bearbeiten"
   },
   "onboarding": {
     "title": "Erste Schritte",

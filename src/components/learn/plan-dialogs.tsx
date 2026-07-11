@@ -20,8 +20,93 @@ import {
   addPlanItem,
   createPlan,
   generateStudyPlan,
+  updatePlanItem,
 } from "@/app/[locale]/(app)/learn-actions"
 import { ModuleSelect, type ModuleOption } from "./module-select"
+
+/** Controlled edit dialog for a study-plan item (used by the row menu). */
+export function EditPlanItemDialog({
+  itemId,
+  initial,
+  open,
+  onOpenChange,
+}: {
+  itemId: string
+  initial: { title: string; description: string | null; scheduledDate: string | null; durationMinutes: number | null }
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const t = useTranslations("learn.plans")
+  const tCommon = useTranslations("common")
+  const router = useRouter()
+  const [pending, setPending] = React.useState(false)
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const form = new FormData(e.currentTarget)
+    setPending(true)
+    try {
+      await updatePlanItem(itemId, {
+        title: String(form.get("title")),
+        description: String(form.get("description") || "") || null,
+        scheduledDate: String(form.get("scheduledDate") || "") || null,
+        durationMinutes: form.get("durationMinutes") ? Number(form.get("durationMinutes")) : null,
+      })
+      onOpenChange(false)
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("editItem")}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="epi-title">{t("itemTitle")}</Label>
+            <Input id="epi-title" name="title" defaultValue={initial.title} required />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="epi-desc">{t("itemDescription")}</Label>
+            <Textarea id="epi-desc" name="description" rows={2} defaultValue={initial.description ?? ""} />
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-1 space-y-1.5">
+              <Label htmlFor="epi-date">{t("itemDate")}</Label>
+              <Input id="epi-date" name="scheduledDate" type="date" defaultValue={initial.scheduledDate ?? ""} />
+            </div>
+            <div className="w-28 space-y-1.5">
+              <Label htmlFor="epi-duration">{t("itemDuration")}</Label>
+              <Input
+                id="epi-duration"
+                name="durationMinutes"
+                type="number"
+                min={5}
+                step={5}
+                defaultValue={initial.durationMinutes ?? ""}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {tCommon("cancel")}
+            </Button>
+            <Button type="submit" disabled={pending}>
+              {pending && <Loader2 className="size-4 animate-spin" />}
+              {tCommon("save")}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 export function PlanDialog({
   modules,

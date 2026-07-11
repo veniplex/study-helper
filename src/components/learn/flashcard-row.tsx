@@ -3,10 +3,9 @@
 import * as React from "react"
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
-import { deletePlanItem, togglePlanItem } from "@/app/[locale]/(app)/learn-actions"
-import { EditPlanItemDialog } from "@/components/learn/plan-dialogs"
+import { deleteCard } from "@/app/[locale]/(app)/deck-actions"
+import { EditCardDialog } from "@/components/learn/deck-dialogs"
 import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 import { EntityContextMenu, type ContextMenuAction } from "@/components/entity-context-menu"
 import {
@@ -15,33 +14,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
 
-export function PlanItemRow({
-  item,
+export function FlashcardRow({
+  card,
 }: {
-  item: {
-    id: string
-    title: string
-    description: string | null
-    scheduledDate: string | null
-    durationMinutes: number | null
-    done: boolean
-  }
+  card: { id: string; front: string; back: string }
 }) {
   const tCommon = useTranslations("common")
   const router = useRouter()
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
-
-  async function onToggle() {
-    try {
-      await togglePlanItem(item.id, !item.done)
-      router.refresh()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-    }
-  }
 
   const actions: ContextMenuAction[] = [
     { label: tCommon("edit"), icon: Pencil, onSelect: () => setEditOpen(true) },
@@ -56,29 +38,18 @@ export function PlanItemRow({
 
   return (
     <>
-      <EntityContextMenu items={actions} label={item.title}>
-        <div className="group bg-card rounded-md border px-3 py-2.5">
-          <div className="flex flex-wrap items-center gap-2.5 text-sm">
-            <input
-              type="checkbox"
-              checked={item.done}
-              onChange={onToggle}
-              className="accent-primary size-4 cursor-pointer"
-            />
-            <span className={cn("font-medium", item.done && "text-muted-foreground line-through")}>
-              {item.title}
-            </span>
-            <span className="text-muted-foreground ml-auto text-xs">
-              {item.scheduledDate ?? ""}
-              {item.durationMinutes ? ` · ${item.durationMinutes} min` : ""}
-            </span>
+      <EntityContextMenu items={actions} label={card.front.slice(0, 40)}>
+        <li className="group grid gap-1 rounded-md border px-3 py-2 text-sm sm:grid-cols-[1fr_1fr_auto] sm:items-center sm:gap-3">
+          <span className="font-medium">{card.front}</span>
+          <span className="text-muted-foreground">{card.back}</span>
+          <span className="flex justify-end">
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <button
                     type="button"
                     className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
-                    aria-label={item.title}
+                    aria-label={card.front.slice(0, 40)}
                   />
                 }
               >
@@ -95,26 +66,22 @@ export function PlanItemRow({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-          {item.description && (
-            <p className="text-muted-foreground mt-1 pl-6.5 text-xs whitespace-pre-wrap">
-              {item.description}
-            </p>
-          )}
-        </div>
+          </span>
+        </li>
       </EntityContextMenu>
-      <EditPlanItemDialog
-        itemId={item.id}
-        initial={item}
+      <EditCardDialog
+        cardId={card.id}
+        initialFront={card.front}
+        initialBack={card.back}
         open={editOpen}
         onOpenChange={setEditOpen}
       />
       <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        label={item.title}
+        label={card.front.slice(0, 40)}
         onConfirm={async () => {
-          await deletePlanItem(item.id)
+          await deleteCard(card.id)
           router.refresh()
         }}
       />
