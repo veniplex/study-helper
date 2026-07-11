@@ -21,6 +21,7 @@ import {
   FolderPlus,
   GripVertical,
   Image as ImageIcon,
+  MoreHorizontal,
   Music,
   Pencil,
   Presentation,
@@ -38,9 +39,15 @@ import {
   renameFolder,
   renameMaterial,
 } from "@/app/[locale]/(app)/materials-actions"
-import { DeleteButton } from "@/components/studies/delete-button"
 import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
+import { EntityContextMenu, type ContextMenuAction } from "@/components/entity-context-menu"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -87,13 +94,33 @@ function formatBytes(bytes: number | null): string {
 
 function MaterialRow({ item }: { item: MaterialItem }) {
   const t = useTranslations("materials")
+  const tCommon = useTranslations("common")
   const format = useFormatter()
   const router = useRouter()
   const [renaming, setRenaming] = React.useState(false)
   const [name, setName] = React.useState(item.name)
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
   })
+
+  const rowActions: ContextMenuAction[] = [
+    {
+      label: t("rename"),
+      icon: Pencil,
+      onSelect: () => {
+        setName(item.name)
+        setRenaming(true)
+      },
+    },
+    {
+      label: tCommon("delete"),
+      icon: Trash2,
+      destructive: true,
+      onSelect: () => setDeleteOpen(true),
+      separatorBefore: true,
+    },
+  ]
 
   async function onRename() {
     try {
@@ -143,21 +170,25 @@ function MaterialRow({ item }: { item: MaterialItem }) {
           </Button>
         </span>
       ) : item.kind === "link" ? (
-        <a
-          href={item.url ?? "#"}
-          target="_blank"
-          rel="noreferrer"
-          className="min-w-0 flex-1 truncate font-medium underline-offset-4 hover:underline"
-        >
-          {item.name}
-        </a>
+        <EntityContextMenu items={rowActions} label={item.name}>
+          <a
+            href={item.url ?? "#"}
+            target="_blank"
+            rel="noreferrer"
+            className="min-w-0 flex-1 truncate font-medium underline-offset-4 hover:underline"
+          >
+            {item.name}
+          </a>
+        </EntityContextMenu>
       ) : (
-        <Link
-          href={`/materials/${item.id}`}
-          className="min-w-0 flex-1 truncate font-medium underline-offset-4 hover:underline"
-        >
-          {item.name}
-        </Link>
+        <EntityContextMenu items={rowActions} label={item.name}>
+          <Link
+            href={`/materials/${item.id}`}
+            className="min-w-0 flex-1 truncate font-medium underline-offset-4 hover:underline"
+          >
+            {item.name}
+          </Link>
+        </EntityContextMenu>
       )}
       {!renaming && (
         <>
@@ -166,21 +197,45 @@ function MaterialRow({ item }: { item: MaterialItem }) {
             {item.sizeBytes != null && " · "}
             {format.dateTime(new Date(item.createdAt), { dateStyle: "medium" })}
           </span>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title={t("rename")}
-            onClick={() => {
-              setName(item.name)
-              setRenaming(true)
-            }}
-          >
-            <Pencil className="size-3.5" />
-            <span className="sr-only">{t("rename")}</span>
-          </Button>
-          <DeleteButton action={deleteMaterial.bind(null, item.id)} />
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground rounded p-1"
+                  aria-label={item.name}
+                />
+              }
+            >
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem
+                onClick={() => {
+                  setName(item.name)
+                  setRenaming(true)
+                }}
+              >
+                <Pencil className="size-4" />
+                {t("rename")}
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+                <Trash2 className="size-4" />
+                {tCommon("delete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </>
       )}
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        label={item.name}
+        onConfirm={async () => {
+          await deleteMaterial(item.id)
+          router.refresh()
+        }}
+      />
     </li>
   )
 }

@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 
 export const LAST_CHAT_KEY = "studyhelper.lastChatId"
 export const CHAT_OPEN_EVENT = "studyhelper:chat-open"
@@ -339,19 +340,12 @@ export function ConversationPanel({
           </Button>
         </div>
       )}
-      {confirmDelete && (
-        <div className="flex items-center justify-between gap-2 border-b p-2 text-sm">
-          <span className="text-muted-foreground">{t("deleteChatConfirm")}</span>
-          <div className="flex gap-1.5">
-            <Button variant="destructive" size="sm" onClick={() => void onDelete()}>
-              {t("deleteChat")}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
-              {t("close")}
-            </Button>
-          </div>
-        </div>
-      )}
+      <ConfirmDeleteDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        label={current?.title ?? t("deleteChat")}
+        onConfirm={onDelete}
+      />
 
       <div className="flex items-center gap-2 border-b px-3 py-1.5">
         <span className="text-muted-foreground text-xs">{t("module")}</span>

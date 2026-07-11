@@ -32,6 +32,7 @@ import {
 import type { SemesterModule } from "@/lib/studies/context"
 import { getModuleColorClasses, getModuleIcon } from "@/lib/module-visuals"
 import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
+import { EntityContextMenu } from "@/components/entity-context-menu"
 import { ModuleDialog } from "@/components/studies/module-dialog"
 import { SemesterDialog } from "@/components/studies/semester-dialog"
 import { ModuleStatusBadge } from "@/components/learn/module-status-badge"
@@ -273,6 +274,14 @@ function SemesterHeaderRow({
   const [deleteOpen, setDeleteOpen] = React.useState(false)
 
   return (
+    <EntityContextMenu
+      label={sem.name}
+      items={[
+        { label: tStudies("newModule"), icon: Plus, onSelect: () => setAddModuleOpen(true) },
+        { label: tCommon("edit"), icon: Pencil, onSelect: () => setEditOpen(true), separatorBefore: true },
+        { label: tCommon("delete"), icon: Trash2, destructive: true, onSelect: () => setDeleteOpen(true) },
+      ]}
+    >
     <div className="group flex items-center gap-3 border-b pb-1.5">
       <span className="flex min-w-0 flex-1 items-center gap-2">
         <span className="truncate font-medium">{sem.name}</span>
@@ -349,6 +358,7 @@ function SemesterHeaderRow({
         }}
       />
     </div>
+    </EntityContextMenu>
   )
 }
 
@@ -439,6 +449,13 @@ function ModuleRow({
       >
         <GripVertical className="size-4" />
       </button>
+      <EntityContextMenu
+        label={m.name}
+        items={[
+          { label: tCommon("edit"), icon: Pencil, onSelect: () => setEditOpen(true) },
+          { label: tCommon("delete"), icon: Trash2, destructive: true, onSelect: () => setDeleteOpen(true), separatorBefore: true },
+        ]}
+      >
       <span className="group/name flex min-w-0 flex-1 items-center gap-1">
         <Link
           href={`/studies/${programId}/${m.id}`}
@@ -484,6 +501,7 @@ function ModuleRow({
           </DropdownMenuContent>
         </DropdownMenu>
       </span>
+      </EntityContextMenu>
       <span className="w-20 shrink-0">
         <ModuleStatusBadge status={m.status} />
       </span>
