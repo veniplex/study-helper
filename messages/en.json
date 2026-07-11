@@ -480,6 +480,23 @@
       "notMet": "Bonus not reached yet",
       "rulePercent": "+{value} percent points",
       "ruleSteps": "{value} grade steps better"
+    },
+    "programSettings": {
+      "title": "Program settings",
+      "back": "Back to overview",
+      "meta": "Details",
+      "gradeScale": "Grade scale",
+      "gradeScaleHint": "From which percentage each grade applies. Values in between round down.",
+      "minPercent": "From %",
+      "grade": "Grade",
+      "addRow": "Add row",
+      "reset": "German default scale",
+      "saved": "Saved.",
+      "name": "Name",
+      "degreeType": "Degree",
+      "institution": "Institution",
+      "targetEcts": "Target ECTS",
+      "gradingSystem": "Grading system"
     }
   },
   "calendar": {

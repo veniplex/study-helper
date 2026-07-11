@@ -18,13 +18,35 @@ import { ownModule, ownProgram, ownSemester } from "@/lib/studies/access"
 
 // ---- Degree programs -------------------------------------------------------
 
+const gradeScaleSchema = z
+  .array(
+    z.object({
+      minPercent: z.number().min(0).max(100),
+      grade: z.number().min(1).max(6),
+    })
+  )
+  .max(30)
+
 const programSchema = z.object({
   name: z.string().min(1).max(200),
   degreeType: z.string().max(50).optional().nullable(),
   institution: z.string().max(200).optional().nullable(),
   targetEcts: z.number().int().min(1).max(1000).optional().nullable(),
   gradingSystem: z.enum(["german", "points", "passfail"]).default("german"),
+  gradeScale: gradeScaleSchema.optional().nullable(),
 })
+
+export async function updateGradeScale(programId: string, input: unknown) {
+  const session = await requireSession()
+  await ownProgram(programId, session.user.id)
+  const scale = input == null ? null : gradeScaleSchema.parse(input)
+  // Store descending by minPercent for a stable, readable order.
+  const sorted = scale ? [...scale].sort((a, b) => b.minPercent - a.minPercent) : null
+  await db.update(degreeProgram).set({ gradeScale: sorted }).where(eq(degreeProgram.id, programId))
+  revalidatePath(`/studies/${programId}/settings`)
+  revalidatePath("/")
+  return { ok: true as const }
+}
 
 export async function createProgram(input: unknown) {
   const session = await requireSession()

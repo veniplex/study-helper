@@ -480,6 +480,23 @@
       "notMet": "Bonus noch nicht erreicht",
       "rulePercent": "+{value} Prozentpunkte",
       "ruleSteps": "{value} Notenschritte besser"
+    },
+    "programSettings": {
+      "title": "Studiengang-Einstellungen",
+      "back": "Zurück zur Übersicht",
+      "meta": "Stammdaten",
+      "gradeScale": "Notenmatrix",
+      "gradeScaleHint": "Ab welchem Prozentwert welche Note gilt. Zwischenwerte werden abgerundet.",
+      "minPercent": "Ab %",
+      "grade": "Note",
+      "addRow": "Zeile hinzufügen",
+      "reset": "Deutsche Standardmatrix",
+      "saved": "Gespeichert.",
+      "name": "Name",
+      "degreeType": "Abschluss",
+      "institution": "Hochschule",
+      "targetEcts": "Ziel-ECTS",
+      "gradingSystem": "Notensystem"
     }
   },
   "calendar": {
