@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import {
-  BookOpen,
   BrainCircuit,
   CalendarClock,
   ChevronRight,
@@ -26,12 +25,12 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Link, usePathname, useRouter } from "@/i18n/navigation"
 import { navItems } from "@/config/nav"
-import { setActiveContext } from "@/app/[locale]/(app)/context-actions"
 import { deleteModule, deleteSemester } from "@/app/[locale]/(app)/studies/actions"
 import { ModuleDialog } from "@/components/studies/module-dialog"
 import { SemesterDialog } from "@/components/studies/semester-dialog"
 import { ContextSwitcher } from "./context-switcher"
 import type { SemesterModule, SemesterNode, StudyContext } from "@/lib/studies/context"
+import { getModuleColorClasses, getModuleIcon, STATUS_DOT } from "@/lib/module-visuals"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -47,7 +46,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
-const OPEN_SEMESTER_KEY = "studyhelper.openSemester"
+/** Renders a module's chosen icon (stable, module-scope). */
+function ModuleGlyph({ iconKey, className }: { iconKey?: string | null; className?: string }) {
+  return React.createElement(getModuleIcon(iconKey), { className })
+}
 
 const moduleTabs: { key: string; segment: string; icon: LucideIcon }[] = [
   { key: "overview", segment: "", icon: LayoutList },
@@ -153,7 +155,18 @@ function SidebarModule({
           aria-expanded={open}
           className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-1.5 text-left text-sm font-medium"
         >
-          <BookOpen className="size-4 shrink-0" />
+          <span className="relative shrink-0">
+            <ModuleGlyph
+              iconKey={mod.icon}
+              className={cn("size-4", getModuleColorClasses(mod.color).text)}
+            />
+            <span
+              className={cn(
+                "border-sidebar absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full border",
+                STATUS_DOT[mod.status]
+              )}
+            />
+          </span>
           <span className="truncate">{mod.name}</span>
         </button>
         <DropdownMenu>
@@ -394,38 +407,15 @@ export function AppSidebar({ context, isAdmin }: { context: StudyContext; isAdmi
   const tContext = useTranslations("context")
   const tStudies = useTranslations("studies")
   const pathname = usePathname()
-  const router = useRouter()
+  // Default-open the semester that contains today's date (falls back to the
+  // active one). Pure accordion — no persisted "last opened" selection.
   const [openSemester, setOpenSemester] = React.useState<string | null>(
-    context.activeSemester?.id ?? null
+    context.currentSemesterId ?? context.activeSemester?.id ?? null
   )
   const [newSemesterOpen, setNewSemesterOpen] = React.useState(false)
 
-  // Restore the semester the user last had open (client-only).
-  React.useEffect(() => {
-    const saved = window.localStorage.getItem(OPEN_SEMESTER_KEY)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (saved) setOpenSemester(saved)
-  }, [])
-
-  function persistOpen(next: string | null) {
-    setOpenSemester(next)
-    if (next) window.localStorage.setItem(OPEN_SEMESTER_KEY, next)
-    else window.localStorage.removeItem(OPEN_SEMESTER_KEY)
-  }
-
-  function openAndActivate(semesterId: string) {
-    if (openSemester === semesterId) {
-      persistOpen(null)
-      return
-    }
-    persistOpen(semesterId)
-    if (context.activeProgram && semesterId !== context.activeSemester?.id) {
-      setActiveContext({ programId: context.activeProgram.id, semesterId })
-        .then(() => router.refresh())
-        .catch((error: unknown) =>
-          toast.error(error instanceof Error ? error.message : String(error))
-        )
-    }
+  function toggleSemester(semesterId: string) {
+    setOpenSemester((cur) => (cur === semesterId ? null : semesterId))
   }
 
   const topItems = navItems.filter((item) => item.key !== "ai")
@@ -477,8 +467,8 @@ export function AppSidebar({ context, isAdmin }: { context: StudyContext; isAdmi
                 semester={sem}
                 programId={context.activeProgram!.id}
                 open={openSemester === sem.id}
-                active={context.activeSemester?.id === sem.id}
-                onOpen={() => openAndActivate(sem.id)}
+                active={context.currentSemesterId === sem.id}
+                onOpen={() => toggleSemester(sem.id)}
               />
             ))}
             {context.tree.length === 0 && (

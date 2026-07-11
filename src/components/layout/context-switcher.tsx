@@ -22,10 +22,12 @@ export function ContextSwitcher({ context }: { context: StudyContext }) {
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
 
-  async function change(programId: string, semesterId: string | null) {
+  const active = context.programs.find((p) => p.id === context.activeProgram?.id)
+
+  async function change(programId: string) {
     setPending(true)
     try {
-      await setActiveContext({ programId, semesterId })
+      await setActiveContext({ programId })
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
@@ -56,11 +58,20 @@ export function ContextSwitcher({ context }: { context: StudyContext }) {
     <div className="flex items-center gap-1 border-b p-3">
       <Select
         value={context.activeProgram?.id ?? ""}
-        onValueChange={(v) => v && change(v, null)}
+        onValueChange={(v) => v && change(v)}
         disabled={pending}
       >
-        <SelectTrigger className="h-8 w-full text-xs" aria-label={t("program")}>
-          <SelectValue>{context.activeProgram?.name ?? t("program")}</SelectValue>
+        <SelectTrigger className="h-auto w-full py-1.5 text-xs" aria-label={t("program")}>
+          <SelectValue>
+            <span className="flex min-w-0 flex-col text-left">
+              <span className="truncate font-medium">{active?.name ?? t("program")}</span>
+              {active && (active.degreeType || active.institution) && (
+                <span className="text-muted-foreground truncate text-[11px]">
+                  {[active.degreeType, active.institution].filter(Boolean).join(" · ")}
+                </span>
+              )}
+            </span>
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {context.programs.map((p) => (

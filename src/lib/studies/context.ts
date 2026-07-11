@@ -12,6 +12,15 @@ export type SemesterModule = {
   examType: string | null
   status: "planned" | "active" | "passed" | "failed"
   notes: string | null
+  icon: string | null
+  color: string | null
+  maxAttempts: number
+  passFail: boolean
+  bonusType: "none" | "percent_points" | "grade_steps"
+  bonusValue: string | null
+  bonusMinAvgPercent: string | null
+  bonusMinCompletedShare: string | null
+  assessmentType: "exam" | "term_paper" | "oral_presentation" | "oral_exam" | "project" | "other"
 }
 
 export type SemesterNode = {
@@ -37,6 +46,8 @@ export type StudyContext = {
   activeProgram: { id: string; name: string } | null
   semesters: { id: string; name: string }[]
   activeSemester: { id: string; name: string } | null
+  /** Semester whose date range contains today, if any (sidebar default-open). */
+  currentSemesterId: string | null
   modules: { id: string; name: string; code: string | null }[]
   /** Full semester → modules/theses tree of the active program (sidebar). */
   tree: SemesterNode[]
@@ -68,7 +79,16 @@ export async function getStudyContext(userId: string): Promise<StudyContext> {
                 examType: true,
                 status: true,
                 notes: true,
+                icon: true,
+                color: true,
+                maxAttempts: true,
+                passFail: true,
+                bonusType: true,
+                bonusValue: true,
+                bonusMinAvgPercent: true,
+                bonusMinCompletedShare: true,
               },
+              with: { assessment: { columns: { type: true } } },
             },
           },
         },
@@ -83,10 +103,13 @@ export async function getStudyContext(userId: string): Promise<StudyContext> {
   const activeProgram =
     programs.find((p) => p.id === prefs?.activeProgramId) ?? programs[0] ?? null
   const semesters = activeProgram?.semesters ?? []
-  const activeSemester =
-    semesters.find((s) => s.id === prefs?.activeSemesterId) ??
-    semesters[semesters.length - 1] ??
+  // The "active" semester is derived from today's date (the one whose range
+  // contains today), falling back to the most recent — no stored selection.
+  const today = new Date().toISOString().slice(0, 10)
+  const currentSemester =
+    semesters.find((s) => s.startDate && s.endDate && s.startDate <= today && today <= s.endDate) ??
     null
+  const activeSemester = currentSemester ?? semesters[semesters.length - 1] ?? null
 
   return {
     programs: programs.map((p) => ({
@@ -100,13 +123,32 @@ export async function getStudyContext(userId: string): Promise<StudyContext> {
     activeProgram: activeProgram ? { id: activeProgram.id, name: activeProgram.name } : null,
     semesters: semesters.map((s) => ({ id: s.id, name: s.name })),
     activeSemester: activeSemester ? { id: activeSemester.id, name: activeSemester.name } : null,
+    currentSemesterId: currentSemester?.id ?? null,
     modules: activeSemester?.modules ?? [],
     tree: (activeProgram?.semesters ?? []).map((s) => ({
       id: s.id,
       name: s.name,
       startDate: s.startDate,
       endDate: s.endDate,
-      modules: s.modules,
+      modules: s.modules.map((m) => ({
+        id: m.id,
+        name: m.name,
+        code: m.code,
+        ects: m.ects,
+        instructor: m.instructor,
+        examType: m.examType,
+        status: m.status,
+        notes: m.notes,
+        icon: m.icon,
+        color: m.color,
+        maxAttempts: m.maxAttempts,
+        passFail: m.passFail,
+        bonusType: m.bonusType,
+        bonusValue: m.bonusValue,
+        bonusMinAvgPercent: m.bonusMinAvgPercent,
+        bonusMinCompletedShare: m.bonusMinCompletedShare,
+        assessmentType: m.assessment?.type ?? "exam",
+      })),
       theses: theses
         .filter((t) => t.semesterId === s.id)
         .map((t) => ({ id: t.id, title: t.title })),
