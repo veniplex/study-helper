@@ -12,6 +12,7 @@ import { reviewCard } from "@/app/[locale]/(app)/deck-actions"
 import { logStudySession } from "@/app/[locale]/(app)/learn-actions"
 import { enqueue, isNetworkError } from "@/lib/offline/outbox"
 import type { ReviewRating } from "@/lib/learning/fsrs"
+import { cn } from "@/lib/utils"
 
 export type StudyCard = { id: string; front: string; back: string }
 
@@ -86,6 +87,18 @@ export function StudySession({
     }
   }
 
+  if (!current && reviewed === 0) {
+    return (
+      <div className="mx-auto flex min-h-[40vh] max-w-md flex-col items-center justify-center gap-4 text-center">
+        <PartyPopper className="text-muted-foreground size-8" />
+        <p className="font-medium">{t("noDue")}</p>
+        <Button variant="outline" nativeButton={false} render={<Link href={backHref} />}>
+          ←
+        </Button>
+      </div>
+    )
+  }
+
   if (!current) {
     const minutes = resultMinutes
     return (
@@ -122,17 +135,35 @@ export function StudySession({
       <p className="text-muted-foreground text-center text-xs">
         {t("remaining", { count: queue.length })}
       </p>
-      <Card className="min-h-56">
-        <CardContent className="flex flex-col justify-center gap-4 py-8 text-center">
-          <p className="text-lg font-medium whitespace-pre-wrap">{current.front}</p>
-          {revealed && (
-            <>
-              <hr className="border-border" />
-              <p className="text-base whitespace-pre-wrap">{current.back}</p>
-            </>
+      {/* key on the card id → the flip resets instantly for the next card */}
+      <div key={current.id} className="[perspective:1200px]">
+        <button
+          type="button"
+          onClick={() => !revealed && setRevealed(true)}
+          className={cn(
+            "relative block min-h-56 w-full text-left transition-transform duration-500 [transform-style:preserve-3d]",
+            revealed && "[transform:rotateY(180deg)]"
           )}
-        </CardContent>
-      </Card>
+          aria-label={t("showAnswer")}
+        >
+          <Card className="min-h-56 [backface-visibility:hidden]">
+            <CardContent className="flex min-h-56 flex-col items-center justify-center gap-2 py-8 text-center">
+              <span className="text-muted-foreground text-xs uppercase tracking-wide">
+                {t("front")}
+              </span>
+              <p className="text-lg font-medium whitespace-pre-wrap">{current.front}</p>
+            </CardContent>
+          </Card>
+          <Card className="absolute inset-0 min-h-56 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+            <CardContent className="flex min-h-56 flex-col items-center justify-center gap-2 py-8 text-center">
+              <span className="text-muted-foreground text-xs uppercase tracking-wide">
+                {t("back")}
+              </span>
+              <p className="text-base whitespace-pre-wrap">{current.back}</p>
+            </CardContent>
+          </Card>
+        </button>
+      </div>
 
       {!revealed ? (
         <Button className="w-full" onClick={() => setRevealed(true)}>

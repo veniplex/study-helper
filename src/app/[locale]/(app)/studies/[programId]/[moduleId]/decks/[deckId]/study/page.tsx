@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation"
 import { and, asc, desc, eq, gt, lte, sql } from "drizzle-orm"
-import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { deck, flashcard } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
@@ -18,7 +17,6 @@ export default async function ModuleStudyPage({
   const { programId, moduleId, deckId } = await params
   const { mode: rawMode, count: rawCount } = await searchParams
   const session = await requireSession()
-  const t = await getTranslations("learn.decks")
 
   const mode: StudyMode = ["due", "order", "random", "wrong", "least"].includes(rawMode ?? "")
     ? (rawMode as StudyMode)
@@ -66,10 +64,8 @@ export default async function ModuleStudyPage({
     }
   })()
 
-  if (cards.length === 0) {
-    return <p className="text-muted-foreground py-12 text-center text-sm">{t("noDue")}</p>
-  }
-
+  // Always render StudySession — the empty state lives inside it so that the
+  // completion screen survives the path revalidation triggered by reviewCard.
   return (
     <StudySession
       backHref={`/studies/${programId}/${moduleId}/decks/${deckId}`}
