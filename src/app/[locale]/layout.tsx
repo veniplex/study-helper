@@ -4,6 +4,7 @@ import { notFound } from "next/navigation"
 import { NextIntlClientProvider, hasLocale } from "next-intl"
 import { setRequestLocale } from "next-intl/server"
 import { routing } from "@/i18n/routing"
+import { getAppName } from "@/lib/settings"
 import { Providers } from "@/components/providers"
 import "../globals.css"
 
@@ -17,12 +18,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 })
 
-export const metadata: Metadata = {
-  title: {
-    default: "StudyHelper",
-    template: "%s · StudyHelper",
-  },
-  description: "Open-source study companion: plan, learn and review with AI support.",
+export async function generateMetadata(): Promise<Metadata> {
+  const appName = await getAppName()
+  return {
+    title: {
+      default: appName,
+      template: `%s · ${appName}`,
+    },
+    description: "Open-source study companion: plan, learn and review with AI support.",
+  }
 }
 
 // The whole app is session- and database-backed — never prerender at build time.

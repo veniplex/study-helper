@@ -153,3 +153,9 @@ export async function setSetting<K extends SettingKey>(
 export async function deleteSetting(key: SettingKey): Promise<void> {
   await db.delete(appConfig).where(eq(appConfig.key, key))
 }
+
+/** The configured app name (branding), falling back to "StudyHelper". */
+export async function getAppName(): Promise<string> {
+  const branding = await getSetting("branding")
+  return branding?.appName || "StudyHelper"
+}

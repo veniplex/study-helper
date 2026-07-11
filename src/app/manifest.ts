@@ -1,9 +1,11 @@
 import type { MetadataRoute } from "next"
+import { getAppName } from "@/lib/settings"
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const appName = await getAppName()
   return {
-    name: "StudyHelper",
-    short_name: "StudyHelper",
+    name: appName,
+    short_name: appName,
     description: "Open-source study companion: plan, learn and review with AI support.",
     start_url: "/",
     display: "standalone",

@@ -358,13 +358,14 @@ export function AppSidebar({
   context,
   isAdmin,
   aiAvailable,
+  appName,
 }: {
   context: StudyContext
   isAdmin: boolean
   aiAvailable: boolean
+  appName: string
 }) {
   const t = useTranslations("nav")
-  const tApp = useTranslations("app")
   const tContext = useTranslations("context")
   const tStudies = useTranslations("studies")
   const pathname = usePathname()
@@ -387,7 +388,7 @@ export function AppSidebar({
         <div className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
           <GraduationCap className="size-4.5" />
         </div>
-        <span className="font-heading text-base font-semibold tracking-tight">{tApp("name")}</span>
+        <span className="font-heading text-base font-semibold tracking-tight">{appName}</span>
       </div>
 
       <ContextSwitcher context={context} />

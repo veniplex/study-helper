@@ -1,5 +1,6 @@
 import { requireSession } from "@/lib/auth/session"
 import { listAvailableModels, resolveModelForUser } from "@/lib/ai/registry"
+import { getAppName } from "@/lib/settings"
 import { getStudyContext } from "@/lib/studies/context"
 import { ChatDock } from "@/components/ai/chat-dock"
 import { PageContextProvider } from "@/components/ai/page-context"
@@ -9,10 +10,11 @@ import { BottomNav } from "@/components/layout/bottom-nav"
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession()
-  const [context, { models }, initialModel] = await Promise.all([
+  const [context, { models }, initialModel, appName] = await Promise.all([
     getStudyContext(session.user.id),
     listAvailableModels(),
     resolveModelForUser(session.user.id),
+    getAppName(),
   ])
   const aiAvailable = models.length > 0
   const user = {
@@ -30,7 +32,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <PageContextProvider>
       <div className="flex min-h-dvh flex-col">
-        <AppSidebar context={context} isAdmin={user.isAdmin} aiAvailable={aiAvailable} />
+        <AppSidebar
+          context={context}
+          isAdmin={user.isAdmin}
+          aiAvailable={aiAvailable}
+          appName={appName}
+        />
         <div className="flex flex-1 flex-col pb-16 md:pb-0 md:pl-60">
           <AppHeader user={user} modules={allModules} />
           <main className="flex-1 p-4 md:p-6">{children}</main>

@@ -12,6 +12,7 @@ import {
 } from "@/db/schema"
 import { sendEmail } from "@/lib/email"
 import { sendPushToUser } from "@/lib/push"
+import { getAppName } from "@/lib/settings"
 import { env } from "@/lib/env"
 
 /** Resolves the category × channel matrix, falling back to the legacy booleans. */
@@ -137,11 +138,12 @@ export async function sendDailyPlanReminders(): Promise<void> {
     byUser.set(item.plan.userId, (byUser.get(item.plan.userId) ?? 0) + 1)
   }
 
+  const appName = await getAppName()
   for (const [userId, count] of byUser) {
     if (!(await claimNotification(userId, `dailyplan:${today}`))) continue
     const channels = await getChannels(userId)
     await notify(userId, channels.dailyPlan, {
-      title: `📚 StudyHelper`,
+      title: `📚 ${appName}`,
       body: `Heute stehen ${count} Lerneinheiten in deinem Lernplan.`,
       url: "/",
     })
