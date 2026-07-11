@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { saveSmtp, sendTestEmail } from "@/app/[locale]/(admin)/admin/actions"
+import { saveSmtp, sendTestEmail } from "@/app/[locale]/(app)/admin/actions"
 
 type Smtp = {
   host: string

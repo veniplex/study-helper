@@ -5,7 +5,7 @@ import { Copy, Loader2, Plus } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
-import { createInvite, deleteInvite } from "@/app/[locale]/(admin)/admin/actions"
+import { createInvite, deleteInvite } from "@/app/[locale]/(app)/admin/actions"
 import { DeleteButton } from "@/components/studies/delete-button"
 import { Button } from "@/components/ui/button"
 import {

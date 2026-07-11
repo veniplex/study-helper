@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { saveAiSettings } from "@/app/[locale]/(admin)/admin/actions"
+import { saveAiSettings } from "@/app/[locale]/(app)/admin/actions"
 import type { AiSettings } from "@/lib/settings"
 
 const PROVIDER_TYPES = [

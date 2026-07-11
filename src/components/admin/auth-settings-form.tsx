@@ -28,7 +28,7 @@ import {
   saveOidcProviders,
   saveRegistrationMode,
   saveSocialProviders,
-} from "@/app/[locale]/(admin)/admin/actions"
+} from "@/app/[locale]/(app)/admin/actions"
 
 type OidcProvider = {
   providerId: string

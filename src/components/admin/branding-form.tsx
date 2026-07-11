@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { saveBranding, saveUploads } from "@/app/[locale]/(admin)/admin/actions"
+import { saveBranding, saveUploads } from "@/app/[locale]/(app)/admin/actions"
 
 export function BrandingForm({
   initial,
