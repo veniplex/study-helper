@@ -562,7 +562,16 @@
     "viewCalendar": "Open calendar",
     "viewStudies": "Open studies",
     "general": "General",
-    "generalEmpty": "No module-independent tasks, goals, or plans."
+    "generalEmpty": "No module-independent tasks, goals, or plans.",
+    "miniCalendar": {
+      "title": "Events",
+      "allDay": "All day",
+      "noEvents": "No events on this day.",
+      "openCalendar": "Open calendar"
+    },
+    "semesterOverview": "Semester overview",
+    "programSettings": "Settings",
+    "currentSemester": "Current"
   },
   "stats": {
     "title": "Learning activity",
@@ -573,7 +582,15 @@
     "activities": "{count} activities",
     "dueCards": "Due cards",
     "lastQuizScore": "Last quiz",
-    "studyTime": "Study time"
+    "studyTime": "Study time",
+    "dueTodayLabel": "Due today",
+    "avgQuizLabel": "Avg quiz (30d)",
+    "monthTimeLabel": "Study time (30d)",
+    "sessionsLabel": "Sessions (7d)",
+    "topModuleLabel": "Top module",
+    "streakLabel": "Streak",
+    "weekTimeLabel": "This week",
+    "none": "—"
   },
   "pomodoro": {
     "title": "Pomodoro timer",

@@ -1,7 +1,7 @@
 import "server-only"
 import { and, desc, eq, gte, inArray, isNotNull } from "drizzle-orm"
 import { db } from "@/db"
-import { deck, flashcard, quiz, quizAttempt, reviewLog, studySession } from "@/db/schema"
+import { deck, flashcard, quiz, quizAttempt, reviewLog, studyModule, studySession } from "@/db/schema"
 import {
   buildHeatmap,
   computeStreak,
@@ -12,19 +12,37 @@ import {
   type HeatmapCell,
 } from "./stats"
 
+export type TopModule = {
+  id: string
+  name: string
+  icon: string | null
+  color: string | null
+  minutes: number
+}
+
 export type DashboardStats = {
   streak: number
   weekMinutes: number
   heatmap: HeatmapCell[]
+  dueToday: number
+  avgQuizScore30d: number | null
+  monthMinutes: number
+  weekSessions: number
+  topModule: TopModule | null
 }
 
 const HEATMAP_WEEKS = 26
 
 export async function getDashboardStats(userId: string): Promise<DashboardStats> {
+  const now = new Date()
   const since = new Date()
   since.setDate(since.getDate() - HEATMAP_WEEKS * 7)
+  const since30 = new Date(now)
+  since30.setDate(since30.getDate() - 30)
+  const since7 = new Date(now)
+  since7.setDate(since7.getDate() - 7)
 
-  const [reviews, attempts, sessions] = await Promise.all([
+  const [reviews, attempts, sessions, userDecks, attempts30] = await Promise.all([
     db.query.reviewLog.findMany({
       where: and(eq(reviewLog.userId, userId), gte(reviewLog.reviewedAt, since)),
       columns: { reviewedAt: true },
@@ -39,7 +57,19 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
     }),
     db.query.studySession.findMany({
       where: and(eq(studySession.userId, userId), gte(studySession.startedAt, since)),
-      columns: { startedAt: true, durationMinutes: true },
+      columns: { startedAt: true, durationMinutes: true, moduleId: true },
+    }),
+    db.query.deck.findMany({
+      where: eq(deck.userId, userId),
+      columns: { id: true },
+    }),
+    db.query.quizAttempt.findMany({
+      where: and(
+        eq(quizAttempt.userId, userId),
+        isNotNull(quizAttempt.finishedAt),
+        gte(quizAttempt.startedAt, since30)
+      ),
+      columns: { score: true },
     }),
   ])
 
@@ -50,10 +80,53 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
   )
   const today = toDayKey(new Date())
 
+  // Due flashcards today (across all of the user's decks).
+  const deckIds = userDecks.map((d) => d.id)
+  const dueCards = deckIds.length
+    ? await db.query.flashcard.findMany({
+        where: inArray(flashcard.deckId, deckIds),
+        columns: { due: true },
+      })
+    : []
+  const dueToday = dueCards.filter((c) => c.due <= now).length
+
+  // Average quiz score (last 30 days).
+  const scores = attempts30.map((a) => Number(a.score ?? 0))
+  const avgQuizScore30d = scores.length
+    ? Math.round(scores.reduce((s, v) => s + v, 0) / scores.length)
+    : null
+
+  // Study minutes and sessions in the recent windows.
+  const monthMinutes = sessions
+    .filter((s) => s.startedAt >= since30)
+    .reduce((sum, s) => sum + s.durationMinutes, 0)
+  const weekSessions = sessions.filter((s) => s.startedAt >= since7).length
+
+  // Top module by study minutes (last 30 days).
+  const byModule = new Map<string, number>()
+  for (const s of sessions) {
+    if (!s.moduleId || s.startedAt < since30) continue
+    byModule.set(s.moduleId, (byModule.get(s.moduleId) ?? 0) + s.durationMinutes)
+  }
+  let topModule: TopModule | null = null
+  if (byModule.size > 0) {
+    const [topId, minutes] = [...byModule.entries()].sort((a, b) => b[1] - a[1])[0]
+    const mod = await db.query.studyModule.findFirst({
+      where: eq(studyModule.id, topId),
+      columns: { id: true, name: true, icon: true, color: true },
+    })
+    if (mod) topModule = { ...mod, minutes }
+  }
+
   return {
     streak: computeStreak(counts.keys(), today),
     weekMinutes: minutesLast7Days(sessions, today),
     heatmap: buildHeatmap(counts, today, HEATMAP_WEEKS),
+    dueToday,
+    avgQuizScore30d,
+    monthMinutes,
+    weekSessions,
+    topModule,
   }
 }
 
