@@ -323,7 +323,14 @@ export function ModuleDialog({
               {tDialog("passFail")}
             </label>
             <label className="flex items-center gap-2 text-sm">
-              <Switch checked={isThesis} onCheckedChange={setIsThesis} />
+              <Switch
+                checked={isThesis}
+                onCheckedChange={(on) => {
+                  setIsThesis(on)
+                  // Convenience: a fresh thesis is a written paper, not an exam.
+                  if (on && assessmentType === "exam") setAssessmentType("term_paper")
+                }}
+              />
               {tDialog("isThesis")}
             </label>
           </div>

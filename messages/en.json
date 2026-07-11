@@ -1009,7 +1009,8 @@
     "assignments": "Assignments",
     "decks": "Flashcards",
     "quizzes": "Quizzes",
-    "chat": "Chat"
+    "chat": "Chat",
+    "thesisPlanner": "Thesis planner"
   },
   "offline": {
     "synced": "{count} offline changes synced."

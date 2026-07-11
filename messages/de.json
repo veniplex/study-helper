@@ -1009,7 +1009,8 @@
     "assignments": "Abgaben",
     "decks": "Karteikarten",
     "quizzes": "Quizze",
-    "chat": "Chat"
+    "chat": "Chat",
+    "thesisPlanner": "Thesis-Planer"
   },
   "offline": {
     "synced": "{count} Offline-Änderungen synchronisiert."

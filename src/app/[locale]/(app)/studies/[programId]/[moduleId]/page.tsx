@@ -123,7 +123,7 @@ export default async function ModuleOverviewPage({
       {finalGrade && (
         <ModuleAssessmentCard
           moduleId={mod.id}
-          assessmentType={mod.assessment?.type ?? "exam"}
+          assessmentType={mod.assessment?.type ?? (mod.isThesis ? "term_paper" : "exam")}
           maxAttempts={mod.maxAttempts}
           passFail={mod.passFail}
           gradingSystem={gradingSystem}

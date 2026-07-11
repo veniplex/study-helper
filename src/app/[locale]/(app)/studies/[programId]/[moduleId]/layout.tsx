@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { studyModule } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
+import { isAiAvailable } from "@/lib/ai/registry"
 import { formatGrade, moduleGrade } from "@/lib/grades"
 import { PageContextSetter } from "@/components/ai/page-context"
 import { ModuleTabs } from "@/components/studies/module-tabs"
@@ -48,6 +49,7 @@ export default async function ModuleWorkspaceLayout({
     failed: t("module.statusFailed"),
   } as const
   const grade = moduleGrade(mod.grades)
+  const aiAvailable = await isAiAvailable()
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-4">
@@ -82,7 +84,11 @@ export default async function ModuleWorkspaceLayout({
           )}
         </div>
       </div>
-      <ModuleTabs basePath={`/studies/${programId}/${moduleId}`} />
+      <ModuleTabs
+        basePath={`/studies/${programId}/${moduleId}`}
+        aiAvailable={aiAvailable}
+        isThesis={mod.isThesis}
+      />
       {children}
     </div>
   )
