@@ -1,10 +1,13 @@
-import { date, index, numeric, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core"
+import { boolean, date, index, numeric, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { user } from "./auth"
 import { studyModule } from "./studies"
 import { material } from "./materials"
 
 export type AssignmentStatus = "open" | "submitted" | "graded"
+
+/** graded = counts toward module bonus; practice = self-assessment only. */
+export type AssignmentKind = "graded" | "practice"
 
 /** Graded coursework (Abgaben) per module — bonus-point sheets, homework
  * hand-ins etc. Not user-created study content. */
@@ -24,6 +27,8 @@ export const assignment = pgTable(
     description: text("description"),
     dueDate: date("due_date"),
     status: text("status").$type<AssignmentStatus>().notNull().default("open"),
+    kind: text("kind").$type<AssignmentKind>().notNull().default("graded"),
+    aiGenerated: boolean("ai_generated").notNull().default(false),
     pointsAchieved: numeric("points_achieved", { precision: 7, scale: 2 }),
     pointsMax: numeric("points_max", { precision: 7, scale: 2 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

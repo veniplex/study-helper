@@ -1,7 +1,7 @@
-import { boolean, date, index, pgTable, text, timestamp } from "drizzle-orm/pg-core"
-import { relations } from "drizzle-orm"
+import { boolean, date, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core"
+import { relations, sql } from "drizzle-orm"
 import { user } from "./auth"
-import { semester } from "./studies"
+import { degreeProgram, semester } from "./studies"
 
 export type ThesisPhase = "topic" | "exposé" | "research" | "writing" | "revision" | "submitted"
 
@@ -14,6 +14,7 @@ export const thesisProject = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    programId: text("program_id").references(() => degreeProgram.id, { onDelete: "cascade" }),
     semesterId: text("semester_id").references(() => semester.id, { onDelete: "set null" }),
     title: text("title").notNull(),
     thesisType: text("thesis_type"), // Bachelor, Master, ...
@@ -22,13 +23,23 @@ export const thesisProject = pgTable(
     outline: text("outline"),
     notes: text("notes"),
     dueDate: date("due_date"),
+    /** Attempt number; a failed attempt is superseded by a new one. */
+    attempt: integer("attempt").notNull().default(1),
+    /** Points to the successor thesis row when this attempt was superseded. */
+    supersededById: text("superseded_by_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
-  (t) => [index("thesis_project_userId_idx").on(t.userId)]
+  (t) => [
+    index("thesis_project_userId_idx").on(t.userId),
+    // At most one live (non-superseded) thesis per user + program.
+    uniqueIndex("thesis_active_per_program_uq")
+      .on(t.userId, t.programId)
+      .where(sql`${t.supersededById} is null and ${t.programId} is not null`),
+  ]
 )
 
 export const thesisMilestone = pgTable(

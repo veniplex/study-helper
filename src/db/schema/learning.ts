@@ -120,6 +120,7 @@ export const deck = pgTable(
     moduleId: text("module_id").references(() => studyModule.id, { onDelete: "set null" }),
     name: text("name").notNull(),
     description: text("description"),
+    aiGenerated: boolean("ai_generated").notNull().default(false),
     ...timestamps,
   },
   (t) => [index("deck_userId_idx").on(t.userId)]
@@ -183,6 +184,7 @@ export const quiz = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     moduleId: text("module_id").references(() => studyModule.id, { onDelete: "set null" }),
     title: text("title").notNull(),
+    description: text("description"),
     aiGenerated: boolean("ai_generated").notNull().default(false),
     ...timestamps,
   },
