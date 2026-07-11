@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation"
+import { count } from "drizzle-orm"
 import { getTranslations } from "next-intl/server"
+import { db } from "@/db"
+import { user } from "@/db/schema"
 import { getSession } from "@/lib/auth/session"
 import { getSetting } from "@/lib/settings"
 import { getSsoOptions } from "@/lib/auth/sso-options"
@@ -30,12 +33,16 @@ export default async function RegisterPage({
     )
   }
 
-  const sso = await getSsoOptions()
+  const [sso, [{ value: userCount }]] = await Promise.all([
+    getSsoOptions(),
+    db.select({ value: count() }).from(user),
+  ])
   return (
     <RegisterForm
       sso={sso}
       inviteMode={registrationMode === "invite"}
       inviteToken={invite}
+      isFirstAccount={userCount === 0}
     />
   )
 }

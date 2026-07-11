@@ -67,7 +67,14 @@
       "inviteToken": "Invite code",
       "login": "Sign in",
       "error": "Registration failed.",
-      "closed": "Registration is currently closed. Please contact the administrator."
+      "closed": "Registration is currently closed. Please contact the administrator.",
+      "passwordConfirm": "Confirm password",
+      "passwordMismatch": "Passwords do not match.",
+      "firstAccountHint": "This is the first account and automatically becomes the administrator. Afterwards you can configure an AI provider and other settings under Admin.",
+      "strength_0": "too short",
+      "strength_1": "weak",
+      "strength_2": "medium",
+      "strength_3": "strong"
     },
     "twoFactor": {
       "title": "Two-factor authentication",

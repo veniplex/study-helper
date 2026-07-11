@@ -67,7 +67,14 @@
       "inviteToken": "Einladungscode",
       "login": "Anmelden",
       "error": "Registrierung fehlgeschlagen.",
-      "closed": "Die Registrierung ist derzeit geschlossen. Wende dich an den Administrator."
+      "closed": "Die Registrierung ist derzeit geschlossen. Wende dich an den Administrator.",
+      "passwordConfirm": "Passwort bestätigen",
+      "passwordMismatch": "Passwörter stimmen nicht überein.",
+      "firstAccountHint": "Dies ist das erste Konto und wird automatisch Administrator. Danach kannst du unter Admin einen KI-Anbieter und weitere Einstellungen konfigurieren.",
+      "strength_0": "zu kurz",
+      "strength_1": "schwach",
+      "strength_2": "mittel",
+      "strength_3": "stark"
     },
     "twoFactor": {
       "title": "Zwei-Faktor-Authentifizierung",
