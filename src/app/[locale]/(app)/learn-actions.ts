@@ -38,7 +38,7 @@ export async function createPlan(input: unknown) {
       moduleId: data.moduleId || null,
     })
     .returning({ id: studyPlan.id })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const, id: created.id }
 }
 
@@ -50,7 +50,7 @@ export async function updatePlan(planId: string, input: unknown) {
     .update(studyPlan)
     .set({ title: data.title, description: data.description ?? null })
     .where(and(eq(studyPlan.id, planId), eq(studyPlan.userId, session.user.id)))
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -59,7 +59,7 @@ export async function deletePlan(planId: string) {
   await db
     .delete(studyPlan)
     .where(and(eq(studyPlan.id, planId), eq(studyPlan.userId, session.user.id)))
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -89,7 +89,7 @@ export async function addPlanItem(planId: string, input: unknown) {
     scheduledDate: data.scheduledDate ?? null,
     durationMinutes: data.durationMinutes ?? null,
   })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -101,7 +101,7 @@ export async function togglePlanItem(itemId: string, done: boolean) {
   })
   if (!item || item.plan.userId !== session.user.id) throw new Error("Not found")
   await db.update(studyPlanItem).set({ done }).where(eq(studyPlanItem.id, itemId))
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -122,7 +122,7 @@ export async function updatePlanItem(itemId: string, input: unknown) {
       durationMinutes: data.durationMinutes ?? null,
     })
     .where(eq(studyPlanItem.id, itemId))
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -134,7 +134,7 @@ export async function deletePlanItem(itemId: string) {
   })
   if (!item || item.plan.userId !== session.user.id) throw new Error("Not found")
   await db.delete(studyPlanItem).where(eq(studyPlanItem.id, itemId))
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -267,7 +267,7 @@ Create study sessions distributed between today and the exam date (include buffe
     )
   }
 
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const, id: created.id }
 }
 

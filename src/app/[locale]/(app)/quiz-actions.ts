@@ -50,7 +50,7 @@ export async function createQuiz(input: unknown) {
     entityLabel: data.title,
     after: created,
   })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const, id: created.id }
 }
 
@@ -71,7 +71,7 @@ export async function updateQuiz(quizId: string, input: unknown) {
     before,
     after: { ...before, title: data.title, description: data.description ?? null },
   })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -87,7 +87,7 @@ export async function deleteQuiz(quizId: string) {
     entityLabel: row.title,
     before: row,
   })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -131,7 +131,7 @@ export async function addQuestion(quizId: string, input: unknown) {
     entityLabel: data.prompt.slice(0, 80),
     after: created,
   })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -165,7 +165,7 @@ export async function updateQuestion(questionId: string, input: unknown) {
     before: questionRow,
     after: { ...questionRow, ...data },
   })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -186,7 +186,7 @@ export async function deleteQuestion(questionId: string) {
     entityLabel: row.prompt.slice(0, 80),
     before: questionRow,
   })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -278,7 +278,7 @@ Each question gets a short explanation of the correct answer. Write in the same 
     )
   }
 
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const, id: created.id }
 }
 
@@ -413,7 +413,7 @@ Judge leniently on wording but strictly on content. Reply with correct=true/fals
     kind: "quiz",
   })
 
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { score, results }
 }
 

@@ -41,7 +41,7 @@ export async function createDeck(input: unknown) {
     entityLabel: data.name,
     after: created,
   })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const, id: created.id }
 }
 
@@ -62,7 +62,7 @@ export async function updateDeck(deckId: string, input: unknown) {
     before,
     after: { ...before, ...data },
   })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -78,7 +78,7 @@ export async function deleteDeck(deckId: string) {
     entityLabel: row.name,
     before: row,
   })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -111,7 +111,7 @@ export async function addCard(deckId: string, input: unknown) {
     entityLabel: data.front.slice(0, 80),
     after: created,
   })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -139,7 +139,7 @@ export async function updateCard(cardId: string, input: unknown) {
     before: cardRow,
     after: { ...cardRow, ...data },
   })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -160,7 +160,7 @@ export async function deleteCard(cardId: string) {
     entityLabel: card.front.slice(0, 80),
     before: cardRow,
   })
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const }
 }
 
@@ -245,6 +245,6 @@ Write in the same language as the topic.${context}`,
       cards.map((c) => ({ deckId: data.deckId, front: c.front, back: c.back }))
     )
   }
-  revalidatePath("/", "layout")
+  revalidatePath("/")
   return { ok: true as const, count: cards.length }
 }
