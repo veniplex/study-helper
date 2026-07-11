@@ -168,6 +168,26 @@ export async function toggleMilestone(milestoneId: string, done: boolean) {
   return { ok: true as const }
 }
 
+export async function updateMilestone(milestoneId: string, input: unknown) {
+  const session = await requireSession()
+  const row = await db.query.thesisMilestone.findFirst({
+    where: eq(thesisMilestone.id, milestoneId),
+    with: { thesis: true },
+  })
+  if (!row || row.thesis.userId !== session.user.id) throw new Error("Not found")
+  const data = milestoneSchema.parse(input)
+  await db
+    .update(thesisMilestone)
+    .set({
+      title: data.title,
+      description: data.description ?? null,
+      dueDate: data.dueDate ?? null,
+    })
+    .where(eq(thesisMilestone.id, milestoneId))
+  revalidatePath("/thesis")
+  return { ok: true as const }
+}
+
 export async function deleteMilestone(milestoneId: string) {
   const session = await requireSession()
   const row = await db.query.thesisMilestone.findFirst({

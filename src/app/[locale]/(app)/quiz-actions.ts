@@ -54,6 +54,27 @@ export async function createQuiz(input: unknown) {
   return { ok: true as const, id: created.id }
 }
 
+export async function updateQuiz(quizId: string, input: unknown) {
+  const session = await requireSession()
+  const before = await ownQuiz(quizId, session.user.id)
+  const data = quizSchema.pick({ title: true, description: true }).parse(input)
+  await db
+    .update(quiz)
+    .set({ title: data.title, description: data.description || null })
+    .where(eq(quiz.id, quizId))
+  await logAudit({
+    userId: session.user.id,
+    operation: "update",
+    entityType: "quiz",
+    entityId: quizId,
+    entityLabel: data.title,
+    before,
+    after: { ...before, title: data.title, description: data.description ?? null },
+  })
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
 export async function deleteQuiz(quizId: string) {
   const session = await requireSession()
   const row = await ownQuiz(quizId, session.user.id)

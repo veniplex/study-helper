@@ -300,6 +300,28 @@ export async function createResource(
   return { ok: true as const }
 }
 
+export async function updateResource(resourceId: string, input: unknown) {
+  const session = await requireSession()
+  const data = resourceSchema.parse(input)
+  const result = await db
+    .update(externalResource)
+    .set({
+      type: data.type,
+      name: data.name,
+      url: data.url,
+      username: data.username ?? null,
+      encryptedNote: data.note ? encrypt(data.note) : null,
+    })
+    .where(
+      and(eq(externalResource.id, resourceId), eq(externalResource.userId, session.user.id))
+    )
+    .returning({ id: externalResource.id })
+  if (result.length === 0) throw new Error("Not found")
+  revalidatePath("/studies")
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
 export async function deleteResource(resourceId: string) {
   const session = await requireSession()
   await db

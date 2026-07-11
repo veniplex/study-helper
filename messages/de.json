@@ -449,7 +449,8 @@
         "teams": "Teams",
         "website": "Website",
         "other": "Sonstiges"
-      }
+      },
+      "edit": "Bearbeiten"
     },
     "deleteConfirm": "Wirklich löschen? Alle enthaltenen Daten gehen verloren.",
     "managePrograms": "Studiengänge verwalten",

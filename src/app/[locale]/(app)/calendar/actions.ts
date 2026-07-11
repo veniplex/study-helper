@@ -138,6 +138,24 @@ export async function moveEvent(eventId: string, input: unknown) {
   return { ok: true as const }
 }
 
+export async function deleteEvent(eventId: string) {
+  const session = await requireSession()
+  const before = await ownEvent(eventId, session.user.id)
+  await db
+    .delete(studyEvent)
+    .where(and(eq(studyEvent.id, eventId), eq(studyEvent.userId, session.user.id)))
+  await logAudit({
+    userId: session.user.id,
+    operation: "delete",
+    entityType: "event",
+    entityId: eventId,
+    entityLabel: before.title,
+    before,
+  })
+  revalidatePath("/calendar")
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
 
 export async function regenerateIcsToken() {
   const session = await requireSession()

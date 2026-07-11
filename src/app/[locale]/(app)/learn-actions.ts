@@ -42,6 +42,18 @@ export async function createPlan(input: unknown) {
   return { ok: true as const, id: created.id }
 }
 
+export async function updatePlan(planId: string, input: unknown) {
+  const session = await requireSession()
+  await ownPlan(planId, session.user.id)
+  const data = planSchema.pick({ title: true, description: true }).parse(input)
+  await db
+    .update(studyPlan)
+    .set({ title: data.title, description: data.description ?? null })
+    .where(and(eq(studyPlan.id, planId), eq(studyPlan.userId, session.user.id)))
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
 export async function deletePlan(planId: string) {
   const session = await requireSession()
   await db
@@ -89,6 +101,27 @@ export async function togglePlanItem(itemId: string, done: boolean) {
   })
   if (!item || item.plan.userId !== session.user.id) throw new Error("Not found")
   await db.update(studyPlanItem).set({ done }).where(eq(studyPlanItem.id, itemId))
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
+export async function updatePlanItem(itemId: string, input: unknown) {
+  const session = await requireSession()
+  const item = await db.query.studyPlanItem.findFirst({
+    where: eq(studyPlanItem.id, itemId),
+    with: { plan: true },
+  })
+  if (!item || item.plan.userId !== session.user.id) throw new Error("Not found")
+  const data = planItemSchema.parse(input)
+  await db
+    .update(studyPlanItem)
+    .set({
+      title: data.title,
+      description: data.description ?? null,
+      scheduledDate: data.scheduledDate ?? null,
+      durationMinutes: data.durationMinutes ?? null,
+    })
+    .where(eq(studyPlanItem.id, itemId))
   revalidatePath("/", "layout")
   return { ok: true as const }
 }

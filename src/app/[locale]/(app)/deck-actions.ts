@@ -45,6 +45,27 @@ export async function createDeck(input: unknown) {
   return { ok: true as const, id: created.id }
 }
 
+export async function updateDeck(deckId: string, input: unknown) {
+  const session = await requireSession()
+  const before = await ownDeck(deckId, session.user.id)
+  const data = deckSchema.pick({ name: true, description: true }).parse(input)
+  await db
+    .update(deck)
+    .set({ name: data.name, description: data.description ?? null })
+    .where(eq(deck.id, deckId))
+  await logAudit({
+    userId: session.user.id,
+    operation: "update",
+    entityType: "deck",
+    entityId: deckId,
+    entityLabel: data.name,
+    before,
+    after: { ...before, ...data },
+  })
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
 export async function deleteDeck(deckId: string) {
   const session = await requireSession()
   const row = await ownDeck(deckId, session.user.id)
@@ -95,6 +116,32 @@ export async function addCard(deckId: string, input: unknown) {
 }
 
 
+
+export async function updateCard(cardId: string, input: unknown) {
+  const session = await requireSession()
+  const card = await db.query.flashcard.findFirst({
+    where: eq(flashcard.id, cardId),
+    with: { deck: true },
+  })
+  if (!card || card.deck.userId !== session.user.id) throw new Error("Not found")
+  const data = cardSchema.parse(input)
+  await db
+    .update(flashcard)
+    .set({ front: data.front, back: data.back })
+    .where(eq(flashcard.id, cardId))
+  const { deck: _deck, ...cardRow } = card // eslint-disable-line @typescript-eslint/no-unused-vars
+  await logAudit({
+    userId: session.user.id,
+    operation: "update",
+    entityType: "flashcard",
+    entityId: cardId,
+    entityLabel: data.front.slice(0, 80),
+    before: cardRow,
+    after: { ...cardRow, ...data },
+  })
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
 
 export async function deleteCard(cardId: string) {
   const session = await requireSession()

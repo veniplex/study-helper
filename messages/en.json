@@ -449,7 +449,8 @@
         "teams": "Teams",
         "website": "Website",
         "other": "Other"
-      }
+      },
+      "edit": "Edit"
     },
     "deleteConfirm": "Really delete? All contained data will be lost.",
     "managePrograms": "Manage degree programs",

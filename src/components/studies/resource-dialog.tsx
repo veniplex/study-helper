@@ -23,8 +23,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { createResource } from "@/app/[locale]/(app)/studies/actions"
+import { createResource, updateResource } from "@/app/[locale]/(app)/studies/actions"
 import type { ResourceType } from "@/db/schema/studies"
+
+export type ResourceData = {
+  id: string
+  type: ResourceType
+  name: string
+  url: string
+  username: string | null
+  note: string | null
+}
 
 const RESOURCE_TYPES: ResourceType[] = [
   "moodle",
@@ -39,17 +48,32 @@ const RESOURCE_TYPES: ResourceType[] = [
 export function ResourceDialog({
   moduleId,
   programId,
+  resource,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   moduleId?: string
   programId?: string
+  /** Edit mode: the resource to update. */
+  resource?: ResourceData
+  /** Controlled mode (no trigger) — used by the context menu. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const t = useTranslations("studies.resources")
   const tStudies = useTranslations("studies")
   const tCommon = useTranslations("common")
   const router = useRouter()
-  const [open, setOpen] = React.useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+  const controlled = controlledOpen !== undefined
+  const open = controlled ? controlledOpen : uncontrolledOpen
+  const setOpen = (v: boolean) => {
+    if (controlled) onOpenChange?.(v)
+    else setUncontrolledOpen(v)
+  }
   const [pending, setPending] = React.useState(false)
-  const [type, setType] = React.useState<ResourceType>("moodle")
+  const [type, setType] = React.useState<ResourceType>(resource?.type ?? "moodle")
+  const isEdit = Boolean(resource)
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -63,8 +87,9 @@ export function ResourceDialog({
     }
     setPending(true)
     try {
-      await createResource({ moduleId, programId }, payload)
-      toast.success(tStudies("created"))
+      if (isEdit) await updateResource(resource!.id, payload)
+      else await createResource({ moduleId, programId }, payload)
+      toast.success(isEdit ? tCommon("save") : tStudies("created"))
       setOpen(false)
       router.refresh()
     } catch (error) {
@@ -76,13 +101,15 @@ export function ResourceDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" size="sm" />}>
-        <Plus className="size-4" />
-        {t("add")}
-      </DialogTrigger>
+      {!controlled && (
+        <DialogTrigger render={<Button variant="outline" size="sm" />}>
+          <Plus className="size-4" />
+          {t("add")}
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("add")}</DialogTitle>
+          <DialogTitle>{isEdit ? t("edit") : t("add")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -103,20 +130,27 @@ export function ResourceDialog({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="r-name">{t("name")}</Label>
-              <Input id="r-name" name="name" required />
+              <Input id="r-name" name="name" defaultValue={resource?.name} required />
             </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="r-url">{t("url")}</Label>
-            <Input id="r-url" name="url" type="url" placeholder="https://" required />
+            <Input
+              id="r-url"
+              name="url"
+              type="url"
+              placeholder="https://"
+              defaultValue={resource?.url}
+              required
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="r-user">{t("username")}</Label>
-            <Input id="r-user" name="username" />
+            <Input id="r-user" name="username" defaultValue={resource?.username ?? ""} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="r-note">{t("note")}</Label>
-            <Textarea id="r-note" name="note" rows={2} />
+            <Textarea id="r-note" name="note" rows={2} defaultValue={resource?.note ?? ""} />
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

@@ -24,7 +24,9 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { createEvent, updateEvent } from "@/app/[locale]/(app)/calendar/actions"
+import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
+import { createEvent, deleteEvent, updateEvent } from "@/app/[locale]/(app)/calendar/actions"
+import { Trash2 } from "lucide-react"
 import type { EventType } from "@/db/schema/studies"
 
 const EVENT_TYPES: EventType[] = ["exam", "deadline", "lecture", "other"]
@@ -72,6 +74,7 @@ export function EventDialog({
   const [allDay, setAllDay] = React.useState(event?.allDay ?? false)
   const [moduleId, setModuleId] = React.useState<string>(event?.moduleId ?? "")
   const [reminders, setReminders] = React.useState<number[]>(event?.reminderOffsets ?? [1440])
+  const [confirmDelete, setConfirmDelete] = React.useState(false)
   const isEdit = Boolean(event?.id)
 
   const typeLabels: Record<EventType, string> = {
@@ -223,7 +226,19 @@ export function EventDialog({
               </div>
             ))}
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex items-center justify-end gap-2">
+            {isEdit && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="text-destructive mr-auto"
+                onClick={() => setConfirmDelete(true)}
+              >
+                <Trash2 className="size-4" />
+                <span className="sr-only">{tCommon("delete")}</span>
+              </Button>
+            )}
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               {tCommon("cancel")}
             </Button>
@@ -234,6 +249,18 @@ export function EventDialog({
           </div>
         </form>
       </DialogContent>
+      {isEdit && (
+        <ConfirmDeleteDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          label={event!.title}
+          onConfirm={async () => {
+            await deleteEvent(event!.id!)
+            setOpen(false)
+            router.refresh()
+          }}
+        />
+      )}
     </Dialog>
   )
 }
