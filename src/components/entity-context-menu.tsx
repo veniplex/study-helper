@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react"
 import {
   ContextMenu,
   ContextMenuContent,
+  ContextMenuGroup,
   ContextMenuGroupLabel,
   ContextMenuItem,
   ContextMenuSeparator,
@@ -41,7 +42,12 @@ export function EntityContextMenu({
     <ContextMenu>
       <ContextMenuTrigger render={children} />
       <ContextMenuContent>
-        {label && <ContextMenuGroupLabel>{label}</ContextMenuGroupLabel>}
+        {label && (
+          // Base UI requires GroupLabel to live inside a Group.
+          <ContextMenuGroup>
+            <ContextMenuGroupLabel>{label}</ContextMenuGroupLabel>
+          </ContextMenuGroup>
+        )}
         {items.map((item, i) => (
           <React.Fragment key={i}>
             {item.separatorBefore && <ContextMenuSeparator />}

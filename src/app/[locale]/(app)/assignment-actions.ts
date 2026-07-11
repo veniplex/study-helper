@@ -9,6 +9,12 @@ import { requireSession } from "@/lib/auth/session"
 import { logAudit } from "@/lib/audit"
 import { ownModule } from "@/lib/studies/access"
 
+const subtaskSchema = z.object({
+  id: z.string().max(50),
+  title: z.string().min(1).max(300),
+  done: z.boolean().default(false),
+})
+
 const assignmentSchema = z.object({
   title: z.string().min(1).max(300),
   description: z.string().max(4000).optional().nullable(),
@@ -18,6 +24,7 @@ const assignmentSchema = z.object({
   pointsAchieved: z.number().min(0).max(100000).optional().nullable(),
   pointsMax: z.number().min(0).max(100000).optional().nullable(),
   materialIds: z.array(z.string()).max(50).default([]),
+  subtasks: z.array(subtaskSchema).max(50).optional().nullable(),
 })
 
 async function ownAssignment(assignmentId: string, userId: string) {
@@ -59,6 +66,7 @@ export async function createAssignment(moduleId: string, input: unknown) {
       kind: data.kind,
       pointsAchieved: data.pointsAchieved != null ? String(data.pointsAchieved) : null,
       pointsMax: data.pointsMax != null ? String(data.pointsMax) : null,
+      subtasks: data.subtasks?.length ? data.subtasks : null,
     })
     .returning()
   await setMaterials(created.id, moduleId, data.materialIds)
@@ -88,6 +96,7 @@ export async function updateAssignment(assignmentId: string, input: unknown) {
       kind: data.kind,
       pointsAchieved: data.pointsAchieved != null ? String(data.pointsAchieved) : null,
       pointsMax: data.pointsMax != null ? String(data.pointsMax) : null,
+      subtasks: data.subtasks?.length ? data.subtasks : null,
     })
     .where(eq(assignment.id, assignmentId))
   await setMaterials(assignmentId, before.moduleId, data.materialIds)
@@ -102,6 +111,60 @@ export async function updateAssignment(assignmentId: string, input: unknown) {
   })
   revalidatePath("/", "layout")
   return { ok: true as const }
+}
+
+/** Toggles one subtask of an assignment's checklist. */
+export async function toggleSubtask(assignmentId: string, subtaskId: string, done: boolean) {
+  const session = await requireSession()
+  const row = await ownAssignment(assignmentId, session.user.id)
+  const subtasks = (row.subtasks ?? []).map((s) =>
+    s.id === subtaskId ? { ...s, done } : s
+  )
+  await db.update(assignment).set({ subtasks }).where(eq(assignment.id, assignmentId))
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
+const seriesSchema = z.object({
+  /** Base title; sheets are numbered "Title 1..count". */
+  title: z.string().min(1).max(280),
+  kind: z.enum(["graded", "practice"]).default("graded"),
+  /** Due date of the first sheet. */
+  firstDueDate: z.string().date(),
+  count: z.number().int().min(2).max(30),
+  intervalWeeks: z.number().int().min(1).max(4).default(1),
+  pointsMax: z.number().min(0).max(100000).optional().nullable(),
+})
+
+/** Creates a numbered series of assignments (weekly problem sheets). */
+export async function createAssignmentSeries(moduleId: string, input: unknown) {
+  const session = await requireSession()
+  await ownModule(moduleId, session.user.id)
+  const data = seriesSchema.parse(input)
+
+  const rows = Array.from({ length: data.count }, (_, i) => {
+    const due = new Date(`${data.firstDueDate}T12:00`)
+    due.setDate(due.getDate() + i * data.intervalWeeks * 7)
+    const pad = (n: number) => String(n).padStart(2, "0")
+    return {
+      userId: session.user.id,
+      moduleId,
+      title: `${data.title} ${i + 1}`,
+      kind: data.kind,
+      dueDate: `${due.getFullYear()}-${pad(due.getMonth() + 1)}-${pad(due.getDate())}`,
+      pointsMax: data.pointsMax != null ? String(data.pointsMax) : null,
+    }
+  })
+  await db.insert(assignment).values(rows)
+  await logAudit({
+    userId: session.user.id,
+    operation: "create",
+    entityType: "assignment",
+    entityId: "series",
+    entityLabel: `${data.title} 1–${data.count}`,
+  })
+  revalidatePath("/", "layout")
+  return { ok: true as const, count: data.count }
 }
 
 export async function deleteAssignment(assignmentId: string) {

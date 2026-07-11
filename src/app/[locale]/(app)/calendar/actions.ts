@@ -38,7 +38,24 @@ const eventSchema = z.object({
   moduleId: z.string().optional().nullable(),
   allDay: z.boolean().default(false),
   reminderOffsets: z.array(z.number().int().positive()).default([]),
+  recurrence: z.enum(["none", "weekly", "biweekly", "custom"]).default("none"),
+  recurrenceUntil: z.string().date().optional().nullable(),
+  recurrenceWeekdays: z.array(z.number().int().min(0).max(6)).max(7).optional().nullable(),
+  recurrenceInterval: z.number().int().min(1).max(4).optional().nullable(),
 })
+
+/** The recurrence columns shared by create and update. */
+function recurrenceValues(data: z.infer<typeof eventSchema>) {
+  const recurring = data.recurrence !== "none"
+  return {
+    recurrence: data.recurrence,
+    recurrenceUntil: recurring ? (data.recurrenceUntil ?? null) : null,
+    recurrenceWeekdays:
+      data.recurrence === "custom" ? (data.recurrenceWeekdays ?? null) : null,
+    recurrenceInterval:
+      data.recurrence === "custom" ? (data.recurrenceInterval ?? 1) : null,
+  }
+}
 
 /** All-day events store their date at local midnight. */
 function parseStart(value: string, allDay: boolean): Date {
@@ -62,6 +79,7 @@ export async function createEvent(input: unknown) {
       moduleId: data.moduleId || null,
       allDay: data.allDay,
       reminderOffsets: data.reminderOffsets,
+      ...recurrenceValues(data),
     })
     .returning()
   await logAudit({
@@ -93,6 +111,7 @@ export async function updateEvent(eventId: string, input: unknown) {
       moduleId: data.moduleId || null,
       allDay: data.allDay,
       reminderOffsets: data.reminderOffsets,
+      ...recurrenceValues(data),
     })
     .where(and(eq(studyEvent.id, eventId), eq(studyEvent.userId, session.user.id)))
   await logAudit({
@@ -155,6 +174,60 @@ export async function deleteEvent(eventId: string) {
   revalidatePath("/calendar")
   revalidatePath("/", "layout")
   return { ok: true as const }
+}
+
+/**
+ * Imports events from an uploaded ICS file. Events whose (title, startsAt)
+ * already exist are skipped so re-importing the same feed stays idempotent.
+ */
+export async function importIcsFile(formData: FormData) {
+  const session = await requireSession()
+  const file = formData.get("file")
+  if (!(file instanceof File)) throw new Error("file required")
+  if (file.size > 2 * 1024 * 1024) throw new Error("File too large (max 2 MB)")
+  const moduleId = String(formData.get("moduleId") ?? "") || null
+  if (moduleId) await ownModule(moduleId, session.user.id)
+
+  const { parseIcs } = await import("@/lib/events/ics-import")
+  const parsed = parseIcs(await file.text())
+  if (parsed.length === 0) return { ok: true as const, imported: 0, skipped: 0 }
+
+  const existing = await db.query.studyEvent.findMany({
+    where: eq(studyEvent.userId, session.user.id),
+    columns: { title: true, startsAt: true },
+  })
+  const seen = new Set(existing.map((e) => `${e.title}|${e.startsAt.getTime()}`))
+  const fresh = parsed.filter((e) => !seen.has(`${e.title}|${e.startsAt.getTime()}`))
+
+  if (fresh.length > 0) {
+    await db.insert(studyEvent).values(
+      fresh.map((e) => ({
+        userId: session.user.id,
+        moduleId,
+        type: "other" as const,
+        title: e.title,
+        startsAt: e.startsAt,
+        endsAt: e.endsAt,
+        location: e.location,
+        notes: e.notes,
+        allDay: e.allDay,
+        reminderOffsets: [],
+        recurrence: e.recurrence,
+        recurrenceUntil: e.recurrenceUntil,
+        recurrenceWeekdays: e.recurrenceWeekdays,
+        recurrenceInterval: e.recurrenceInterval,
+      }))
+    )
+    await logAudit({
+      userId: session.user.id,
+      operation: "create",
+      entityType: "event",
+      entityId: "ics-import",
+      entityLabel: `${file.name} (${fresh.length})`,
+    })
+  }
+  revalidatePath("/calendar")
+  return { ok: true as const, imported: fresh.length, skipped: parsed.length - fresh.length }
 }
 
 export async function regenerateIcsToken() {

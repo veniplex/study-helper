@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm"
 import { db } from "@/db"
 import { material } from "@/db/schema"
 import { getSession } from "@/lib/auth/session"
-import { fileSize, fileStream } from "@/lib/storage"
+import { fileSize, fileStream, safeInlineMime } from "@/lib/storage"
 
 export async function GET(
   request: Request,
@@ -20,14 +20,19 @@ export async function GET(
   }
 
   const size = row.sizeBytes ?? (await fileSize(row.storagePath))
-  const mime = row.mimeType ?? "application/octet-stream"
+  // Re-sanitize at serve time so rows created before the upload-side
+  // sanitization can't serve active content either.
+  const mime = safeInlineMime(row.mimeType)
   const range = request.headers.get("range")
 
   if (range) {
     const match = /bytes=(\d*)-(\d*)/.exec(range)
-    if (match) {
-      const start = match[1] ? parseInt(match[1], 10) : 0
-      const end = match[2] ? Math.min(parseInt(match[2], 10), size - 1) : size - 1
+    if (match && (match[1] || match[2])) {
+      // "bytes=-N" is a suffix range: the last N bytes of the file
+      const start = match[1]
+        ? parseInt(match[1], 10)
+        : Math.max(size - parseInt(match[2], 10), 0)
+      const end = match[1] && match[2] ? Math.min(parseInt(match[2], 10), size - 1) : size - 1
       if (start <= end && start < size) {
         return new Response(fileStream(row.storagePath, start, end), {
           status: 206,

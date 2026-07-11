@@ -3,7 +3,7 @@ import { db } from "@/db"
 import { material } from "@/db/schema"
 import { getSession } from "@/lib/auth/session"
 import { getSetting } from "@/lib/settings"
-import { saveFile } from "@/lib/storage"
+import { safeInlineMime, saveFile } from "@/lib/storage"
 import { ownModule } from "@/lib/studies/access"
 
 export async function POST(request: Request) {
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const form = await request.formData()
   const file = form.get("file")
   const moduleId = String(form.get("moduleId") ?? "")
-  const folder = String(form.get("folder") ?? "") || null
+  const folder = String(form.get("folder") ?? "").trim().slice(0, 100) || null
 
   if (!(file instanceof File) || !moduleId) {
     return NextResponse.json({ error: "file and moduleId required" }, { status: 400 })
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       kind: "file",
       name: file.name,
       storagePath,
-      mimeType: file.type || "application/octet-stream",
+      mimeType: safeInlineMime(file.type),
       sizeBytes: file.size,
       folder,
     })

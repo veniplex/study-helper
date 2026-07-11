@@ -60,6 +60,10 @@ function ContextMenuItem({
   )
 }
 
+function ContextMenuGroup({ ...props }: ContextMenuPrimitive.Group.Props) {
+  return <ContextMenuPrimitive.Group data-slot="context-menu-group" {...props} />
+}
+
 function ContextMenuGroupLabel({
   className,
   ...props
@@ -90,6 +94,7 @@ export {
   ContextMenu,
   ContextMenuTrigger,
   ContextMenuContent,
+  ContextMenuGroup,
   ContextMenuItem,
   ContextMenuGroupLabel,
   ContextMenuSeparator,

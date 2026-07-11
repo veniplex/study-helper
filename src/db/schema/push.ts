@@ -19,7 +19,7 @@ export const pushSubscription = pgTable(
   (t) => [index("push_subscription_userId_idx").on(t.userId)]
 )
 
-/** Tracks which (event, offset) reminders were already sent. */
+/** Tracks which (event, occurrence, offset) reminders were already sent. */
 export const reminderSent = pgTable(
   "reminder_sent",
   {
@@ -30,9 +30,17 @@ export const reminderSent = pgTable(
       .notNull()
       .references(() => studyEvent.id, { onDelete: "cascade" }),
     offsetMinutes: integer("offset_minutes").notNull(),
+    /** ISO date of the expanded occurrence; "" for non-recurring events. */
+    occurrenceDate: text("occurrence_date").notNull().default(""),
     sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique("reminder_sent_event_offset").on(t.eventId, t.offsetMinutes)]
+  (t) => [
+    unique("reminder_sent_event_offset_occurrence").on(
+      t.eventId,
+      t.offsetMinutes,
+      t.occurrenceDate
+    ),
+  ]
 )
 
 export type ChannelPrefs = { email: boolean; push: boolean }

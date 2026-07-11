@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Link } from "@/i18n/navigation"
 import { AnalyzeButton } from "@/components/learn/analyze-button"
+import { Markdown } from "@/components/ai/markdown"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { reviewCard } from "@/app/[locale]/(app)/deck-actions"
@@ -22,10 +23,13 @@ export function StudySession({
   backHref,
   cards,
   moduleId,
+  totalDue,
 }: {
   backHref: string
   cards: StudyCard[]
   moduleId?: string
+  /** Total due cards when the session is capped; shows a "X of Y" hint. */
+  totalDue?: number
 }) {
   const t = useTranslations("learn.decks")
   const tSession = useTranslations("learnSession")
@@ -47,6 +51,25 @@ export function StudySession({
 
   const current = queue[0]
   const reviewed = counts[1] + counts[2] + counts[3] + counts[4]
+
+  // Touch swipe (mobile): after reveal, swipe right = good, left = again.
+  const touchStartX = React.useRef<number | null>(null)
+  const [dragX, setDragX] = React.useState(0)
+
+  function onTouchStart(e: React.TouchEvent) {
+    if (!everRevealed) return
+    touchStartX.current = e.touches[0].clientX
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (touchStartX.current == null) return
+    setDragX(e.touches[0].clientX - touchStartX.current)
+  }
+  function onTouchEnd() {
+    const delta = dragX
+    touchStartX.current = null
+    setDragX(0)
+    if (Math.abs(delta) > 80) void rate(delta > 0 ? 3 : 1)
+  }
 
   // Log the session once when the queue is exhausted
   React.useEffect(() => {
@@ -135,9 +158,26 @@ export function StudySession({
     <div className="mx-auto max-w-xl space-y-4">
       <p className="text-muted-foreground text-center text-xs">
         {t("remaining", { count: queue.length })}
+        {totalDue != null && totalDue > cards.length && (
+          <> · {tSession("capped", { shown: cards.length, total: totalDue })}</>
+        )}
       </p>
       {/* key on the card id → the flip resets instantly for the next card */}
-      <div key={current.id} className="[perspective:1200px]">
+      <div
+        key={current.id}
+        className="touch-pan-y [perspective:1200px]"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={
+          dragX !== 0
+            ? {
+                transform: `translateX(${dragX}px) rotate(${dragX / 40}deg)`,
+                opacity: Math.max(0.4, 1 - Math.abs(dragX) / 400),
+              }
+            : undefined
+        }
+      >
         <button
           type="button"
           onClick={() => {
@@ -155,7 +195,9 @@ export function StudySession({
               <span className="text-muted-foreground text-xs uppercase tracking-wide">
                 {t("front")}
               </span>
-              <p className="text-lg font-medium whitespace-pre-wrap">{current.front}</p>
+              <div className="text-lg font-medium">
+                <Markdown>{current.front}</Markdown>
+              </div>
             </CardContent>
           </Card>
           <Card className="absolute inset-0 min-h-56 [backface-visibility:hidden] [transform:rotateY(180deg)]">
@@ -163,12 +205,19 @@ export function StudySession({
               <span className="text-muted-foreground text-xs uppercase tracking-wide">
                 {t("back")}
               </span>
-              <p className="text-base whitespace-pre-wrap">{current.back}</p>
+              <div className="text-base">
+                <Markdown>{current.back}</Markdown>
+              </div>
             </CardContent>
           </Card>
         </button>
       </div>
 
+      {everRevealed && (
+        <p className="text-muted-foreground text-center text-xs sm:hidden">
+          {tSession("swipeHint")}
+        </p>
+      )}
       {!everRevealed ? (
         <Button
           className="w-full"

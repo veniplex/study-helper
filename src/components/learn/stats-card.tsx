@@ -120,6 +120,25 @@ export async function StatsCard({ stats }: { stats: DashboardStats }) {
           })}
         </div>
 
+        {stats.weeklyGoalMinutes != null && stats.weeklyGoalMinutes > 0 && (
+          <div className="space-y-1 rounded-lg border p-2.5">
+            <div className="flex items-baseline justify-between text-xs">
+              <span className="text-muted-foreground">{t("weeklyGoalLabel")}</span>
+              <span className="tabular-nums">
+                {hm(stats.weekMinutes)} / {hm(stats.weeklyGoalMinutes)}
+              </span>
+            </div>
+            <div className="bg-muted h-2 overflow-hidden rounded-full">
+              <div
+                className="bg-primary h-full rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, Math.round((stats.weekMinutes / stats.weeklyGoalMinutes) * 100))}%`,
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {stats.topModule && topColor && (
           <div className="flex items-center gap-2 rounded-lg border p-2.5">
             <span

@@ -9,6 +9,7 @@ import { getModuleFinalGrades } from "@/lib/studies/grades-server"
 import { getStudyContext } from "@/lib/studies/context"
 import type { MiniCalendarEvent } from "@/app/[locale]/(app)/dashboard-actions"
 import { MiniCalendar } from "@/components/learn/mini-calendar"
+import { TodayFocusCard, type NextExam } from "@/components/learn/today-focus-card"
 import { OnboardingWizard } from "@/components/learn/onboarding-wizard"
 import { SemesterOverviewCard } from "@/components/learn/semester-overview-card"
 import { StatsCard } from "@/components/learn/stats-card"
@@ -102,11 +103,42 @@ export default async function DashboardPage() {
     },
   })
 
+  // Next upcoming exam of the active program's modules, with its preparedness.
+  const nextExamRow = await db.query.studyEvent.findFirst({
+    where: and(
+      eq(studyEvent.userId, session.user.id),
+      eq(studyEvent.type, "exam"),
+      gte(studyEvent.startsAt, new Date())
+    ),
+    orderBy: [asc(studyEvent.startsAt)],
+    with: { module: { columns: { id: true, name: true } } },
+  })
+  const nextExam: NextExam | null = nextExamRow
+    ? {
+        title: nextExamRow.title,
+        startsAt: nextExamRow.startsAt,
+        moduleName: nextExamRow.module?.name ?? null,
+        daysUntil: Math.max(
+          0,
+          Math.ceil((nextExamRow.startsAt.getTime() - now.getTime()) / 86_400_000)
+        ),
+        preparedness: nextExamRow.module
+          ? (preparedness.get(nextExamRow.module.id) ?? null)
+          : null,
+      }
+    : null
+
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
       <h1 className="font-heading text-xl font-semibold tracking-tight">
         {t("greeting", { name: firstName })}
       </h1>
+
+      <TodayFocusCard
+        dueCards={stats.dueToday}
+        openPlanItems={todayPlanItems.filter((i) => !i.done).length}
+        nextExam={nextExam}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <StatsCard stats={stats} />

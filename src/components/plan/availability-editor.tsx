@@ -250,24 +250,39 @@ export function AvailabilityEditor({
               </div>
             ) : (
             <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
-              <select
-                value={r.weekday}
-                onChange={(e) =>
-                  setRecurring((list) =>
-                    list.map((x, j) =>
-                      j === i ? { ...x, weekday: Number(e.target.value) } : x
-                    )
+              <div className="flex gap-1" role="group" aria-label={t("recurringWeekday")}>
+                {WEEKDAYS.map((d) => {
+                  const active = (r.weekdays?.length ? r.weekdays : [r.weekday]).includes(d)
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() =>
+                        setRecurring((list) =>
+                          list.map((x, j) => {
+                            if (j !== i) return x
+                            const current = x.weekdays?.length ? x.weekdays : [x.weekday]
+                            const next = active
+                              ? current.filter((wd) => wd !== d)
+                              : [...current, d]
+                            // keep at least one day selected
+                            const days = next.length > 0 ? next : current
+                            return { ...x, weekday: days[0], weekdays: days }
+                          })
+                        )
+                      }
+                      className={
+                        active
+                          ? "bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-md text-xs font-medium"
+                          : "hover:bg-muted flex size-8 items-center justify-center rounded-md border text-xs"
+                      }
+                    >
+                      {t(`weekdaysShort.${d}`)}
+                    </button>
                   )
-                }
-                className="border-input bg-background h-8 rounded-md border px-2 text-sm"
-                aria-label={t("recurringWeekday")}
-              >
-                {WEEKDAYS.map((d) => (
-                  <option key={d} value={d}>
-                    {t(`weekdays.${d}`)}
-                  </option>
-                ))}
-              </select>
+                })}
+              </div>
               <Input
                 type="time"
                 value={r.from}

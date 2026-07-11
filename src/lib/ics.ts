@@ -6,6 +6,27 @@ type IcsEvent = {
   location: string | null
   notes: string | null
   allDay?: boolean
+  recurrence?: "none" | "weekly" | "biweekly" | "custom"
+  /** ISO date; series end (inclusive). */
+  recurrenceUntil?: string | null
+  recurrenceWeekdays?: number[] | null
+  recurrenceInterval?: number | null
+}
+
+const ICS_WEEKDAYS = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"] as const
+
+function rrule(e: IcsEvent): string | null {
+  if (!e.recurrence || e.recurrence === "none") return null
+  const interval =
+    e.recurrence === "biweekly" ? 2 : e.recurrence === "custom" ? (e.recurrenceInterval ?? 1) : 1
+  const byday =
+    e.recurrence === "custom" && e.recurrenceWeekdays?.length
+      ? `;BYDAY=${e.recurrenceWeekdays.map((d) => ICS_WEEKDAYS[d]).join(",")}`
+      : ""
+  const until = e.recurrenceUntil
+    ? `;UNTIL=${e.recurrenceUntil.replaceAll("-", "")}T235959Z`
+    : ""
+  return `RRULE:FREQ=WEEKLY;INTERVAL=${interval}${byday}${until}`
 }
 
 function icsDateOnly(d: Date): string {
@@ -57,6 +78,7 @@ export function buildIcsCalendar(name: string, events: IcsEvent[]): string {
             `DTSTART:${icsDate(e.startsAt)}`,
             ...(e.endsAt ? [`DTEND:${icsDate(e.endsAt)}`] : []),
           ]),
+      ...(rrule(e) ? [rrule(e)!] : []),
       fold(`SUMMARY:${escapeText(e.title)}`),
       ...(e.location ? [fold(`LOCATION:${escapeText(e.location)}`)] : []),
       ...(e.notes ? [fold(`DESCRIPTION:${escapeText(e.notes)}`)] : []),

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CalendarDays, File, FileText, Search } from "lucide-react"
+import { CalendarDays, ClipboardList, File, FileText, Layers, ListChecks, Search, User } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import { navItems } from "@/config/nav"
@@ -16,13 +16,27 @@ import {
   CommandList,
 } from "@/components/ui/command"
 
+type ModuleScoped = { moduleId: string; programId: string; moduleName: string }
+
 type SearchResults = {
   modules: { id: string; name: string; programId: string }[]
   materials: { id: string; name: string; kind: string; url: string | null }[]
   events: { id: string; title: string; startsAt: string }[]
+  decks: ({ id: string; name: string } & ModuleScoped)[]
+  quizzes: ({ id: string; title: string } & ModuleScoped)[]
+  assignments: ({ id: string; title: string } & ModuleScoped)[]
+  contacts: ({ id: string; name: string } & ModuleScoped)[]
 }
 
-const EMPTY: SearchResults = { modules: [], materials: [], events: [] }
+const EMPTY: SearchResults = {
+  modules: [],
+  materials: [],
+  events: [],
+  decks: [],
+  quizzes: [],
+  assignments: [],
+  contacts: [],
+}
 
 export function CommandPalette() {
   const [open, setOpen] = React.useState(false)
@@ -63,7 +77,7 @@ export function CommandPalette() {
         const res = await fetch(`/api/search?q=${encodeURIComponent(value)}`, {
           signal: controller.signal,
         })
-        if (res.ok) setResults(await res.json())
+        if (res.ok) setResults({ ...EMPTY, ...(await res.json()) })
       } catch {
         // aborted or offline — ignore
       }
@@ -112,7 +126,7 @@ export function CommandPalette() {
                   onSelect={() => {
                     if (m.kind === "link" && m.url) {
                       setOpen(false)
-                      window.open(m.url, "_blank")
+                      window.open(m.url, "_blank", "noopener,noreferrer")
                     } else go(`/materials/${m.id}`)
                   }}
                 >
@@ -128,6 +142,62 @@ export function CommandPalette() {
                 <CommandItem key={e.id} onSelect={() => go("/calendar")}>
                   <CalendarDays className="size-4" />
                   {e.title}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {results.decks.length > 0 && (
+            <CommandGroup heading={tSearch("decks")}>
+              {results.decks.map((d) => (
+                <CommandItem
+                  key={d.id}
+                  onSelect={() => go(`/studies/${d.programId}/${d.moduleId}/decks/${d.id}`)}
+                >
+                  <Layers className="size-4" />
+                  {d.name}
+                  <span className="text-muted-foreground ml-auto text-xs">{d.moduleName}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {results.quizzes.length > 0 && (
+            <CommandGroup heading={tSearch("quizzes")}>
+              {results.quizzes.map((d) => (
+                <CommandItem
+                  key={d.id}
+                  onSelect={() => go(`/studies/${d.programId}/${d.moduleId}/quizzes/${d.id}`)}
+                >
+                  <ListChecks className="size-4" />
+                  {d.title}
+                  <span className="text-muted-foreground ml-auto text-xs">{d.moduleName}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {results.assignments.length > 0 && (
+            <CommandGroup heading={tSearch("assignments")}>
+              {results.assignments.map((d) => (
+                <CommandItem
+                  key={d.id}
+                  onSelect={() => go(`/studies/${d.programId}/${d.moduleId}/assignments`)}
+                >
+                  <ClipboardList className="size-4" />
+                  {d.title}
+                  <span className="text-muted-foreground ml-auto text-xs">{d.moduleName}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {results.contacts.length > 0 && (
+            <CommandGroup heading={tSearch("contacts")}>
+              {results.contacts.map((d) => (
+                <CommandItem
+                  key={d.id}
+                  onSelect={() => go(`/studies/${d.programId}/${d.moduleId}`)}
+                >
+                  <User className="size-4" />
+                  {d.name}
+                  <span className="text-muted-foreground ml-auto text-xs">{d.moduleName}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

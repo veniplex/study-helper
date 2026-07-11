@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import { integer, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 import { user } from "./auth"
 import { degreeProgram, semester } from "./studies"
 
@@ -18,5 +18,7 @@ export const userPrefs = pgTable("user_prefs", {
   }),
   /** User's preferred AI model ref ("providerId:modelId"); null = global default. */
   preferredModel: text("preferred_model"),
+  /** Weekly study-time goal in minutes; null = no goal set. */
+  weeklyGoalMinutes: integer("weekly_goal_minutes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })

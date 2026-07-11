@@ -22,6 +22,8 @@ export type PlanAvailability = {
    * Sunday. interval 1 = weekly, 2 = every second week (anchored at `anchor`). */
   recurring?: {
     weekday: number
+    /** Optional additional weekdays; when set, overrides `weekday`. */
+    weekdays?: number[]
     from: string
     to: string
     interval: 1 | 2

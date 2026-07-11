@@ -76,6 +76,8 @@ export const deck = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     aiGenerated: boolean("ai_generated").notNull().default(false),
+    /** "mistakes" = auto-managed deck fed from wrong quiz answers. */
+    kind: text("kind").$type<"normal" | "mistakes">().notNull().default("normal"),
     ...timestamps,
   },
   (t) => [index("deck_userId_idx").on(t.userId)]

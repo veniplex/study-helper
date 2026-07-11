@@ -16,6 +16,26 @@ function absolute(relPath: string): string {
   return abs
 }
 
+// MIME types a browser would execute in the app's origin when served inline.
+const ACTIVE_CONTENT_MIMES = new Set([
+  "text/html",
+  "application/xhtml+xml",
+  "image/svg+xml",
+  "text/xml",
+  "application/xml",
+])
+
+/**
+ * Returns a MIME type that is safe to serve inline from the app origin.
+ * Active content (HTML, SVG, XML) is downgraded to octet-stream so a stored
+ * file can never run scripts in the app's origin.
+ */
+export function safeInlineMime(mime: string | null | undefined): string {
+  const normalized = (mime ?? "").split(";")[0].trim().toLowerCase()
+  if (!normalized || ACTIVE_CONTENT_MIMES.has(normalized)) return "application/octet-stream"
+  return normalized
+}
+
 /** Stores a buffer and returns the relative storage path. */
 export async function saveFile(userId: string, filename: string, data: Buffer): Promise<string> {
   const safeName = filename.replace(/[^\w.\-()\[\] ]/g, "_").slice(-150)

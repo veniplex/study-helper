@@ -16,6 +16,7 @@ import { deleteEvent, moveEvent } from "@/app/[locale]/(app)/calendar/actions"
 import { EventDialog, type EventData, type ModuleOption } from "./event-dialog"
 import type { EventType } from "@/db/schema/studies"
 import type { AbsenceWindow } from "@/lib/plan/absences"
+import { expandOccurrences } from "@/lib/events/recurrence"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Select,
@@ -202,14 +203,49 @@ export function CalendarView({
   const fcEvents: EventInput[] = [
     ...events
       .filter((e) => !hidden.has(e.type) && matchesModule(e.moduleId))
-      .map((e) => ({
-        id: e.id,
-        title: e.title,
-        start: e.allDay ? e.startsAt.slice(0, 10) : e.startsAt,
-        end: e.endsAt ? (e.allDay ? e.endsAt.slice(0, 10) : e.endsAt) : undefined,
-        allDay: e.allDay ?? false,
-        classNames: [TYPE_CLASS[e.type]],
-      })),
+      .flatMap((e) => {
+        if (!e.recurrence || e.recurrence === "none") {
+          return [
+            {
+              id: e.id,
+              title: e.title,
+              start: e.allDay ? e.startsAt.slice(0, 10) : e.startsAt,
+              end: e.endsAt ? (e.allDay ? e.endsAt.slice(0, 10) : e.endsAt) : undefined,
+              allDay: e.allDay ?? false,
+              classNames: [TYPE_CLASS[e.type]],
+            },
+          ]
+        }
+        // Expand the series around today; instances share the base event's dialog.
+        const from = new Date()
+        from.setMonth(from.getMonth() - 6)
+        const to = new Date()
+        to.setMonth(to.getMonth() + 12)
+        return expandOccurrences(
+          {
+            startsAt: new Date(e.startsAt),
+            endsAt: e.endsAt ? new Date(e.endsAt) : null,
+            recurrence: e.recurrence,
+            recurrenceUntil: e.recurrenceUntil ?? null,
+            recurrenceWeekdays: e.recurrenceWeekdays ?? null,
+            recurrenceInterval: e.recurrenceInterval ?? null,
+          },
+          from,
+          to
+        ).map((occ) => ({
+          id: occ.isRecurrenceInstance ? `recur:${e.id}:${occ.occurrenceDate}` : e.id,
+          title: e.title,
+          start: e.allDay ? occ.occurrenceDate : toLocalInputValue(occ.startsAt),
+          end: occ.endsAt
+            ? e.allDay
+              ? occ.occurrenceDate
+              : toLocalInputValue(occ.endsAt)
+            : undefined,
+          allDay: e.allDay ?? false,
+          editable: !occ.isRecurrenceInstance,
+          classNames: [TYPE_CLASS[e.type]],
+        }))
+      }),
     ...(!hidden.has("plan")
       ? planItems
           .filter((p) => matchesModule(p.moduleId))
@@ -319,6 +355,11 @@ export function CalendarView({
               if (href) router.push(href)
               return
             }
+            if (arg.event.id.startsWith("recur:")) {
+              // Instances open the base event (edits apply to the whole series).
+              editById(arg.event.id.split(":")[1])
+              return
+            }
             if (arg.event.id.includes(":")) return
             openEvent(arg)
           }}
@@ -326,11 +367,13 @@ export function CalendarView({
           eventDrop={onMove}
           eventResize={onMove}
           eventDidMount={(info) => {
-            // Right-click a real (editable) event → edit/delete menu.
-            if (info.event.id.includes(":")) return
+            // Right-click a real event → edit/delete menu (instances target the series).
+            const isInstance = info.event.id.startsWith("recur:")
+            if (info.event.id.includes(":") && !isInstance) return
+            const baseId = isInstance ? info.event.id.split(":")[1] : info.event.id
             info.el.addEventListener("contextmenu", (e) => {
               e.preventDefault()
-              setCtxMenu({ id: info.event.id, x: e.clientX, y: e.clientY })
+              setCtxMenu({ id: baseId, x: e.clientX, y: e.clientY })
             })
           }}
         />

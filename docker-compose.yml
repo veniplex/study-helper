@@ -16,6 +16,9 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set in .env}
       # Optional: seed demo accounts + content on first start (see .env.example)
       SEED_TEST_DATA: ${SEED_TEST_DATA:-false}
+      # Server timezone — event times, reminders and daily plans use it.
+      # Set to your users' timezone; containers default to UTC otherwise.
+      TZ: ${TZ:-Europe/Berlin}
     volumes:
       - ./data/uploads:/data/uploads
     depends_on:

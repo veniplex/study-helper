@@ -24,7 +24,11 @@ const subscribeSchema = z.object({
 export async function POST(request: Request) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const body = subscribeSchema.parse(await request.json())
+  const parsed = subscribeSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid subscription" }, { status: 400 })
+  }
+  const body = parsed.data
   await db
     .insert(pushSubscription)
     .values({
@@ -43,7 +47,13 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const { endpoint } = z.object({ endpoint: z.string() }).parse(await request.json())
+  const parsed = z
+    .object({ endpoint: z.string() })
+    .safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 })
+  }
+  const { endpoint } = parsed.data
   await db
     .delete(pushSubscription)
     .where(

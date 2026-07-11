@@ -8,10 +8,12 @@ import { listAvailableModels } from "@/lib/ai/registry"
 import { daysAgo } from "@/lib/utils"
 import { AiKeySettings } from "@/components/settings/ai-key-settings"
 import { AiModelCard } from "@/components/settings/ai-model-card"
+import { LearningSettings } from "@/components/settings/learning-settings"
 import { NotificationSettings } from "@/components/settings/notification-settings"
 import { ProfileSettings } from "@/components/settings/profile-settings"
 import { SecuritySettings } from "@/components/settings/security-settings"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Link } from "@/i18n/navigation"
 
 export default async function SettingsPage() {
   const session = await requireSession()
@@ -81,6 +83,20 @@ export default async function SettingsPage() {
           }
         }
       />
+      <LearningSettings initialGoalMinutes={prefs?.weeklyGoalMinutes ?? null} />
+      {providers.length === 0 && session.user.role === "admin" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{t("aiHint.title")}</CardTitle>
+          </CardHeader>
+          <CardContent className="text-muted-foreground space-y-2 text-sm">
+            <p>{t("aiHint.description")}</p>
+            <Link href="/admin/ai" className="text-foreground underline underline-offset-4">
+              {t("aiHint.cta")}
+            </Link>
+          </CardContent>
+        </Card>
+      )}
       {providers.length > 0 && (
         <>
           {availableModels.models.length > 0 && (

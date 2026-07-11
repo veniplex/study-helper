@@ -117,6 +117,85 @@ export async function addCard(deckId: string, input: unknown) {
 
 
 
+/**
+ * Imports cards from TSV/CSV text (one card per line, front<TAB>back or
+ * front;back). Anki users: export as "Notes in Plain Text (.txt)". Duplicate
+ * fronts (existing or within the file) are skipped.
+ */
+export async function importCards(deckId: string, text: unknown) {
+  const session = await requireSession()
+  await ownDeck(deckId, session.user.id)
+  const raw = z.string().max(2 * 1024 * 1024).parse(text)
+
+  const existing = await db.query.flashcard.findMany({
+    where: eq(flashcard.deckId, deckId),
+    columns: { front: true },
+  })
+  const seen = new Set(existing.map((c) => c.front))
+
+  const rows: { front: string; back: string }[] = []
+  for (const line of raw.split(/\r?\n/)) {
+    if (rows.length >= 1000) break
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith("#")) continue
+    const sep = trimmed.includes("\t") ? "\t" : ";"
+    const idx = trimmed.indexOf(sep)
+    if (idx < 1) continue
+    const front = trimmed.slice(0, idx).trim().slice(0, 4000)
+    const back = trimmed.slice(idx + 1).trim().slice(0, 4000)
+    if (!front || !back || seen.has(front)) continue
+    seen.add(front)
+    rows.push({ front, back })
+  }
+
+  if (rows.length > 0) {
+    await db.insert(flashcard).values(rows.map((r) => ({ deckId, ...r })))
+    const row = await ownDeck(deckId, session.user.id)
+    await logAudit({
+      userId: session.user.id,
+      operation: "create",
+      entityType: "deck",
+      entityId: deckId,
+      entityLabel: `${row.name} (+${rows.length} import)`,
+    })
+  }
+  revalidatePath("/")
+  return { ok: true as const, imported: rows.length }
+}
+
+/** Imports cards from an Anki .apkg export (legacy format). */
+export async function importAnkiDeck(deckId: string, formData: FormData) {
+  const session = await requireSession()
+  await ownDeck(deckId, session.user.id)
+  const file = formData.get("file")
+  if (!(file instanceof File)) throw new Error("file required")
+  if (file.size > 50 * 1024 * 1024) throw new Error("File too large (max 50 MB)")
+
+  const { parseApkg } = await import("@/lib/learning/anki-import")
+  const cards = await parseApkg(Buffer.from(await file.arrayBuffer()))
+
+  const existing = await db.query.flashcard.findMany({
+    where: eq(flashcard.deckId, deckId),
+    columns: { front: true },
+  })
+  const seen = new Set(existing.map((c) => c.front))
+  const fresh = cards.filter((c) => !seen.has(c.front) && (seen.add(c.front), true))
+
+  if (fresh.length > 0) {
+    await db.insert(flashcard).values(fresh.map((c) => ({ deckId, ...c })))
+    const row = await ownDeck(deckId, session.user.id)
+    await logAudit({
+      userId: session.user.id,
+      operation: "create",
+      entityType: "deck",
+      entityId: deckId,
+      entityLabel: `${row.name} (+${fresh.length} Anki)`,
+    })
+  }
+  revalidatePath("/")
+  return { ok: true as const, imported: fresh.length, skipped: cards.length - fresh.length }
+}
+
 export async function updateCard(cardId: string, input: unknown) {
   const session = await requireSession()
   const card = await db.query.flashcard.findFirst({

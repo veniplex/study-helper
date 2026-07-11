@@ -27,10 +27,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 import { createEvent, deleteEvent, updateEvent } from "@/app/[locale]/(app)/calendar/actions"
 import { Trash2 } from "lucide-react"
-import type { EventType } from "@/db/schema/studies"
+import type { EventRecurrence, EventType } from "@/db/schema/studies"
 
 const EVENT_TYPES: EventType[] = ["exam", "deadline", "lecture", "other"]
+const RECURRENCE_OPTIONS: EventRecurrence[] = ["none", "weekly", "biweekly", "custom"]
 const REMINDER_OPTIONS = [10080, 1440, 60] as const
+// Monday-first display order; values are JS getDay() numbers.
+const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const
+const INTERVAL_OPTIONS = [1, 2, 3, 4] as const
 
 export type EventData = {
   id?: string
@@ -43,6 +47,10 @@ export type EventData = {
   moduleId: string | null
   allDay?: boolean
   reminderOffsets: number[]
+  recurrence?: EventRecurrence
+  recurrenceUntil?: string | null
+  recurrenceWeekdays?: number[] | null
+  recurrenceInterval?: number | null
 }
 
 export type ModuleOption = { id: string; name: string }
@@ -74,6 +82,13 @@ export function EventDialog({
   const [allDay, setAllDay] = React.useState(event?.allDay ?? false)
   const [moduleId, setModuleId] = React.useState<string>(event?.moduleId ?? "")
   const [reminders, setReminders] = React.useState<number[]>(event?.reminderOffsets ?? [1440])
+  const [recurrence, setRecurrence] = React.useState<EventRecurrence>(event?.recurrence ?? "none")
+  const [recurWeekdays, setRecurWeekdays] = React.useState<number[]>(
+    event?.recurrenceWeekdays ?? []
+  )
+  const [recurInterval, setRecurInterval] = React.useState<number>(
+    event?.recurrenceInterval ?? 1
+  )
   const [confirmDelete, setConfirmDelete] = React.useState(false)
   const isEdit = Boolean(event?.id)
 
@@ -97,6 +112,11 @@ export function EventDialog({
       notes: String(form.get("notes") || "") || null,
       moduleId: moduleId || null,
       reminderOffsets: reminders,
+      recurrence,
+      recurrenceUntil:
+        recurrence !== "none" ? String(form.get("recurrenceUntil") || "") || null : null,
+      recurrenceWeekdays: recurrence === "custom" ? recurWeekdays : null,
+      recurrenceInterval: recurrence === "custom" ? recurInterval : null,
     }
     setPending(true)
     try {
@@ -198,6 +218,84 @@ export function EventDialog({
                 defaultValue={allDay ? (event?.endsAt?.slice(0, 10) ?? "") : (event?.endsAt ?? "")}
               />
             </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>{t("event.recurrence")}</Label>
+              <Select value={recurrence} onValueChange={(v) => setRecurrence(v as EventRecurrence)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue>{t(`event.recurrenceOptions.${recurrence}`)}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {RECURRENCE_OPTIONS.map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {t(`event.recurrenceOptions.${key}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {recurrence !== "none" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="e-recur-until">{t("event.recurrenceUntil")}</Label>
+                <Input
+                  id="e-recur-until"
+                  name="recurrenceUntil"
+                  type="date"
+                  defaultValue={event?.recurrenceUntil ?? ""}
+                />
+              </div>
+            )}
+            {recurrence === "custom" && (
+              <>
+                <div className="space-y-1.5">
+                  <Label>{t("event.recurrenceWeekdays")}</Label>
+                  <div className="flex gap-1">
+                    {WEEKDAY_ORDER.map((day) => (
+                      <button
+                        key={day}
+                        type="button"
+                        aria-pressed={recurWeekdays.includes(day)}
+                        onClick={() =>
+                          setRecurWeekdays((prev) =>
+                            prev.includes(day)
+                              ? prev.filter((d) => d !== day)
+                              : [...prev, day]
+                          )
+                        }
+                        className={
+                          recurWeekdays.includes(day)
+                            ? "bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-md text-xs font-medium"
+                            : "hover:bg-muted flex size-8 items-center justify-center rounded-md border text-xs"
+                        }
+                      >
+                        {t(`event.weekdaysShort.${day}`)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("event.recurrenceInterval")}</Label>
+                  <Select
+                    value={String(recurInterval)}
+                    onValueChange={(v) => setRecurInterval(Number(v) || 1)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue>
+                        {t("event.recurrenceIntervalLabel", { weeks: recurInterval })}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INTERVAL_OPTIONS.map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {t("event.recurrenceIntervalLabel", { weeks: n })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="e-location">{t("event.location")}</Label>

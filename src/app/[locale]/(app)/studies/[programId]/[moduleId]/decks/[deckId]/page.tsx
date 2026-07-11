@@ -8,6 +8,7 @@ import { listAvailableModels } from "@/lib/ai/registry"
 import { Link } from "@/i18n/navigation"
 import { AddCardForm, GenerateCardsDialog } from "@/components/learn/deck-dialogs"
 import { FlashcardRow } from "@/components/learn/flashcard-row"
+import { ImportCardsButton } from "@/components/learn/import-cards-button"
 import { Button } from "@/components/ui/button"
 
 export default async function ModuleDeckDetailPage({
@@ -36,6 +37,7 @@ export default async function ModuleDeckDetailPage({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="flex-1 text-lg font-semibold">{deckRow.name}</h2>
+        <ImportCardsButton deckId={deckRow.id} />
         <GenerateCardsDialog deckId={deckRow.id} aiAvailable={Boolean(defaultModel)} />
         {dueCount > 0 && (
           <Button

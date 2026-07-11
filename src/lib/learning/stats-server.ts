@@ -1,7 +1,16 @@
 import "server-only"
-import { and, desc, eq, gte, inArray, isNotNull } from "drizzle-orm"
+import { and, count, desc, eq, gte, inArray, isNotNull, lte } from "drizzle-orm"
 import { db } from "@/db"
-import { deck, flashcard, quiz, quizAttempt, reviewLog, studyModule, studySession } from "@/db/schema"
+import {
+  deck,
+  flashcard,
+  quiz,
+  quizAttempt,
+  reviewLog,
+  studyModule,
+  studySession,
+  userPrefs,
+} from "@/db/schema"
 import {
   buildHeatmap,
   computeStreak,
@@ -29,6 +38,8 @@ export type DashboardStats = {
   monthMinutes: number
   weekSessions: number
   topModule: TopModule | null
+  /** Weekly study-time goal in minutes; null = none set. */
+  weeklyGoalMinutes: number | null
 }
 
 const HEATMAP_WEEKS = 26
@@ -42,7 +53,7 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
   const since7 = new Date(now)
   since7.setDate(since7.getDate() - 7)
 
-  const [reviews, attempts, sessions, userDecks, attempts30] = await Promise.all([
+  const [reviews, attempts, sessions, attempts30, dueTodayRows, prefs] = await Promise.all([
     db.query.reviewLog.findMany({
       where: and(eq(reviewLog.userId, userId), gte(reviewLog.reviewedAt, since)),
       columns: { reviewedAt: true },
@@ -59,10 +70,6 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
       where: and(eq(studySession.userId, userId), gte(studySession.startedAt, since)),
       columns: { startedAt: true, durationMinutes: true, moduleId: true },
     }),
-    db.query.deck.findMany({
-      where: eq(deck.userId, userId),
-      columns: { id: true },
-    }),
     db.query.quizAttempt.findMany({
       where: and(
         eq(quizAttempt.userId, userId),
@@ -70,6 +77,15 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
         gte(quizAttempt.startedAt, since30)
       ),
       columns: { score: true },
+    }),
+    db
+      .select({ value: count() })
+      .from(flashcard)
+      .innerJoin(deck, eq(flashcard.deckId, deck.id))
+      .where(and(eq(deck.userId, userId), lte(flashcard.due, now))),
+    db.query.userPrefs.findFirst({
+      where: eq(userPrefs.userId, userId),
+      columns: { weeklyGoalMinutes: true },
     }),
   ])
 
@@ -79,16 +95,7 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
     countByDay(sessions.map((s) => s.startedAt))
   )
   const today = toDayKey(new Date())
-
-  // Due flashcards today (across all of the user's decks).
-  const deckIds = userDecks.map((d) => d.id)
-  const dueCards = deckIds.length
-    ? await db.query.flashcard.findMany({
-        where: inArray(flashcard.deckId, deckIds),
-        columns: { due: true },
-      })
-    : []
-  const dueToday = dueCards.filter((c) => c.due <= now).length
+  const dueToday = dueTodayRows[0]?.value ?? 0
 
   // Average quiz score (last 30 days).
   const scores = attempts30.map((a) => Number(a.score ?? 0))
@@ -127,6 +134,7 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
     monthMinutes,
     weekSessions,
     topModule,
+    weeklyGoalMinutes: prefs?.weeklyGoalMinutes ?? null,
   }
 }
 

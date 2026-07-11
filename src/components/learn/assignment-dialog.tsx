@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Pencil, Plus } from "lucide-react"
+import { Loader2, Pencil, Plus, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
@@ -9,7 +9,11 @@ import {
   createAssignment,
   updateAssignment,
 } from "@/app/[locale]/(app)/assignment-actions"
-import type { AssignmentKind, AssignmentStatus } from "@/db/schema/assignments"
+import type {
+  AssignmentKind,
+  AssignmentStatus,
+  AssignmentSubtask,
+} from "@/db/schema/assignments"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -43,6 +47,7 @@ export type AssignmentData = {
   pointsAchieved: string | null
   pointsMax: string | null
   materialIds: string[]
+  subtasks?: AssignmentSubtask[] | null
 }
 
 export function AssignmentDialog({
@@ -62,6 +67,7 @@ export function AssignmentDialog({
   const [status, setStatus] = React.useState<AssignmentStatus>(assignment?.status ?? "open")
   const [kind, setKind] = React.useState<AssignmentKind>(assignment?.kind ?? "graded")
   const [materialIds, setMaterialIds] = React.useState<string[]>(assignment?.materialIds ?? [])
+  const [subtasks, setSubtasks] = React.useState<AssignmentSubtask[]>(assignment?.subtasks ?? [])
   const isEdit = Boolean(assignment?.id)
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -78,6 +84,7 @@ export function AssignmentDialog({
         : null,
       pointsMax: form.get("pointsMax") ? Number(form.get("pointsMax")) : null,
       materialIds,
+      subtasks: subtasks.filter((s) => s.title.trim()),
     }
     setPending(true)
     try {
@@ -183,6 +190,55 @@ export function AssignmentDialog({
                 min={0}
                 defaultValue={assignment?.pointsMax ?? ""}
               />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("fields.subtasks")}</Label>
+            <div className="space-y-1.5">
+              {subtasks.map((s, i) => (
+                <div key={s.id} className="flex items-center gap-2">
+                  <Checkbox
+                    checked={s.done}
+                    onCheckedChange={(on) =>
+                      setSubtasks((list) =>
+                        list.map((x, j) => (j === i ? { ...x, done: on === true } : x))
+                      )
+                    }
+                  />
+                  <Input
+                    value={s.title}
+                    onChange={(e) =>
+                      setSubtasks((list) =>
+                        list.map((x, j) => (j === i ? { ...x, title: e.target.value } : x))
+                      )
+                    }
+                    className="h-8 flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setSubtasks((list) => list.filter((_, j) => j !== i))}
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span className="sr-only">{tCommon("delete")}</span>
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setSubtasks((list) => [
+                    ...list,
+                    { id: crypto.randomUUID(), title: "", done: false },
+                  ])
+                }
+              >
+                <Plus className="size-3.5" />
+                {t("fields.addSubtask")}
+              </Button>
             </div>
           </div>
           {materials.length > 0 && (

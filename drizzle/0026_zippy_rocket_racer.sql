@@ -1,0 +1,1 @@
+ALTER TABLE "assignment" ADD COLUMN "subtasks" jsonb;

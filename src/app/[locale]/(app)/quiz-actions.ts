@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { and, eq } from "drizzle-orm"
+import { and, eq, isNull } from "drizzle-orm"
 import { generateObject } from "ai"
 import { z } from "zod"
 import { db } from "@/db"
@@ -287,6 +287,8 @@ Each question gets a short explanation of the correct answer. Write in the same 
 const submitSchema = z.object({
   quizId: z.string(),
   answers: z.array(z.object({ questionId: z.string(), answer: z.string() })),
+  /** Actual time spent in the runner; falls back to an estimate when absent. */
+  durationSeconds: z.number().int().min(0).max(6 * 60 * 60).optional(),
 })
 
 export type AttemptResult = {
@@ -300,6 +302,8 @@ export type AttemptResult = {
     /** The correct answer (MC: option text, free text: reference answer). */
     correctAnswer: string | null
     correct: boolean
+    /** False when a free-text answer could not be graded (no AI configured). */
+    graded: boolean
     feedback: string | null
     explanation: string | null
   }[]
@@ -345,18 +349,18 @@ Judge leniently on wording but strictly on content. Reply with correct=true/fals
     const q = byId.get(questionId)
     if (!q) continue
     let correct = false
+    let graded = true
     let feedback: string | null = null
     if (q.kind === "multiple_choice") {
       correct = q.correctIndex != null && Number(answer) === q.correctIndex
     } else if (gradeFreeText && q.referenceAnswer) {
-      const graded = await gradeFreeText(q.prompt, q.referenceAnswer, answer)
-      correct = graded.correct
-      feedback = graded.feedback
+      const result = await gradeFreeText(q.prompt, q.referenceAnswer, answer)
+      correct = result.correct
+      feedback = result.feedback
     } else {
-      // no AI available: simple contains-check fallback
-      correct =
-        q.referenceAnswer != null &&
-        answer.trim().toLowerCase().includes(q.referenceAnswer.trim().toLowerCase().slice(0, 30))
+      // No AI available: don't pretend to grade free text — the runner shows
+      // the reference answer and excludes the question from the score.
+      graded = false
     }
     const answerText =
       q.kind === "multiple_choice" ? (q.options?.[Number(answer)] ?? answer) : answer
@@ -373,13 +377,17 @@ Judge leniently on wording but strictly on content. Reply with correct=true/fals
       answerText,
       correctAnswer,
       correct,
+      graded,
       feedback,
       explanation: q.explanation,
     })
   }
 
+  const gradedResults = results.filter((r) => r.graded)
   const score =
-    results.length === 0 ? 0 : Math.round((results.filter((r) => r.correct).length / results.length) * 100)
+    gradedResults.length === 0
+      ? 0
+      : Math.round((gradedResults.filter((r) => r.correct).length / gradedResults.length) * 100)
 
   const [attempt] = await db
     .insert(quizAttempt)
@@ -403,17 +411,69 @@ Judge leniently on wording but strictly on content. Reply with correct=true/fals
     )
   }
 
-  // Count the quiz run as a study session for the module's learning stats
+  // Count the quiz run as a study session for the module's learning stats.
+  // Prefer the measured runner time over the per-question estimate.
   const quizRow = byId.size > 0 ? await ownQuiz(data.quizId, session.user.id) : null
   const { studySession } = await import("@/db/schema")
   await db.insert(studySession).values({
     userId: session.user.id,
     moduleId: quizRow?.moduleId ?? null,
-    durationMinutes: Math.max(1, Math.round(results.length * 0.75)),
+    durationMinutes:
+      data.durationSeconds != null
+        ? Math.max(1, Math.round(data.durationSeconds / 60))
+        : Math.max(1, Math.round(results.length * 0.75)),
     kind: "quiz",
   })
 
+  // Feed wrong answers into the module's auto-managed "mistakes" deck so they
+  // come back through spaced repetition.
+  const wrong = results.filter((r) => r.graded && !r.correct && r.correctAnswer)
+  if (wrong.length > 0) {
+    await addToMistakesDeck(session.user.id, quizRow?.moduleId ?? null, wrong)
+  }
+
   revalidatePath("/")
   return { score, results }
+}
+
+/**
+ * Upserts wrong quiz answers as flashcards into the user's per-module
+ * "mistakes" deck (created on demand). Duplicate prompts are skipped so
+ * repeated failures don't multiply cards.
+ */
+async function addToMistakesDeck(
+  userId: string,
+  moduleId: string | null,
+  wrong: { prompt: string; correctAnswer: string | null; explanation: string | null }[]
+): Promise<void> {
+  const { deck, flashcard } = await import("@/db/schema")
+  let mistakes = await db.query.deck.findFirst({
+    where: and(
+      eq(deck.userId, userId),
+      eq(deck.kind, "mistakes"),
+      moduleId ? eq(deck.moduleId, moduleId) : isNull(deck.moduleId)
+    ),
+  })
+  if (!mistakes) {
+    ;[mistakes] = await db
+      .insert(deck)
+      .values({ userId, moduleId, name: "Quiz-Fehler", kind: "mistakes" })
+      .returning()
+  }
+  const existing = await db.query.flashcard.findMany({
+    where: eq(flashcard.deckId, mistakes.id),
+    columns: { front: true },
+  })
+  const seen = new Set(existing.map((c) => c.front))
+  const fresh = wrong.filter((w) => !seen.has(w.prompt))
+  if (fresh.length > 0) {
+    await db.insert(flashcard).values(
+      fresh.map((w) => ({
+        deckId: mistakes.id,
+        front: w.prompt,
+        back: w.explanation ? `${w.correctAnswer}\n\n${w.explanation}` : (w.correctAnswer ?? ""),
+      }))
+    )
+  }
 }
 

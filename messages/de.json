@@ -218,11 +218,29 @@
       "pointsAchieved": "Erreichte Punkte",
       "pointsMax": "Max. Punkte",
       "materials": "Verknüpfte Materialien",
-      "kind": "Art"
+      "kind": "Art",
+      "subtasks": "Teilaufgaben",
+      "addSubtask": "Teilaufgabe hinzufügen"
     },
     "kind": {
       "graded": "Bewertet (zählt zum Bonus)",
       "practice": "Übung (nur Selbsteinschätzung)"
+    },
+    "subtasksProgress": "{done} von {total} Teilaufgaben erledigt",
+    "series": {
+      "button": "Serie anlegen",
+      "title": "Übungsblatt-Serie anlegen",
+      "description": "Erzeugt nummerierte Blätter mit gleichmäßigen Abgabeterminen — z. B. „Blatt 1\" bis „Blatt 12\", wöchentlich fällig.",
+      "baseTitle": "Basistitel",
+      "baseTitlePlaceholder": "z. B. Blatt",
+      "firstDueDate": "Erste Abgabe",
+      "count": "Anzahl Blätter",
+      "interval": "Rhythmus",
+      "intervalLabel": "{weeks, plural, =1 {jede Woche} other {alle # Wochen}}",
+      "kind": "Art",
+      "pointsMax": "Max. Punkte pro Blatt (optional)",
+      "create": "Serie anlegen",
+      "done": "{count} Abgaben angelegt"
     }
   },
   "audit": {
@@ -339,6 +357,17 @@
       "description": "Wähle dein bevorzugtes KI-Modell. Ohne Auswahl wird das globale Standardmodell verwendet.",
       "globalDefault": "Globaler Standard",
       "saved": "Gespeichert"
+    },
+    "learning": {
+      "title": "Lernen",
+      "description": "Persönliche Ziele für deine Lernroutine.",
+      "weeklyGoal": "Wochenziel (Stunden)",
+      "placeholder": "z. B. 10"
+    },
+    "aiHint": {
+      "title": "AI-Funktionen sind inaktiv",
+      "description": "Chat, Karten-Generierung, Quiz-Bewertung und Lernpläne brauchen einen AI-Provider. Konfiguriere einen im Admin-Bereich — Nutzer können danach auch eigene API-Keys hinterlegen.",
+      "cta": "AI-Provider konfigurieren"
     }
   },
   "studies": {
@@ -546,9 +575,29 @@
       "noModule": "Kein Modul",
       "reminders": "Erinnerungen",
       "reminderOptions": {
-        "10080": "7 Tage vorher",
+        "60": "1 Stunde vorher",
         "1440": "1 Tag vorher",
-        "60": "1 Stunde vorher"
+        "10080": "7 Tage vorher"
+      },
+      "recurrence": "Wiederholung",
+      "recurrenceUntil": "Wiederholen bis",
+      "recurrenceOptions": {
+        "none": "Keine",
+        "weekly": "Wöchentlich",
+        "biweekly": "Alle 2 Wochen",
+        "custom": "Benutzerdefiniert…"
+      },
+      "recurrenceWeekdays": "An diesen Tagen",
+      "recurrenceInterval": "Rhythmus",
+      "recurrenceIntervalLabel": "{weeks, plural, =1 {jede Woche} other {alle # Wochen}}",
+      "weekdaysShort": {
+        "0": "So",
+        "1": "Mo",
+        "2": "Di",
+        "3": "Mi",
+        "4": "Do",
+        "5": "Fr",
+        "6": "Sa"
       }
     },
     "ics": {
@@ -559,7 +608,13 @@
       "copied": "URL kopiert."
     },
     "in": "in {distance}",
-    "today": "Heute"
+    "today": "Heute",
+    "icsImport": {
+      "title": "Kalender importieren (ICS)",
+      "description": "Lade den .ics-Export deiner Uni hoch — Events werden einmalig importiert, Duplikate übersprungen.",
+      "button": ".ics-Datei importieren",
+      "done": "{imported} Termine importiert, {skipped} Duplikate übersprungen"
+    }
   },
   "dashboard": {
     "greeting": "Hallo {name}!",
@@ -589,7 +644,21 @@
     },
     "semesterOverview": "Semesterübersicht",
     "programSettings": "Einstellungen",
-    "currentSemester": "Aktuell"
+    "currentSemester": "Aktuell",
+    "gradeGoal": {
+      "label": "Zielnote",
+      "needed": "Du brauchst einen Schnitt von {grade} über die restlichen {ects} ECTS.",
+      "safe": "Schon sicher — die restlichen Module bestehen reicht.",
+      "unreachable": "Mit den restlichen ECTS nicht mehr erreichbar.",
+      "invalid": "Note zwischen 1,0 und 4,0 eingeben."
+    },
+    "focus": {
+      "dueCards": "{count} Karten fällig",
+      "planItems": "{count} Lerneinheiten heute",
+      "examIn": "{title} in {days} Tagen",
+      "prepared": "{percent} % vorbereitet",
+      "start": "Jetzt lernen"
+    }
   },
   "stats": {
     "title": "Lernaktivität",
@@ -608,7 +677,8 @@
     "topModuleLabel": "Top-Modul",
     "streakLabel": "Streak",
     "weekTimeLabel": "Diese Woche",
-    "none": "—"
+    "none": "—",
+    "weeklyGoalLabel": "Wochenziel"
   },
   "pomodoro": {
     "title": "Pomodoro-Timer",
@@ -658,13 +728,21 @@
     "open": "Öffnen",
     "viewer": {
       "unsupported": "Vorschau für diesen Dateityp nicht verfügbar — bitte herunterladen."
+    },
+    "annotator": {
+      "hint": "Auf der Seite ziehen zum Markieren; Markierung anklicken für Notiz oder Löschen.",
+      "notePlaceholder": "Notiz zu dieser Markierung …"
     }
   },
   "search": {
     "modules": "Module",
     "materials": "Materialien",
     "events": "Termine",
-    "noResults": "Keine Treffer."
+    "noResults": "Keine Treffer.",
+    "decks": "Kartenstapel",
+    "quizzes": "Quizzes",
+    "assignments": "Übungsblätter",
+    "contacts": "Kontakte"
   },
   "ai": {
     "title": "KI-Assistent",
@@ -831,7 +909,12 @@
         "generating": "Generiere Karten …"
       },
       "edit": "Bearbeiten",
-      "editCard": "Karteikarte bearbeiten"
+      "editCard": "Karteikarte bearbeiten",
+      "import": {
+        "button": "Importieren",
+        "hint": "TSV/CSV (eine Karte pro Zeile, Vorderseite TAB Rückseite) oder Anki .apkg (Legacy-Export).",
+        "done": "{count} Karten importiert"
+      }
     },
     "quizzes": {
       "new": "Quiz anlegen",
@@ -867,7 +950,8 @@
       },
       "description": "Beschreibung (optional)",
       "correctAnswer": "Richtige Antwort",
-      "edit": "Bearbeiten"
+      "edit": "Bearbeiten",
+      "notGraded": "Nicht automatisch bewertet (kein AI-Provider) — vergleiche mit der Referenzantwort."
     },
     "aiUnavailable": "Kein KI-Modell konfiguriert — KI-Funktionen deaktiviert.",
     "questionForm": {
@@ -998,7 +1082,16 @@
       "assignment": "Abgabe"
     },
     "deleteItem": "Entfernen",
-    "today": "Heute lernen"
+    "today": "Heute lernen",
+    "weekdaysShort": {
+      "0": "So",
+      "1": "Mo",
+      "2": "Di",
+      "3": "Mi",
+      "4": "Do",
+      "5": "Fr",
+      "6": "Sa"
+    }
   },
   "learnSession": {
     "title": "Lernsession starten",
@@ -1020,7 +1113,9 @@
     "result": "{count} Karten in ~{minutes} Min. gelernt",
     "analyze": "Was sollte ich vertiefen?",
     "analyzeTitle": "KI-Auswertung",
-    "analyzing": "Analysiere deine Lernhistorie …"
+    "analyzing": "Analysiere deine Lernhistorie …",
+    "capped": "Session mit {shown} — insgesamt {total} fällig",
+    "swipeHint": "Nach rechts wischen = Gut, nach links = Nochmal"
   },
   "moduleTabs": {
     "overview": "Übersicht",

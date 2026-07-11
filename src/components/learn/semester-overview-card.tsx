@@ -4,6 +4,7 @@ import type { FinalGrade } from "@/lib/grades"
 import { formatGrade, programAverageFromFinals } from "@/lib/grades"
 import type { GradingSystem } from "@/db/schema/studies"
 import type { SemesterModule } from "@/lib/studies/context"
+import { GradeGoal } from "@/components/learn/grade-goal"
 import { SemesterDialog } from "@/components/studies/semester-dialog"
 import { SemesterModulesBoard, type BoardSemester } from "@/components/learn/semester-modules-board"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -45,6 +46,9 @@ export async function SemesterOverviewCard({
   const average = programAverageFromFinals(
     allModules.map((m) => ({ finalGrade: finalGrades.get(m.id)?.grade ?? null, ects: m.ects }))
   )
+  const gradedEcts = allModules
+    .filter((m) => finalGrades.get(m.id)?.grade != null)
+    .reduce((sum, m) => sum + (m.ects ?? 0), 0)
 
   const stats: { label: string; value: string }[] = [
     {
@@ -116,6 +120,9 @@ export async function SemesterOverviewCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        {gradingSystem === "german" && targetEcts != null && targetEcts > gradedEcts && (
+          <GradeGoal average={average} gradedEcts={gradedEcts} targetEcts={targetEcts} />
+        )}
         {semesters.length === 0 ? (
           <p className="text-muted-foreground text-sm">{t("noModules")}</p>
         ) : (

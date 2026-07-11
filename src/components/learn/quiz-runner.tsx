@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CheckCircle2, Loader2, XCircle } from "lucide-react"
+import { CheckCircle2, HelpCircle, Loader2, XCircle } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
@@ -31,6 +31,7 @@ export function QuizRunner({
   const [answers, setAnswers] = React.useState<Record<string, string>>({})
   const [grading, setGrading] = React.useState(false)
   const [result, setResult] = React.useState<AttemptResult | null>(null)
+  const [startedAt] = React.useState(() => Date.now())
 
   const current = questions[index]
   const isLast = index === questions.length - 1
@@ -42,6 +43,7 @@ export function QuizRunner({
       const res = await submitAttempt({
         quizId,
         answers: questions.map((q) => ({ questionId: q.id, answer: answers[q.id] ?? "" })),
+        durationSeconds: Math.round((Date.now() - startedAt) / 1000),
       })
       setResult(res)
       router.refresh()
@@ -60,7 +62,9 @@ export function QuizRunner({
           {result.results.map((r, i) => (
             <li key={r.questionId} className="space-y-1.5 rounded-md border p-3 text-sm">
               <div className="flex items-start gap-2">
-                {r.correct ? (
+                {!r.graded ? (
+                  <HelpCircle className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+                ) : r.correct ? (
                   <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-600" />
                 ) : (
                   <XCircle className="text-destructive mt-0.5 size-4 shrink-0" />
@@ -73,7 +77,10 @@ export function QuizRunner({
                 {t("yourAnswer")}: {r.answerText || "–"}
                 {r.feedback && ` — ${r.feedback}`}
               </p>
-              {!r.correct && r.correctAnswer && (
+              {!r.graded && (
+                <p className="text-muted-foreground pl-6 text-xs">{t("notGraded")}</p>
+              )}
+              {(!r.correct || !r.graded) && r.correctAnswer && (
                 <p className="pl-6 text-green-700 dark:text-green-400">
                   {t("correctAnswer")}: {r.correctAnswer}
                 </p>

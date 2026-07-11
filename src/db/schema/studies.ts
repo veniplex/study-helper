@@ -211,6 +211,10 @@ export const externalResource = pgTable(
 
 export type EventType = "exam" | "deadline" | "lecture" | "other"
 
+/** How an event repeats. Occurrences are expanded at read time, not stored.
+ * "custom" = any set of weekdays every N weeks (recurrenceWeekdays/-Interval). */
+export type EventRecurrence = "none" | "weekly" | "biweekly" | "custom"
+
 export const studyEvent = pgTable(
   "event",
   {
@@ -229,6 +233,13 @@ export const studyEvent = pgTable(
     aiGenerated: boolean("ai_generated").notNull().default(false),
     /** Reminder offsets in minutes before startsAt, e.g. [10080, 1440]. */
     reminderOffsets: jsonb("reminder_offsets").$type<number[]>().notNull().default([]),
+    /** Repetition: occurrences run from startsAt until recurrenceUntil (inclusive). */
+    recurrence: text("recurrence").$type<EventRecurrence>().notNull().default("none"),
+    recurrenceUntil: date("recurrence_until"),
+    /** For "custom": weekdays 0 (Sunday) – 6 the event repeats on. */
+    recurrenceWeekdays: jsonb("recurrence_weekdays").$type<number[]>(),
+    /** For "custom": repeat every N weeks (1–4), anchored at startsAt's week. */
+    recurrenceInterval: integer("recurrence_interval"),
     ...timestamps,
   },
   (t) => [

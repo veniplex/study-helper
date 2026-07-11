@@ -1,4 +1,14 @@
-import { boolean, date, index, numeric, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core"
+import {
+  boolean,
+  date,
+  index,
+  jsonb,
+  numeric,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { user } from "./auth"
 import { studyModule } from "./studies"
@@ -8,6 +18,9 @@ export type AssignmentStatus = "open" | "submitted" | "graded"
 
 /** graded = counts toward module bonus; practice = self-assessment only. */
 export type AssignmentKind = "graded" | "practice"
+
+/** Checklist entry inside an assignment (e.g. "Aufgabe 1", "Aufgabe 2"). */
+export type AssignmentSubtask = { id: string; title: string; done: boolean }
 
 /** Graded coursework (Abgaben) per module — bonus-point sheets, homework
  * hand-ins etc. Not user-created study content. */
@@ -31,6 +44,8 @@ export const assignment = pgTable(
     aiGenerated: boolean("ai_generated").notNull().default(false),
     pointsAchieved: numeric("points_achieved", { precision: 7, scale: 2 }),
     pointsMax: numeric("points_max", { precision: 7, scale: 2 }),
+    /** Optional checklist of subtasks. */
+    subtasks: jsonb("subtasks").$type<AssignmentSubtask[]>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

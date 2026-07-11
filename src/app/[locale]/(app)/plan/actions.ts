@@ -42,6 +42,7 @@ const availabilitySchema = z.object({
     .array(
       z.object({
         weekday: z.number().int().min(0).max(6),
+        weekdays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
         from: z.string().regex(/^\d{2}:\d{2}$/),
         to: z.string().regex(/^\d{2}:\d{2}$/),
         interval: z.union([z.literal(1), z.literal(2)]),

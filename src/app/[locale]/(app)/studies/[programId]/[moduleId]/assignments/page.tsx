@@ -7,6 +7,8 @@ import { requireSession } from "@/lib/auth/session"
 import { ownModule } from "@/lib/studies/access"
 import { deleteAssignment } from "@/app/[locale]/(app)/assignment-actions"
 import { AssignmentDialog } from "@/components/learn/assignment-dialog"
+import { AssignmentSeriesDialog } from "@/components/learn/assignment-series-dialog"
+import { SubtaskList } from "@/components/learn/subtask-list"
 import { AiBadge } from "@/components/ai/ai-badge"
 import { DeleteButton } from "@/components/studies/delete-button"
 import { Badge } from "@/components/ui/badge"
@@ -42,7 +44,8 @@ export default async function ModuleAssignmentsPage({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <AssignmentSeriesDialog moduleId={moduleId} />
         <AssignmentDialog moduleId={moduleId} materials={materials} />
       </div>
 
@@ -93,6 +96,7 @@ export default async function ModuleAssignmentsPage({
                         pointsAchieved: a.pointsAchieved,
                         pointsMax: a.pointsMax,
                         materialIds: a.materials.map((m) => m.material.id),
+                        subtasks: a.subtasks,
                       }}
                     />
                     <DeleteButton action={deleteAssignment.bind(null, a.id)} />
@@ -100,6 +104,9 @@ export default async function ModuleAssignmentsPage({
                 </div>
                 {a.description && (
                   <p className="text-muted-foreground text-xs">{a.description}</p>
+                )}
+                {a.subtasks && a.subtasks.length > 0 && (
+                  <SubtaskList assignmentId={a.id} subtasks={a.subtasks} />
                 )}
                 {a.materials.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">

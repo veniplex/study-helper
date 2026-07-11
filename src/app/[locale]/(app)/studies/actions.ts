@@ -271,7 +271,11 @@ export async function reorderModulesAcrossSemesters(input: unknown) {
 const resourceSchema = z.object({
   type: z.enum(["moodle", "ilias", "fileshare", "discord", "teams", "website", "other"]),
   name: z.string().min(1).max(200),
-  url: z.string().url().max(2000),
+  url: z
+    .string()
+    .url()
+    .max(2000)
+    .refine((u) => /^https?:\/\//i.test(u), "Only http(s) URLs are allowed"),
   username: z.string().max(200).optional().nullable(),
   note: z.string().max(2000).optional().nullable(),
 })

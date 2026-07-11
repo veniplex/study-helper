@@ -2,11 +2,13 @@ import { notFound } from "next/navigation"
 import { and, eq } from "drizzle-orm"
 import { ArrowLeft, Download } from "lucide-react"
 import { getTranslations } from "next-intl/server"
+import { asc } from "drizzle-orm"
 import { db } from "@/db"
-import { material } from "@/db/schema"
+import { material, materialAnnotation } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { Link } from "@/i18n/navigation"
 import { MediaPlayer } from "@/components/materials/media-player"
+import { PdfAnnotator } from "@/components/materials/pdf-annotator"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -31,6 +33,14 @@ export default async function MaterialViewerPage({
   const fileUrl = `/api/materials/${row.id}/file`
   const mime = row.mimeType ?? ""
 
+  const annotations =
+    mime === "application/pdf"
+      ? await db.query.materialAnnotation.findMany({
+          where: eq(materialAnnotation.materialId, row.id),
+          orderBy: [asc(materialAnnotation.createdAt)],
+        })
+      : []
+
   return (
     <div className="mx-auto w-full max-w-5xl space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -49,7 +59,17 @@ export default async function MaterialViewerPage({
       </div>
 
       {mime === "application/pdf" ? (
-        <iframe src={fileUrl} title={row.name} className="h-[80vh] w-full rounded-lg border" />
+        <PdfAnnotator
+          materialId={row.id}
+          fileUrl={fileUrl}
+          initialAnnotations={annotations.map((a) => ({
+            id: a.id,
+            page: a.page,
+            rect: a.rect,
+            color: a.color,
+            note: a.note,
+          }))}
+        />
       ) : mime.startsWith("video/") ? (
         <MediaPlayer materialId={row.id} src={fileUrl} kind="video" />
       ) : mime.startsWith("audio/") ? (

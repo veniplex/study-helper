@@ -17,6 +17,9 @@ const keySchema = z.object({
 export async function saveUserAiKey(input: unknown) {
   const session = await requireSession()
   const { providerId, apiKey } = keySchema.parse(input)
+  const { getSetting } = await import("@/lib/settings")
+  const ai = await getSetting("ai")
+  if (!ai?.providers.some((p) => p.id === providerId)) throw new Error("Unknown provider")
   const encrypted = encrypt(apiKey)
   const existing = await db.query.userAiKey.findFirst({
     where: and(eq(userAiKey.userId, session.user.id), eq(userAiKey.providerId, providerId)),
@@ -78,6 +81,21 @@ export async function updatePreferredModel(ref: string) {
     .values({ userId: session.user.id, preferredModel: value })
     .onConflictDoUpdate({ target: userPrefs.userId, set: { preferredModel: value } })
   revalidatePath("/settings")
+  return { ok: true as const }
+}
+
+/** Sets the weekly study-time goal in minutes. null/0 clears it. */
+export async function updateWeeklyGoal(minutes: number | null) {
+  const session = await requireSession()
+  const value =
+    minutes != null && Number.isFinite(minutes) && minutes > 0
+      ? Math.min(Math.round(minutes), 80 * 60)
+      : null
+  await db
+    .insert(userPrefs)
+    .values({ userId: session.user.id, weeklyGoalMinutes: value })
+    .onConflictDoUpdate({ target: userPrefs.userId, set: { weeklyGoalMinutes: value } })
+  revalidatePath("/")
   return { ok: true as const }
 }
 

@@ -169,6 +169,34 @@
       "when": 1783780943033,
       "tag": "0023_awesome_otto_octavius",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1783795195531,
+      "tag": "0024_huge_dreadnoughts",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1783799805954,
+      "tag": "0025_medical_gertrude_yorkes",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1783800150529,
+      "tag": "0026_zippy_rocket_racer",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1783800508904,
+      "tag": "0027_daffy_nitro",
+      "breakpoints": true
     }
   ]
 }

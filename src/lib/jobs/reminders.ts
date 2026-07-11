@@ -1,5 +1,5 @@
 import "server-only"
-import { and, eq, gt, isNotNull, lte, ne } from "drizzle-orm"
+import { and, eq, gt, isNotNull, lte, ne, or } from "drizzle-orm"
 import { db } from "@/db"
 import {
   assignment,
@@ -11,6 +11,7 @@ import {
   type NotificationChannels,
 } from "@/db/schema"
 import { sendEmail } from "@/lib/email"
+import { expandOccurrences } from "@/lib/events/recurrence"
 import { sendPushToUser } from "@/lib/push"
 import { getAppName } from "@/lib/settings"
 import { env } from "@/lib/env"
@@ -66,36 +67,46 @@ async function claimNotification(userId: string, key: string): Promise<boolean> 
  */
 export async function sendDueReminders(): Promise<void> {
   const now = new Date()
-  // Look at events starting within the next 8 days (largest offset is 7d)
+  // Look at occurrences starting within the next 8 days (largest offset is 7d)
   const horizon = new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000)
 
   const events = await db.query.studyEvent.findMany({
-    where: and(gt(studyEvent.startsAt, now), lte(studyEvent.startsAt, horizon)),
+    where: or(
+      and(gt(studyEvent.startsAt, now), lte(studyEvent.startsAt, horizon)),
+      ne(studyEvent.recurrence, "none")
+    ),
   })
 
   for (const event of events) {
-    for (const offset of event.reminderOffsets) {
-      const triggerAt = new Date(event.startsAt.getTime() - offset * 60 * 1000)
-      if (triggerAt > now) continue
+    const occurrences = expandOccurrences(event, now, horizon)
+    for (const occ of occurrences) {
+      for (const offset of event.reminderOffsets) {
+        const triggerAt = new Date(occ.startsAt.getTime() - offset * 60 * 1000)
+        if (triggerAt > now) continue
 
-      // Skip if already sent (unique constraint makes this race-safe)
-      const inserted = await db
-        .insert(reminderSent)
-        .values({ eventId: event.id, offsetMinutes: offset })
-        .onConflictDoNothing()
-        .returning({ id: reminderSent.id })
-      if (inserted.length === 0) continue
+        // Skip if already sent (unique constraint makes this race-safe)
+        const inserted = await db
+          .insert(reminderSent)
+          .values({
+            eventId: event.id,
+            offsetMinutes: offset,
+            occurrenceDate: occ.isRecurrenceInstance ? occ.occurrenceDate : "",
+          })
+          .onConflictDoNothing()
+          .returning({ id: reminderSent.id })
+        if (inserted.length === 0) continue
 
-      const channels = await getChannels(event.userId)
-      const when = event.startsAt.toLocaleString("de-DE", {
-        dateStyle: "medium",
-        timeStyle: event.allDay ? undefined : "short",
-      })
-      await notify(event.userId, channels.events, {
-        title: `⏰ ${event.title}`,
-        body: `${when}${event.location ? ` · ${event.location}` : ""}`,
-        url: "/calendar",
-      })
+        const channels = await getChannels(event.userId)
+        const when = occ.startsAt.toLocaleString("de-DE", {
+          dateStyle: "medium",
+          timeStyle: event.allDay ? undefined : "short",
+        })
+        await notify(event.userId, channels.events, {
+          title: `⏰ ${event.title}`,
+          body: `${when}${event.location ? ` · ${event.location}` : ""}`,
+          url: "/calendar",
+        })
+      }
     }
   }
 

@@ -1,4 +1,4 @@
-import { bigint, index, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import { bigint, index, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { user } from "./auth"
 import { studyModule } from "./studies"
@@ -40,9 +40,45 @@ export const material = pgTable(
   ]
 )
 
-export const materialRelations = relations(material, ({ one }) => ({
+/** Rectangle in normalized page coordinates (0–1, origin top-left). */
+export type AnnotationRect = { x: number; y: number; w: number; h: number }
+
+export type AnnotationColor = "yellow" | "green" | "red" | "blue"
+
+/** Highlight/note annotations on a PDF material, one row per marked area. */
+export const materialAnnotation = pgTable(
+  "material_annotation",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    materialId: text("material_id")
+      .notNull()
+      .references(() => material.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** 1-based PDF page number. */
+    page: integer("page").notNull(),
+    rect: jsonb("rect").$type<AnnotationRect>().notNull(),
+    color: text("color").$type<AnnotationColor>().notNull().default("yellow"),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("material_annotation_material_idx").on(t.materialId)]
+)
+
+export const materialRelations = relations(material, ({ one, many }) => ({
   module: one(studyModule, {
     fields: [material.moduleId],
     references: [studyModule.id],
+  }),
+  annotations: many(materialAnnotation),
+}))
+
+export const materialAnnotationRelations = relations(materialAnnotation, ({ one }) => ({
+  material: one(material, {
+    fields: [materialAnnotation.materialId],
+    references: [material.id],
   }),
 }))

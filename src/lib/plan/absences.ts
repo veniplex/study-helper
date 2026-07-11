@@ -69,10 +69,11 @@ export function expandAbsences(
         // invalid cron or iteration exhausted — skip entry
       }
     } else {
-      // Simple mode: weekday + time window, weekly or biweekly (anchored)
+      // Simple mode: weekday(s) + time window, weekly or biweekly (anchored)
       const anchor = r.anchor ? new Date(r.anchor) : null
+      const days = new Set(r.weekdays?.length ? r.weekdays : [r.weekday])
       for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
-        if (d.getDay() !== r.weekday) continue
+        if (!days.has(d.getDay())) continue
         if (r.interval === 2) {
           const ref = anchor ?? from
           const weeks = Math.round((d.getTime() - ref.getTime()) / (7 * 24 * 60 * 60 * 1000))

@@ -4,7 +4,7 @@ import { and, asc, eq, gte, inArray } from "drizzle-orm"
 import { db } from "@/db"
 import { aiConversation, aiMessage, studyEvent } from "@/db/schema"
 import { getSession } from "@/lib/auth/session"
-import { getLanguageModel } from "@/lib/ai/registry"
+import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
 import { searchChunks } from "@/lib/ai/rag"
 import { MODE_PROMPTS, type ChatMode } from "@/lib/ai/modes"
@@ -52,14 +52,29 @@ export async function POST(request: Request) {
     })
   }
 
-  const body = (await request.json()) as {
+  const body = (await request.json().catch(() => null)) as {
     messages: UIMessage[]
     conversationId: string
     model: string
     pageContext?: string
+  } | null
+  if (
+    !body ||
+    !Array.isArray(body.messages) ||
+    typeof body.conversationId !== "string" ||
+    typeof body.model !== "string"
+  ) {
+    return new Response("Invalid request body", { status: 400 })
   }
   const pageContext =
     typeof body.pageContext === "string" ? body.pageContext.slice(0, 500) : undefined
+
+  // Only allow models the admin actually configured — otherwise arbitrary
+  // model ids could be run against the globally configured API keys.
+  const { models } = await listAvailableModels()
+  if (!models.some((m) => m.ref === body.model)) {
+    return new Response("Unknown model", { status: 400 })
+  }
 
   const conversation = await db.query.aiConversation.findFirst({
     where: and(

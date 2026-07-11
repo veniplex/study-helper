@@ -8,6 +8,7 @@ import { expandAbsences } from "@/lib/plan/absences"
 import { CalendarView } from "@/components/calendar/calendar-view"
 import { EventDialog, type ModuleOption } from "@/components/calendar/event-dialog"
 import { IcsCard } from "@/components/calendar/ics-card"
+import { IcsImportCard } from "@/components/calendar/ics-import-card"
 
 function toLocalInputValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0")
@@ -92,6 +93,10 @@ export default async function CalendarPage() {
           moduleId: e.moduleId,
           allDay: e.allDay,
           reminderOffsets: e.reminderOffsets,
+          recurrence: e.recurrence,
+          recurrenceUntil: e.recurrenceUntil,
+          recurrenceWeekdays: e.recurrenceWeekdays,
+          recurrenceInterval: e.recurrenceInterval,
         }))}
         planItems={planItems}
         assignments={dueAssignments.map((a) => ({
@@ -105,7 +110,10 @@ export default async function CalendarPage() {
         absences={absences}
       />
 
-      <IcsCard appUrl={env.APP_URL} token={prefs?.icsToken ?? null} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <IcsCard appUrl={env.APP_URL} token={prefs?.icsToken ?? null} />
+        <IcsImportCard />
+      </div>
     </div>
   )
 }

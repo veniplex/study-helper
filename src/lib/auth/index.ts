@@ -4,7 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { nextCookies } from "better-auth/next-js"
 import { admin, genericOAuth, twoFactor } from "better-auth/plugins"
 import { passkey } from "@better-auth/passkey"
-import { count, eq, sql } from "drizzle-orm"
+import { and, count, eq, sql } from "drizzle-orm"
 import { db } from "@/db"
 import * as schema from "@/db/schema"
 import { env } from "@/lib/env"
@@ -61,10 +61,17 @@ function buildAuth(config: DynamicAuthConfig) {
         if (ctx.path !== "/sign-up/email" || config.registrationMode !== "invite") return
         const token = (ctx.body as { inviteToken?: string } | undefined)?.inviteToken
         if (token) {
+          // Conditional increment so concurrent sign-ups can never push
+          // usedCount past maxUses.
           await db
             .update(schema.invite)
             .set({ usedCount: sql`${schema.invite.usedCount} + 1` })
-            .where(eq(schema.invite.token, token))
+            .where(
+              and(
+                eq(schema.invite.token, token),
+                sql`${schema.invite.usedCount} < ${schema.invite.maxUses}`
+              )
+            )
         }
       }),
     },
