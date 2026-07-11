@@ -1,3 +1,4 @@
+import { cookies } from "next/headers"
 import { requireSession } from "@/lib/auth/session"
 import { listAvailableModels, resolveModelForUser } from "@/lib/ai/registry"
 import { getAppName } from "@/lib/settings"
@@ -23,6 +24,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     image: session.user.image,
     isAdmin: session.user.role === "admin",
   }
+  const cookieStore = await cookies()
+  const rawWidth = Number(cookieStore.get("sidebar-width")?.value)
+  const sidebarWidth = Number.isFinite(rawWidth)
+    ? Math.min(400, Math.max(200, rawWidth))
+    : 240
   // All modules of the active program (incl. thesis modules), not just the
   // current semester — the chat can be assigned to any of them.
   const allModules = context.tree.flatMap((s) =>
@@ -31,14 +37,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <PageContextProvider>
-      <div className="flex min-h-dvh flex-col">
+      <div
+        id="app-shell"
+        className="flex min-h-dvh flex-col"
+        style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
+      >
         <AppSidebar
           context={context}
           isAdmin={user.isAdmin}
           aiAvailable={aiAvailable}
           appName={appName}
+          user={user}
         />
-        <div className="flex flex-1 flex-col pb-16 md:pb-0 md:pl-60">
+        <div className="flex flex-1 flex-col pb-16 md:pb-0 md:pl-[var(--sidebar-width,15rem)]">
           <AppHeader user={user} modules={allModules} />
           <main className="flex-1 p-4 md:p-6">{children}</main>
         </div>

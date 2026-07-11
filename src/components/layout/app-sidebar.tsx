@@ -28,6 +28,10 @@ import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 import { ModuleDialog } from "@/components/studies/module-dialog"
 import { SemesterDialog } from "@/components/studies/semester-dialog"
 import { ContextSwitcher } from "./context-switcher"
+import { SidebarResizeHandle } from "./sidebar-resize-handle"
+import { LocaleSwitcher } from "./locale-switcher"
+import { ThemeToggle } from "./theme-toggle"
+import { UserMenu } from "./user-menu"
 import type { SemesterModule, SemesterNode, StudyContext } from "@/lib/studies/context"
 import { getModuleColorClasses, getModuleIcon, STATUS_DOT } from "@/lib/module-visuals"
 import { APP_VERSION, REPO_URL } from "@/lib/version"
@@ -359,31 +363,54 @@ export function AppSidebar({
   isAdmin,
   aiAvailable,
   appName,
+  user,
 }: {
   context: StudyContext
   isAdmin: boolean
   aiAvailable: boolean
   appName: string
+  user: { name: string; email: string; image?: string | null }
 }) {
   const t = useTranslations("nav")
   const tContext = useTranslations("context")
   const tStudies = useTranslations("studies")
   const pathname = usePathname()
-  // Default-open the semester that contains today's date (falls back to the
-  // active one). Pure accordion — no persisted "last opened" selection.
-  const [openSemester, setOpenSemester] = React.useState<string | null>(
-    context.currentSemesterId ?? context.activeSemester?.id ?? null
+  // Each semester keeps its own open/closed state (no accordion auto-close).
+  // Default-open the current semester; persisted across reloads.
+  const defaultOpen = context.currentSemesterId ?? context.activeSemester?.id ?? null
+  const [openSemesters, setOpenSemesters] = React.useState<Set<string>>(
+    () => new Set(defaultOpen ? [defaultOpen] : [])
   )
   const [newSemesterOpen, setNewSemesterOpen] = React.useState(false)
 
+  React.useEffect(() => {
+    const stored = window.localStorage.getItem("studyhelper.sidebar.open")
+    if (!stored) return
+    // Deferred to avoid a synchronous setState cascade during the effect.
+    queueMicrotask(() => {
+      try {
+        setOpenSemesters(new Set(JSON.parse(stored) as string[]))
+      } catch {
+        /* ignore malformed */
+      }
+    })
+  }, [])
+
   function toggleSemester(semesterId: string) {
-    setOpenSemester((cur) => (cur === semesterId ? null : semesterId))
+    setOpenSemesters((cur) => {
+      const next = new Set(cur)
+      if (next.has(semesterId)) next.delete(semesterId)
+      else next.add(semesterId)
+      window.localStorage.setItem("studyhelper.sidebar.open", JSON.stringify([...next]))
+      return next
+    })
   }
 
   const topItems = navItems.filter((item) => item.key !== "ai")
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-width,15rem)] flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
+      <SidebarResizeHandle />
       <div className="flex h-14 items-center gap-2.5 border-b px-5">
         <div className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
           <GraduationCap className="size-4.5" />
@@ -428,7 +455,7 @@ export function AppSidebar({
                 key={sem.id}
                 semester={sem}
                 programId={context.activeProgram!.id}
-                open={openSemester === sem.id}
+                open={openSemesters.has(sem.id)}
                 active={context.currentSemesterId === sem.id}
                 onOpen={() => toggleSemester(sem.id)}
                 aiAvailable={aiAvailable}
@@ -458,14 +485,19 @@ export function AppSidebar({
               {t("admin")}
             </Link>
           )}
-          <a
-            href={REPO_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="text-muted-foreground/70 hover:text-muted-foreground block px-3 pt-1 text-[11px] transition-colors"
-          >
-            v{APP_VERSION}
-          </a>
+          <div className="flex items-center gap-1 px-1 pt-1">
+            <UserMenu {...user} isAdmin={isAdmin} />
+            <LocaleSwitcher />
+            <ThemeToggle />
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-muted-foreground/70 hover:text-muted-foreground ml-auto px-2 text-[11px] transition-colors"
+            >
+              v{APP_VERSION}
+            </a>
+          </div>
         </div>
       </nav>
     </aside>

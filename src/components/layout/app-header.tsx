@@ -18,12 +18,15 @@ export function AppHeader({
       <div className="flex justify-center">
         <CommandPalette />
       </div>
-      <div className="flex items-center justify-end gap-2">
+      {/* On desktop these controls live in the sidebar footer; keep them here
+          for mobile where the sidebar is hidden. */}
+      <div className="flex items-center justify-end gap-2 md:hidden">
         <Pomodoro modules={modules} />
         <LocaleSwitcher />
         <ThemeToggle />
         <UserMenu {...user} />
       </div>
+      <div className="hidden md:block" />
     </header>
   )
 }
