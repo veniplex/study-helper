@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Pause, Play, RotateCcw, SkipForward, Square, Timer, Volume2, VolumeX } from "lucide-react"
+import { Pause, Play, RotateCcw, SkipForward, Square, Timer, Volume2, VolumeX, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
@@ -11,7 +11,6 @@ import { POMODORO_START_EVENT } from "@/components/learn/session-start-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
 const STORAGE_KEY = "studyhelper.pomodoro"
@@ -116,6 +115,7 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
   const [state, setState] = React.useState<PersistedState>(DEFAULTS)
   const [now, setNow] = React.useState(() => Date.now())
   const [hydrated, setHydrated] = React.useState(false)
+  const [open, setOpen] = React.useState(false)
 
   // Load persisted state after mount (avoids SSR hydration mismatch).
   // setState in effect is intentional here: localStorage is client-only.
@@ -275,47 +275,36 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
   const C = 2 * Math.PI * R
 
   return (
-    <Dialog>
-      <DialogTrigger
-        render={
-          <button
-            type="button"
-            className={cn(
-              "relative flex h-8 items-center gap-1.5 overflow-hidden rounded-full text-sm transition-colors",
-              running ? cn("px-3 font-medium", styles.pill) : "text-foreground/80 hover:bg-accent w-8 justify-center"
-            )}
-          />
-        }
-      >
-        <Timer className="size-4" />
-        {running && (
-          <>
-            <span className="rounded-full bg-current/15 px-1 text-[10px] font-bold tabular-nums">
-              {t("roundShort", { n: state.round })}
-            </span>
-            <span className="text-xs font-semibold tabular-nums">{fmt(remaining)}</span>
-            <span className="flex items-center gap-0.5">
-              {Array.from({ length: CYCLES_PER_ROUND }, (_, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    "size-1 rounded-full",
-                    i < state.cycle ? "bg-current" : "bg-current/30"
-                  )}
-                />
-              ))}
-            </span>
-            <span
-              className={cn("absolute inset-x-0 bottom-0 h-0.5 origin-left", styles.bar)}
-              style={{ transform: `scaleX(${progress})` }}
-            />
-          </>
-        )}
-        <span className="sr-only">{t("title")}</span>
-      </DialogTrigger>
-      <DialogContent className="w-[340px] max-w-[calc(100vw-2rem)] sm:max-w-[340px]">
-        <DialogTitle className="sr-only">{t("title")}</DialogTitle>
-        <div className="space-y-4">
+    <div className="print:hidden">
+      {/* Floating launcher, stacked above the chat bubble */}
+      <div className="fixed right-5 bottom-20 z-50">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className={cn(
+            "relative flex h-12 items-center gap-1.5 overflow-hidden rounded-full shadow-lg transition-colors",
+            running
+              ? cn("px-4 font-medium", styles.pill)
+              : "bg-background text-foreground hover:bg-accent w-12 justify-center border"
+          )}
+        >
+          {open ? <X className="size-5" /> : <Timer className="size-5" />}
+          {running && !open && (
+            <>
+              <span className="text-sm font-semibold tabular-nums">{fmt(remaining)}</span>
+              <span
+                className={cn("absolute inset-x-0 bottom-0 h-0.5 origin-left", styles.bar)}
+                style={{ transform: `scaleX(${progress})` }}
+              />
+            </>
+          )}
+          <span className="sr-only">{t("title")}</span>
+        </button>
+      </div>
+
+      {open && (
+        <div className="bg-background fixed right-5 bottom-36 z-50 w-[340px] max-w-[calc(100vw-2.5rem)] rounded-xl border p-4 shadow-xl">
+          <div className="space-y-4">
           <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-2">
               <span
@@ -466,8 +455,9 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
               <span className="sr-only">{t("sound")}</span>
             </Button>
           </div>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      )}
+    </div>
   )
 }

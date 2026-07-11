@@ -4,6 +4,7 @@ import { listAvailableModels, resolveModelForUser } from "@/lib/ai/registry"
 import { getAppName } from "@/lib/settings"
 import { getStudyContext } from "@/lib/studies/context"
 import { ChatDock } from "@/components/ai/chat-dock"
+import { Pomodoro } from "@/components/pomodoro"
 import { PageContextProvider } from "@/components/ai/page-context"
 import { AppHeader } from "@/components/layout/app-header"
 import { AppSidebar } from "@/components/layout/app-sidebar"
@@ -50,10 +51,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           user={user}
         />
         <div className="flex flex-1 flex-col pb-16 md:pb-0 md:pl-[var(--sidebar-width,15rem)]">
-          <AppHeader user={user} modules={allModules} />
+          <AppHeader user={user} />
           <main className="flex-1 p-4 md:p-6">{children}</main>
         </div>
         <BottomNav context={context} aiAvailable={aiAvailable} />
+        <Pomodoro modules={allModules} />
         <ChatDock models={models} initialModel={initialModel} modules={allModules} />
       </div>
     </PageContextProvider>
