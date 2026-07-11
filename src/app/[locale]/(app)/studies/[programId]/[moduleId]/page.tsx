@@ -3,7 +3,7 @@ import { asc, eq } from "drizzle-orm"
 import { ExternalLink, KeyRound } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import { externalResource, studyModule } from "@/db/schema"
+import { externalResource, moduleContact, studyModule } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { decrypt } from "@/lib/crypto"
 import { formatGrade, moduleGrade } from "@/lib/grades"
@@ -13,6 +13,7 @@ import { DeleteButton } from "@/components/studies/delete-button"
 import { GradeDialog } from "@/components/studies/grade-dialog"
 import { ResourceDialog } from "@/components/studies/resource-dialog"
 import { AnalyzeButton } from "@/components/learn/analyze-button"
+import { ModuleContactsCard } from "@/components/learn/module-contacts-card"
 import { SessionStartDialog } from "@/components/learn/session-start-dialog"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -51,6 +52,11 @@ export default async function ModuleOverviewPage({
   const resources = await db.query.externalResource.findMany({
     where: eq(externalResource.moduleId, moduleId),
     orderBy: (r) => [asc(r.createdAt)],
+  })
+
+  const contacts = await db.query.moduleContact.findMany({
+    where: eq(moduleContact.moduleId, moduleId),
+    orderBy: (c) => [asc(c.sortOrder), asc(c.createdAt)],
   })
 
   const gradingSystem = mod.semester.program.gradingSystem
@@ -165,6 +171,8 @@ export default async function ModuleOverviewPage({
           )}
         </CardContent>
       </Card>
+
+      <ModuleContactsCard moduleId={mod.id} contacts={contacts} />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
