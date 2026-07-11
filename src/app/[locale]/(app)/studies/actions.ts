@@ -32,7 +32,7 @@ const programSchema = z.object({
   degreeType: z.string().max(50).optional().nullable(),
   institution: z.string().max(200).optional().nullable(),
   targetEcts: z.number().int().min(1).max(1000).optional().nullable(),
-  gradingSystem: z.enum(["german", "points", "passfail"]).default("german"),
+  thesisMaxAttempts: z.number().int().min(1).max(5).default(2),
   gradeScale: gradeScaleSchema.optional().nullable(),
 })
 

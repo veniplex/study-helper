@@ -20,6 +20,15 @@ export default async function ThesisPage() {
   ])
   const aiAvailable = Boolean(defaultModel)
   const activeProgram = context.activeProgram
+  const maxAttempts =
+    context.programs.length && activeProgram
+      ? await db.query.degreeProgram
+          .findFirst({
+            where: (p, { eq: e }) => e(p.id, activeProgram.id),
+            columns: { thesisMaxAttempts: true },
+          })
+          .then((p) => p?.thesisMaxAttempts ?? 2)
+      : 2
 
   // All theses of the active program (the live one + its superseded history).
   const theses = activeProgram
@@ -62,9 +71,9 @@ export default async function ThesisPage() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
-              {t("attempt", { n: current.attempt })}
+              {t("attemptOf", { n: current.attempt, max: maxAttempts })}
             </span>
-            <RetryThesisButton thesisId={current.id} />
+            {current.attempt < maxAttempts && <RetryThesisButton thesisId={current.id} />}
           </div>
           <ThesisWorkspace
             thesis={current as ThesisData}
@@ -77,23 +86,20 @@ export default async function ThesisPage() {
               <summary className="text-muted-foreground cursor-pointer text-sm font-medium">
                 {t("previousAttempts", { count: previous.length })}
               </summary>
-              <ul className="mt-3 space-y-2">
+              <div className="mt-4 space-y-6">
                 {previous.map((p) => (
-                  <li key={p.id} className="rounded-md border p-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground text-xs">
-                        {t("attempt", { n: p.attempt })}
-                      </span>
-                      <span className="font-medium">{p.title}</span>
-                    </div>
-                    {p.researchQuestion && (
-                      <p className="text-muted-foreground mt-1 text-xs italic">
-                        {p.researchQuestion}
-                      </p>
-                    )}
-                  </li>
+                  <div key={p.id} className="space-y-2">
+                    <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+                      {t("attempt", { n: p.attempt })}
+                    </span>
+                    <ThesisWorkspace
+                      thesis={p as ThesisData}
+                      aiAvailable={aiAvailable}
+                      semesters={semesters}
+                    />
+                  </div>
                 ))}
-              </ul>
+              </div>
             </details>
           )}
         </div>

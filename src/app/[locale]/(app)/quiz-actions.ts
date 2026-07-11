@@ -294,6 +294,10 @@ export type AttemptResult = {
     questionId: string
     prompt: string
     answer: string
+    /** Human-readable answer (MC: option text instead of its index). */
+    answerText: string
+    /** The correct answer (MC: option text, free text: reference answer). */
+    correctAnswer: string | null
     correct: boolean
     feedback: string | null
     explanation: string | null
@@ -353,10 +357,20 @@ Judge leniently on wording but strictly on content. Reply with correct=true/fals
         q.referenceAnswer != null &&
         answer.trim().toLowerCase().includes(q.referenceAnswer.trim().toLowerCase().slice(0, 30))
     }
+    const answerText =
+      q.kind === "multiple_choice" ? (q.options?.[Number(answer)] ?? answer) : answer
+    const correctAnswer =
+      q.kind === "multiple_choice"
+        ? q.correctIndex != null
+          ? (q.options?.[q.correctIndex] ?? null)
+          : null
+        : q.referenceAnswer
     results.push({
       questionId,
       prompt: q.prompt,
       answer,
+      answerText,
+      correctAnswer,
       correct,
       feedback,
       explanation: q.explanation,

@@ -1,32 +1,30 @@
 import * as React from "react"
-import { ArrowRight, Settings } from "lucide-react"
+import { ArrowRight, GraduationCap, Settings } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import type { FinalGrade } from "@/lib/grades"
 import { formatGrade, programAverageFromFinals } from "@/lib/grades"
-import type { GradingSystem, ModuleStatus } from "@/db/schema/studies"
+import type { GradingSystem } from "@/db/schema/studies"
+import type { SemesterModule } from "@/lib/studies/context"
 import { getModuleColorClasses, getModuleIcon } from "@/lib/module-visuals"
+import {
+  deleteModule,
+  deleteSemester,
+} from "@/app/[locale]/(app)/studies/actions"
+import { DeleteButton } from "@/components/studies/delete-button"
+import { ModuleDialog } from "@/components/studies/module-dialog"
+import { SemesterDialog } from "@/components/studies/semester-dialog"
 import { ModuleStatusBadge } from "@/components/learn/module-status-badge"
+import { MoveModuleButtons } from "@/components/learn/move-module-buttons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Link } from "@/i18n/navigation"
 import { cn } from "@/lib/utils"
-
-type ModuleRow = {
-  id: string
-  name: string
-  icon: string | null
-  color: string | null
-  status: ModuleStatus
-  examType: string | null
-  ects: number | null
-  passFail: boolean
-}
 
 type SemesterRow = {
   id: string
   name: string
   startDate: string | null
   endDate: string | null
-  modules: ModuleRow[]
+  modules: SemesterModule[]
 }
 
 function ModuleGlyph({ iconKey, className }: { iconKey: string | null; className?: string }) {
@@ -52,6 +50,7 @@ export async function SemesterOverviewCard({
 }) {
   const t = await getTranslations("dashboard")
   const tStudies = await getTranslations("studies")
+  const tNav = await getTranslations("nav")
   const format = await getFormatter()
 
   const allModules = semesters.flatMap((s) => s.modules)
@@ -72,7 +71,7 @@ export async function SemesterOverviewCard({
     { label: tStudies("stats.semesters"), value: String(semesters.length) },
   ]
 
-  function gradeCell(m: ModuleRow): string {
+  function gradeCell(m: SemesterModule): string {
     const final = finalGrades.get(m.id)
     if (!final) return "–"
     if (m.passFail) return final.passed == null ? "–" : final.passed ? "✓" : "✗"
@@ -100,110 +99,147 @@ export async function SemesterOverviewCard({
             ))}
           </dl>
         </div>
-        <Link
-          href={`/studies/${programId}/settings`}
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
-        >
-          <Settings className="size-3.5" />
-          {t("programSettings")}
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/thesis"
+            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+          >
+            <GraduationCap className="size-3.5" />
+            {tNav("thesis")}
+          </Link>
+          <Link
+            href={`/studies/${programId}/settings`}
+            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+          >
+            <Settings className="size-3.5" />
+            {t("programSettings")}
+          </Link>
+          <SemesterDialog programId={programId} />
+        </div>
       </CardHeader>
       <CardContent className="space-y-5">
         {semesters.length === 0 && (
           <p className="text-muted-foreground text-sm">{t("noModules")}</p>
         )}
-        {semesters.map((sem) => (
-          <div key={sem.id} className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2 border-b pb-1.5">
-              <span className="font-medium">{sem.name}</span>
-              {sem.id === currentSemesterId && (
-                <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">
-                  {t("currentSemester")}
+        {semesters.map((sem) => {
+          const orderedIds = sem.modules.map((m) => m.id)
+          return (
+            <div key={sem.id} className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2 border-b pb-1.5">
+                <span className="font-medium">{sem.name}</span>
+                {sem.id === currentSemesterId && (
+                  <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">
+                    {t("currentSemester")}
+                  </span>
+                )}
+                {dateRange(sem) && (
+                  <span className="text-muted-foreground text-xs">{dateRange(sem)}</span>
+                )}
+                <span className="ml-auto flex items-center gap-1">
+                  <Link
+                    href={`/plan/${sem.id}`}
+                    className="text-muted-foreground hover:text-foreground mr-1 flex items-center gap-1 text-xs"
+                  >
+                    {t("toPlan")}
+                    <ArrowRight className="size-3" />
+                  </Link>
+                  <ModuleDialog semesterId={sem.id} />
+                  <SemesterDialog
+                    programId={programId}
+                    semester={{
+                      id: sem.id,
+                      name: sem.name,
+                      startDate: sem.startDate,
+                      endDate: sem.endDate,
+                    }}
+                  />
+                  <DeleteButton action={deleteSemester.bind(null, sem.id)} />
                 </span>
-              )}
-              {dateRange(sem) && (
-                <span className="text-muted-foreground text-xs">{dateRange(sem)}</span>
-              )}
-              <Link
-                href={`/plan/${sem.id}`}
-                className="text-muted-foreground hover:text-foreground ml-auto flex items-center gap-1 text-xs"
-              >
-                {t("toPlan")}
-                <ArrowRight className="size-3" />
-              </Link>
-            </div>
-            {sem.modules.length === 0 ? (
-              <p className="text-muted-foreground py-1 text-sm">{t("noModules")}</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <div className="grid min-w-[36rem] grid-cols-[1.6fr_7rem_6rem_3rem_3rem_8rem] items-center gap-x-3 gap-y-2 text-sm">
-                  <span />
-                  <span />
-                  <span className="text-muted-foreground text-xs font-medium">
-                    {tStudies("module.examType")}
-                  </span>
-                  <span className="text-muted-foreground text-right text-xs font-medium">
-                    {tStudies("stats.ects")}
-                  </span>
-                  <span className="text-muted-foreground text-right text-xs font-medium">
-                    {t("columnGrade")}
-                  </span>
-                  <span className="text-muted-foreground text-xs font-medium">
-                    {t("columnPreparedness")}
-                  </span>
-                  {sem.modules.map((m) => {
-                    const color = getModuleColorClasses(m.color)
-                    const prep = m.status === "active" ? preparedness.get(m.id) ?? null : null
-                    return (
-                      <React.Fragment key={m.id}>
-                        <Link
-                          href={`/studies/${programId}/${m.id}`}
-                          className="flex min-w-0 items-center gap-2 font-medium underline-offset-4 hover:underline"
-                        >
-                          <span
-                            className={cn(
-                              "flex size-6 shrink-0 items-center justify-center rounded",
-                              color.soft,
-                              color.text
-                            )}
-                          >
-                            <ModuleGlyph iconKey={m.icon} className="size-3.5" />
-                          </span>
-                          <span className="truncate">{m.name}</span>
-                        </Link>
-                        <ModuleStatusBadge status={m.status} className="justify-self-start" />
-                        <span className="text-muted-foreground truncate text-xs">
-                          {m.examType ?? "–"}
-                        </span>
-                        <span className="text-muted-foreground text-right text-xs tabular-nums">
-                          {m.ects ?? "–"}
-                        </span>
-                        <span className="text-right text-xs tabular-nums">{gradeCell(m)}</span>
-                        {m.status === "active" ? (
-                          <span className="flex items-center gap-2">
-                            <span className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
-                              {prep != null && (
-                                <span
-                                  className="bg-primary block h-full rounded-full"
-                                  style={{ width: `${prep}%` }}
-                                />
-                              )}
-                            </span>
-                            <span className="text-muted-foreground w-8 text-right text-xs tabular-nums">
-                              {prep != null ? `${prep}%` : "–"}
-                            </span>
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">–</span>
-                        )}
-                      </React.Fragment>
-                    )
-                  })}
-                </div>
               </div>
-            )}
-          </div>
-        ))}
+              {sem.modules.length === 0 ? (
+                <p className="text-muted-foreground py-1 text-sm">{t("noModules")}</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <div className="grid min-w-[42rem] grid-cols-[auto_1.6fr_7rem_6rem_3rem_3rem_8rem_auto] items-center gap-x-3 gap-y-2 text-sm">
+                    <span />
+                    <span />
+                    <span />
+                    <span className="text-muted-foreground text-xs font-medium">
+                      {tStudies("module.examType")}
+                    </span>
+                    <span className="text-muted-foreground text-right text-xs font-medium">
+                      {tStudies("stats.ects")}
+                    </span>
+                    <span className="text-muted-foreground text-right text-xs font-medium">
+                      {t("columnGrade")}
+                    </span>
+                    <span className="text-muted-foreground text-xs font-medium">
+                      {t("columnPreparedness")}
+                    </span>
+                    <span />
+                    {sem.modules.map((m, i) => {
+                      const color = getModuleColorClasses(m.color)
+                      const prep = m.status === "active" ? preparedness.get(m.id) ?? null : null
+                      return (
+                        <React.Fragment key={m.id}>
+                          <MoveModuleButtons
+                            semesterId={sem.id}
+                            orderedIds={orderedIds}
+                            index={i}
+                          />
+                          <Link
+                            href={`/studies/${programId}/${m.id}`}
+                            className="flex min-w-0 items-center gap-2 font-medium underline-offset-4 hover:underline"
+                          >
+                            <span
+                              className={cn(
+                                "flex size-6 shrink-0 items-center justify-center rounded",
+                                color.soft,
+                                color.text
+                              )}
+                            >
+                              <ModuleGlyph iconKey={m.icon} className="size-3.5" />
+                            </span>
+                            <span className="truncate">{m.name}</span>
+                          </Link>
+                          <ModuleStatusBadge status={m.status} className="justify-self-start" />
+                          <span className="text-muted-foreground truncate text-xs">
+                            {m.examType ?? "–"}
+                          </span>
+                          <span className="text-muted-foreground text-right text-xs tabular-nums">
+                            {m.ects ?? "–"}
+                          </span>
+                          <span className="text-right text-xs tabular-nums">{gradeCell(m)}</span>
+                          {m.status === "active" ? (
+                            <span className="flex items-center gap-2">
+                              <span className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
+                                {prep != null && (
+                                  <span
+                                    className="bg-primary block h-full rounded-full"
+                                    style={{ width: `${prep}%` }}
+                                  />
+                                )}
+                              </span>
+                              <span className="text-muted-foreground w-8 text-right text-xs tabular-nums">
+                                {prep != null ? `${prep}%` : "–"}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">–</span>
+                          )}
+                          <span className="flex items-center justify-end gap-0.5">
+                            <ModuleDialog semesterId={sem.id} module={m} />
+                            <DeleteButton action={deleteModule.bind(null, m.id)} />
+                          </span>
+                        </React.Fragment>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </CardContent>
     </Card>
   )

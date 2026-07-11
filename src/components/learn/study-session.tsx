@@ -31,6 +31,9 @@ export function StudySession({
   const tSession = useTranslations("learnSession")
   const [queue, setQueue] = React.useState(cards)
   const [revealed, setRevealed] = React.useState(false)
+  // Rating buttons stay visible once the card was revealed, even after
+  // flipping back to the front.
+  const [everRevealed, setEverRevealed] = React.useState(false)
   const [pending, setPending] = React.useState(false)
   const [counts, setCounts] = React.useState<Record<ReviewRating, number>>({
     1: 0,
@@ -62,16 +65,13 @@ export function StudySession({
     if (!current || pending) return
     setPending(true)
     try {
-      const result = await reviewCard(current.id, rating)
-      const nextDue = new Date(result.nextDue)
+      await reviewCard(current.id, rating)
       setCounts((c) => ({ ...c, [rating]: c[rating] + 1 }))
-      setQueue((q) => {
-        const rest = q.slice(1)
-        // If the card is due again within this session (learning step), requeue it
-        if (nextDue.getTime() - Date.now() < 15 * 60 * 1000) return [...rest, current]
-        return rest
-      })
+      // Only "again" requeues the card within this session — everything else
+      // is done for today (a lone card would otherwise repeat immediately).
+      setQueue((q) => (rating === 1 ? [...q.slice(1), current] : q.slice(1)))
       setRevealed(false)
+      setEverRevealed(false)
     } catch (error) {
       if (isNetworkError(error)) {
         // Offline: queue the review and continue optimistically
@@ -79,6 +79,7 @@ export function StudySession({
         setCounts((c) => ({ ...c, [rating]: c[rating] + 1 }))
         setQueue((q) => (rating === 1 ? [...q.slice(1), current] : q.slice(1)))
         setRevealed(false)
+        setEverRevealed(false)
       } else {
         toast.error(error instanceof Error ? error.message : String(error))
       }
@@ -139,7 +140,10 @@ export function StudySession({
       <div key={current.id} className="[perspective:1200px]">
         <button
           type="button"
-          onClick={() => !revealed && setRevealed(true)}
+          onClick={() => {
+            setRevealed((r) => !r)
+            setEverRevealed(true)
+          }}
           className={cn(
             "relative block min-h-56 w-full text-left transition-transform duration-500 [transform-style:preserve-3d]",
             revealed && "[transform:rotateY(180deg)]"
@@ -165,8 +169,14 @@ export function StudySession({
         </button>
       </div>
 
-      {!revealed ? (
-        <Button className="w-full" onClick={() => setRevealed(true)}>
+      {!everRevealed ? (
+        <Button
+          className="w-full"
+          onClick={() => {
+            setRevealed(true)
+            setEverRevealed(true)
+          }}
+        >
           {t("showAnswer")}
         </Button>
       ) : (

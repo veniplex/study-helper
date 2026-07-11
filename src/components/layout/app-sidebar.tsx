@@ -334,6 +334,8 @@ function SidebarSemester({
       </div>
       {open && (
         <div className="mt-0.5 mb-1 ml-3 space-y-0.5">
+          {/* A thesis-only semester has no study-plan to generate */}
+          {!(semester.modules.length === 0 && semester.theses.length > 0) && (
           <Link
             href={`/plan/${semester.id}`}
             className={cn(
@@ -346,6 +348,7 @@ function SidebarSemester({
             <CalendarClock className="size-4 shrink-0" />
             {tPlan("title")}
           </Link>
+          )}
           {semester.modules.map((mod) => (
             <SidebarModule
               key={mod.id}

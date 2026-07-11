@@ -151,6 +151,19 @@ export function ChatDock({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current])
 
+  // Leaving the fullscreen chat (navigation elsewhere) shrinks it back into
+  // the dock so the conversation is not lost.
+  const prevPathRef = React.useRef(pathname)
+  React.useEffect(() => {
+    const prev = prevPathRef.current
+    prevPathRef.current = pathname
+    if (prev.startsWith("/ai/") && !pathname.startsWith("/ai/")) {
+      const lastId = window.localStorage.getItem(LAST_CHAT_KEY) ?? undefined
+      void openDock(lastId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+
   async function onRename() {
     if (!current) return
     const title = renameValue.trim()

@@ -84,6 +84,12 @@ export async function retryThesis(thesisId: string) {
   const session = await requireSession()
   const prev = await ownThesis(thesisId, session.user.id)
   if (prev.supersededById) throw new Error("Not found")
+  if (prev.programId) {
+    const program = await ownProgram(prev.programId, session.user.id)
+    if (prev.attempt >= program.thesisMaxAttempts) {
+      throw new Error("Maximale Versuchszahl für die Abschlussarbeit erreicht.")
+    }
+  }
 
   const [created] = await db
     .insert(thesisProject)

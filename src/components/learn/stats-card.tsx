@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Clock, Flame, Layers, Target, TrendingUp } from "lucide-react"
-import { getTranslations } from "next-intl/server"
+import { getFormatter, getTranslations } from "next-intl/server"
 import type { DashboardStats } from "@/lib/learning/stats-server"
 import { getModuleColorClasses, getModuleIcon } from "@/lib/module-visuals"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,6 +23,7 @@ function hm(minutes: number): string {
 
 export async function StatsCard({ stats }: { stats: DashboardStats }) {
   const t = await getTranslations("stats")
+  const format = await getFormatter()
 
   // Columns = weeks (heatmap is oldest→newest, 7 days per week)
   const weeks: (typeof stats.heatmap)[] = []
@@ -116,15 +117,32 @@ export async function StatsCard({ stats }: { stats: DashboardStats }) {
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <div className="flex w-max gap-[3px]">
+        <div className="space-y-1">
+          {/* Month labels: shown at the week where a new month starts */}
+          <div className="flex gap-[3px]">
+            {weeks.map((week, i) => {
+              const month = new Date(week[0].date).getMonth()
+              const prevMonth = i > 0 ? new Date(weeks[i - 1][0].date).getMonth() : -1
+              return (
+                <span
+                  key={i}
+                  className="text-muted-foreground min-w-0 flex-1 overflow-visible text-[9px] leading-3 whitespace-nowrap"
+                >
+                  {month !== prevMonth
+                    ? format.dateTime(new Date(week[0].date), { month: "short" })
+                    : ""}
+                </span>
+              )
+            })}
+          </div>
+          <div className="flex w-full gap-[3px]">
             {weeks.map((week, i) => (
-              <div key={i} className="flex flex-col gap-[3px]">
+              <div key={i} className="flex min-w-0 flex-1 flex-col gap-[3px]">
                 {week.map((cell) => (
                   <div
                     key={cell.date}
                     title={`${cell.date}: ${t("activities", { count: cell.count })}`}
-                    className={cn("size-2.5 rounded-[2px]", level(cell.count))}
+                    className={cn("aspect-square w-full rounded-[2px]", level(cell.count))}
                   />
                 ))}
               </div>

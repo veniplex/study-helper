@@ -54,11 +54,11 @@ export default async function ModuleWorkspaceLayout({
       <PageContextSetter moduleId={mod.id} moduleName={mod.name} />
       <div>
         <nav className="text-muted-foreground flex items-center gap-1 text-xs">
-          <Link href={`/studies/${programId}`} className="hover:text-foreground transition-colors">
+          <Link href="/" className="hover:text-foreground transition-colors">
             {mod.semester.program.name}
           </Link>
           <ChevronRight className="size-3" />
-          <Link href={`/studies/${programId}`} className="hover:text-foreground transition-colors">
+          <Link href="/" className="hover:text-foreground transition-colors">
             {mod.semester.name}
           </Link>
           <ChevronRight className="size-3" />

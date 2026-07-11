@@ -1,0 +1,1 @@
+ALTER TABLE "degree_program" ADD COLUMN "thesis_max_attempts" integer DEFAULT 2 NOT NULL;

@@ -44,7 +44,7 @@ export default async function StudiesPage() {
             const ects = earnedEcts(modules)
             const avg = programAverage(modules)
             return (
-              <Link key={program.id} href={`/studies/${program.id}`} className="group">
+              <Link key={program.id} href={`/studies/${program.id}/settings`} className="group">
                 <Card className="transition-shadow group-hover:shadow-md">
                   <CardHeader>
                     <CardTitle>{program.name}</CardTitle>

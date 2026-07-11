@@ -15,15 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { createProgram, updateProgram } from "@/app/[locale]/(app)/studies/actions"
-import type { GradingSystem } from "@/db/schema/studies"
 
 type ProgramData = {
   id?: string
@@ -31,7 +23,8 @@ type ProgramData = {
   degreeType: string | null
   institution: string | null
   targetEcts: number | null
-  gradingSystem: GradingSystem
+  /** Max thesis attempts (Studiengang-Regel). */
+  thesisMaxAttempts?: number
 }
 
 export function ProgramDialog({ program }: { program?: ProgramData }) {
@@ -40,16 +33,7 @@ export function ProgramDialog({ program }: { program?: ProgramData }) {
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
-  const [gradingSystem, setGradingSystem] = React.useState<GradingSystem>(
-    program?.gradingSystem ?? "german"
-  )
   const isEdit = Boolean(program?.id)
-
-  const gradingLabels: Record<GradingSystem, string> = {
-    german: t("program.gradingGerman"),
-    points: t("program.gradingPoints"),
-    passfail: t("program.gradingPassfail"),
-  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -59,7 +43,7 @@ export function ProgramDialog({ program }: { program?: ProgramData }) {
       degreeType: String(form.get("degreeType") || "") || null,
       institution: String(form.get("institution") || "") || null,
       targetEcts: form.get("targetEcts") ? Number(form.get("targetEcts")) : null,
-      gradingSystem,
+      thesisMaxAttempts: Number(form.get("thesisMaxAttempts")) || 2,
     }
     setPending(true)
     try {
@@ -124,22 +108,15 @@ export function ProgramDialog({ program }: { program?: ProgramData }) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>{t("program.gradingSystem")}</Label>
-              <Select
-                value={gradingSystem}
-                onValueChange={(v) => setGradingSystem(v as GradingSystem)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue>{gradingLabels[gradingSystem]}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(gradingLabels) as GradingSystem[]).map((key) => (
-                    <SelectItem key={key} value={key}>
-                      {gradingLabels[key]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="p-thesis-attempts">{t("program.thesisMaxAttempts")}</Label>
+              <Input
+                id="p-thesis-attempts"
+                name="thesisMaxAttempts"
+                type="number"
+                min={1}
+                max={5}
+                defaultValue={program?.thesisMaxAttempts ?? 2}
+              />
             </div>
           </div>
           <div className="flex justify-end gap-2">

@@ -341,7 +341,8 @@
       "gradingSystem": "Grading system",
       "gradingGerman": "German (1.0–5.0)",
       "gradingPoints": "Points",
-      "gradingPassfail": "Pass / Fail"
+      "gradingPassfail": "Pass / Fail",
+      "thesisMaxAttempts": "Thesis attempts"
     },
     "stats": {
       "ects": "ECTS",
@@ -496,7 +497,8 @@
       "degreeType": "Degree",
       "institution": "Institution",
       "targetEcts": "Target ECTS",
-      "gradingSystem": "Grading system"
+      "gradingSystem": "Grading system",
+      "thesisMaxAttempts": "Thesis attempts"
     }
   },
   "calendar": {
@@ -843,7 +845,8 @@
         "submit": "Generate",
         "generating": "Generating quiz …"
       },
-      "description": "Description (optional)"
+      "description": "Description (optional)",
+      "correctAnswer": "Correct answer"
     },
     "aiUnavailable": "No AI model configured — AI features disabled.",
     "questionForm": {
@@ -904,7 +907,8 @@
     "newAttempt": "New attempt",
     "newAttemptConfirm": "The current thesis will be archived as failed and a new attempt with a new topic begins. Continue?",
     "previousAttempts": "Previous attempts ({count})",
-    "noProgram": "Create a degree program first to plan a thesis."
+    "noProgram": "Create a degree program first to plan a thesis.",
+    "attemptOf": "Attempt {n} of {max}"
   },
   "onboarding": {
     "title": "Getting started",

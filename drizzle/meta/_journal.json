@@ -134,6 +134,20 @@
       "when": 1783759714624,
       "tag": "0018_spotty_black_crow",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1783764542239,
+      "tag": "0019_narrow_blade",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1783764729624,
+      "tag": "0020_grading_system_german",
+      "breakpoints": true
     }
   ]
 }

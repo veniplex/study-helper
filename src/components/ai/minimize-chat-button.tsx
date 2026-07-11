@@ -17,7 +17,9 @@ export function MinimizeChatButton({ conversationId }: { conversationId: string 
       size="icon-sm"
       title={t("minimize")}
       onClick={() => {
-        router.push("/")
+        // Return to wherever the user was before expanding the chat.
+        if (window.history.length > 1) router.back()
+        else router.push("/")
         window.dispatchEvent(
           new CustomEvent(CHAT_OPEN_EVENT, { detail: { conversationId } })
         )

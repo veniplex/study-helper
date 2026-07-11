@@ -24,18 +24,11 @@ export default async function ProgramSettingsPage({
     notFound()
   }
 
-  const gradingLabelKey = {
-    german: "program.gradingGerman",
-    points: "program.gradingPoints",
-    passfail: "program.gradingPassfail",
-  } as const
-  const tStudies = await getTranslations("studies")
-
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6">
       <div className="flex items-center gap-3">
         <Link
-          href={`/studies/${programId}`}
+          href="/"
           className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
         >
           <ArrowLeft className="size-4" />
@@ -55,7 +48,7 @@ export default async function ProgramSettingsPage({
               degreeType: program.degreeType,
               institution: program.institution,
               targetEcts: program.targetEcts,
-              gradingSystem: program.gradingSystem,
+              thesisMaxAttempts: program.thesisMaxAttempts,
             }}
           />
         </CardHeader>
@@ -69,8 +62,8 @@ export default async function ProgramSettingsPage({
             <dd>{program.institution ?? "–"}</dd>
             <dt className="text-muted-foreground">{t("targetEcts")}</dt>
             <dd>{program.targetEcts ?? "–"}</dd>
-            <dt className="text-muted-foreground">{t("gradingSystem")}</dt>
-            <dd>{tStudies(gradingLabelKey[program.gradingSystem])}</dd>
+            <dt className="text-muted-foreground">{t("thesisMaxAttempts")}</dt>
+            <dd>{program.thesisMaxAttempts}</dd>
           </dl>
         </CardContent>
       </Card>

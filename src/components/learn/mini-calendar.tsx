@@ -161,9 +161,15 @@ export function MiniCalendar({
           </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-1 text-center">
-          {weekdays.map((w) => (
-            <span key={w} className="text-muted-foreground text-[11px] font-medium">
+        <div className="grid grid-cols-7 gap-x-1 gap-y-0.5 text-center">
+          {weekdays.map((w, i) => (
+            <span
+              key={w}
+              className={cn(
+                "text-[11px] font-medium",
+                i >= 5 ? "text-muted-foreground/50" : "text-muted-foreground"
+              )}
+            >
               {w}
             </span>
           ))}
@@ -173,6 +179,7 @@ export function MiniCalendar({
             const dayEvents = byDay.get(key) ?? []
             const isToday = key === todayKey
             const isSelected = key === selected
+            const isWeekend = i % 7 >= 5
             const dotTypes = [...new Set(dayEvents.map((e) => e.type))].slice(0, 3)
             return (
               <button
@@ -180,15 +187,16 @@ export function MiniCalendar({
                 type="button"
                 onClick={() => setSelected(key)}
                 className={cn(
-                  "flex aspect-square flex-col items-center justify-center rounded-md text-xs transition-colors",
+                  "mx-auto flex h-9 w-9 flex-col items-center justify-center rounded-md text-xs transition-colors",
                   isSelected
                     ? "bg-primary text-primary-foreground font-semibold"
                     : "hover:bg-accent",
+                  !isSelected && isWeekend && "text-muted-foreground/60",
                   !isSelected && isToday && "ring-primary ring-1"
                 )}
               >
                 <span className="tabular-nums">{day}</span>
-                <span className="mt-0.5 flex h-1 items-center gap-0.5">
+                <span className="flex h-1 items-center gap-0.5">
                   {dotTypes.map((type) => (
                     <span
                       key={type}

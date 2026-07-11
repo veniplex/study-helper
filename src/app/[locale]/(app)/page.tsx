@@ -119,7 +119,7 @@ export default async function DashboardPage() {
               ))}
             </ol>
             <Link
-              href={hasProgram ? `/studies/${context.programs[0]!.id}` : "/studies"}
+              href="/studies"
               className="text-primary inline-flex items-center gap-1 text-sm font-medium hover:underline"
             >
               {tOnboarding("cta")}
@@ -161,16 +161,7 @@ export default async function DashboardPage() {
             name: s.name,
             startDate: s.startDate,
             endDate: s.endDate,
-            modules: s.modules.map((m) => ({
-              id: m.id,
-              name: m.name,
-              icon: m.icon,
-              color: m.color,
-              status: m.status,
-              examType: m.examType,
-              ects: m.ects,
-              passFail: m.passFail,
-            })),
+            modules: s.modules,
           }))}
           finalGrades={finalGrades}
           preparedness={preparedness}

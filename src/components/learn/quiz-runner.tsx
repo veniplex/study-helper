@@ -70,9 +70,14 @@ export function QuizRunner({
                 </span>
               </div>
               <p className="text-muted-foreground pl-6">
-                {t("yourAnswer")}: {r.answer || "–"}
+                {t("yourAnswer")}: {r.answerText || "–"}
                 {r.feedback && ` — ${r.feedback}`}
               </p>
+              {!r.correct && r.correctAnswer && (
+                <p className="pl-6 text-green-700 dark:text-green-400">
+                  {t("correctAnswer")}: {r.correctAnswer}
+                </p>
+              )}
               {r.explanation && (
                 <p className="text-muted-foreground pl-6 text-xs">
                   {t("explanation")}: {r.explanation}
