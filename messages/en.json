@@ -33,6 +33,8 @@
     "search": "Search",
     "close": "Close",
     "back": "Back",
+    "aiGenerated": "AI",
+    "aiGeneratedHint": "Created by AI",
     "comingSoon": "Coming soon"
   },
   "commandPalette": {

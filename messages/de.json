@@ -33,6 +33,8 @@
     "search": "Suchen",
     "close": "Schließen",
     "back": "Zurück",
+    "aiGenerated": "KI",
+    "aiGeneratedHint": "Von der KI erstellt",
     "comingSoon": "Bald verfügbar"
   },
   "commandPalette": {

@@ -1,5 +1,23 @@
 import { describe, expect, it } from "vitest"
-import { earnedEcts, moduleGrade, programAverage } from "./grades"
+import {
+  DEFAULT_GERMAN_SCALE,
+  earnedEcts,
+  effectiveBonus,
+  moduleFinalGrade,
+  moduleGrade,
+  percentToGrade,
+  programAverage,
+  programAverageFromFinals,
+  type BonusAssignment,
+} from "./grades"
+
+const noBonus = {
+  passFail: false,
+  bonusType: "none" as const,
+  bonusValue: null,
+  bonusMinAvgPercent: null,
+  bonusMinCompletedShare: null,
+}
 
 describe("moduleGrade", () => {
   it("returns null without grades", () => {
@@ -56,5 +74,177 @@ describe("earnedEcts", () => {
         { ects: 7, status: "passed", grades: [] },
       ])
     ).toBe(12)
+  })
+})
+
+describe("percentToGrade", () => {
+  it("maps scale boundaries on the default German scale", () => {
+    expect(percentToGrade(null, 95)).toBe(1.0)
+    expect(percentToGrade(null, 94.9)).toBe(1.3)
+    expect(percentToGrade(null, 50)).toBe(4.0)
+    expect(percentToGrade(null, 49.9)).toBe(5.0)
+  })
+
+  it("uses a custom scale", () => {
+    const scale = [
+      { minPercent: 60, grade: 1.0 },
+      { minPercent: 30, grade: 4.0 },
+    ]
+    expect(percentToGrade(scale, 80)).toBe(1.0)
+    expect(percentToGrade(scale, 45)).toBe(4.0)
+    expect(percentToGrade(scale, 20)).toBe(5.0)
+  })
+
+  it("falls back to the default when the scale is empty", () => {
+    expect(percentToGrade([], 88)).toBe(1.7)
+  })
+})
+
+describe("effectiveBonus", () => {
+  const graded = (status: BonusAssignment["status"], percent: number | null): BonusAssignment => ({
+    kind: "graded",
+    status,
+    percent,
+  })
+
+  it("awards percent points once the condition is met", () => {
+    const b = effectiveBonus(
+      {
+        bonusType: "percent_points",
+        bonusValue: "5",
+        bonusMinAvgPercent: "70",
+        bonusMinCompletedShare: null,
+      },
+      [graded("graded", 80), graded("graded", 90)]
+    )
+    expect(b.conditionMet).toBe(true)
+    expect(b.percentPoints).toBe(5)
+    expect(b.avgPercent).toBeCloseTo(85)
+  })
+
+  it("withholds the bonus when the average is too low", () => {
+    const b = effectiveBonus(
+      {
+        bonusType: "percent_points",
+        bonusValue: "5",
+        bonusMinAvgPercent: "90",
+        bonusMinCompletedShare: null,
+      },
+      [graded("graded", 80)]
+    )
+    expect(b.conditionMet).toBe(false)
+    expect(b.percentPoints).toBe(0)
+  })
+
+  it("ignores practice assignments in the completed share", () => {
+    const b = effectiveBonus(
+      {
+        bonusType: "grade_steps",
+        bonusValue: "0.3",
+        bonusMinAvgPercent: null,
+        bonusMinCompletedShare: "1",
+      },
+      [graded("graded", 100), { kind: "practice", status: "graded", percent: 10 }]
+    )
+    expect(b.completedShare).toBe(1)
+    expect(b.gradeSteps).toBe(0.3)
+  })
+})
+
+describe("moduleFinalGrade", () => {
+  it("applies a percent-point bonus before mapping to a grade", () => {
+    const r = moduleFinalGrade({
+      module: {
+        passFail: false,
+        bonusType: "percent_points",
+        bonusValue: "5",
+        bonusMinAvgPercent: null,
+        bonusMinCompletedShare: null,
+      },
+      attempts: [{ attempt: 1, resultPercent: "78", passed: true }],
+      assignments: [{ kind: "graded", status: "graded", percent: 100 }],
+      scale: null,
+    })
+    // 78 + 5 = 83 → 2.0 on the default scale (≥80)
+    expect(r.percent).toBe(83)
+    expect(r.grade).toBe(2.0)
+    expect(r.source).toBe("assessment")
+  })
+
+  it("applies grade steps and clamps at 1.0", () => {
+    const r = moduleFinalGrade({
+      module: {
+        passFail: false,
+        bonusType: "grade_steps",
+        bonusValue: "0.3",
+        bonusMinAvgPercent: null,
+        bonusMinCompletedShare: null,
+      },
+      attempts: [{ attempt: 1, resultPercent: "96", passed: true }],
+      assignments: [{ kind: "graded", status: "graded", percent: 100 }],
+      scale: null,
+    })
+    // 96 → 1.0, minus 0.3 step clamps back to 1.0
+    expect(r.grade).toBe(1.0)
+  })
+
+  it("uses the latest attempt", () => {
+    const r = moduleFinalGrade({
+      module: noBonus,
+      attempts: [
+        { attempt: 1, resultPercent: "40", passed: false },
+        { attempt: 2, resultPercent: "72", passed: true },
+      ],
+      assignments: [],
+      scale: null,
+    })
+    expect(r.attempt).toBe(2)
+    expect(r.grade).toBe(2.7)
+  })
+
+  it("reports only passed for pass/fail modules", () => {
+    const r = moduleFinalGrade({
+      module: { ...noBonus, passFail: true },
+      attempts: [{ attempt: 1, resultPercent: null, passed: true }],
+      assignments: [],
+      scale: null,
+    })
+    expect(r.grade).toBeNull()
+    expect(r.passed).toBe(true)
+  })
+
+  it("falls back to legacy grades when no attempt exists", () => {
+    const r = moduleFinalGrade({
+      module: noBonus,
+      attempts: [],
+      assignments: [],
+      scale: null,
+      legacyGrades: [{ value: "2.0", weight: "1", attempt: 1 }],
+    })
+    expect(r.source).toBe("legacy")
+    expect(r.grade).toBeCloseTo(2.0)
+  })
+
+  it("returns nulls without attempts or legacy grades", () => {
+    const r = moduleFinalGrade({ module: noBonus, attempts: [], assignments: [], scale: null })
+    expect(r).toMatchObject({ grade: null, source: null })
+  })
+})
+
+describe("programAverageFromFinals", () => {
+  it("weights final grades by ECTS", () => {
+    const avg = programAverageFromFinals([
+      { finalGrade: 1.0, ects: 5 },
+      { finalGrade: 2.5, ects: 10 },
+      { finalGrade: null, ects: 5 },
+    ])
+    expect(avg).toBeCloseTo(2.0)
+  })
+})
+
+describe("DEFAULT_GERMAN_SCALE", () => {
+  it("is sorted descending and spans 50-95", () => {
+    expect(DEFAULT_GERMAN_SCALE[0]).toEqual({ minPercent: 95, grade: 1.0 })
+    expect(DEFAULT_GERMAN_SCALE.at(-1)).toEqual({ minPercent: 50, grade: 4.0 })
   })
 })
