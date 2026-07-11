@@ -842,7 +842,8 @@
         "kindMixed": "Gemischt (MC + Freitext)",
         "submit": "Generieren",
         "generating": "Generiere Quiz …"
-      }
+      },
+      "description": "Beschreibung (optional)"
     },
     "aiUnavailable": "Kein KI-Modell konfiguriert — KI-Funktionen deaktiviert.",
     "questionForm": {

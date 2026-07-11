@@ -1,16 +1,20 @@
+import * as React from "react"
 import { and, desc, eq } from "drizzle-orm"
-import { Sparkles } from "lucide-react"
+import { HelpCircle, Play } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { quiz } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { listAvailableModels } from "@/lib/ai/registry"
 import { ownModule } from "@/lib/studies/access"
+import { getModuleColorClasses, getModuleIcon } from "@/lib/module-visuals"
 import { Link } from "@/i18n/navigation"
 import { deleteQuiz } from "@/app/[locale]/(app)/quiz-actions"
+import { AiBadge } from "@/components/ai/ai-badge"
 import { GenerateQuizDialog, QuizDialog } from "@/components/learn/quiz-dialogs"
 import { DeleteButton } from "@/components/studies/delete-button"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 export default async function ModuleQuizzesPage({
   params,
@@ -32,6 +36,8 @@ export default async function ModuleQuizzesPage({
     }),
     listAvailableModels(),
   ])
+  const color = getModuleColorClasses(mod.color)
+  const Icon = getModuleIcon(mod.icon)
 
   return (
     <div className="space-y-4">
@@ -47,37 +53,57 @@ export default async function ModuleQuizzesPage({
       {quizzes.length === 0 ? (
         <p className="text-muted-foreground py-8 text-center text-sm">{t("empty")}</p>
       ) : (
-        <ul className="space-y-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {quizzes.map((q) => {
             const finished = q.attempts.filter((a) => a.finishedAt)
             const best = finished.reduce((max, a) => Math.max(max, Number(a.score ?? 0)), 0)
             return (
-              <li
-                key={q.id}
-                className="flex flex-wrap items-center gap-2.5 rounded-md border px-3 py-2.5 text-sm"
-              >
-                <Link
-                  href={`${basePath}/quizzes/${q.id}`}
-                  className="min-w-0 flex-1 truncate font-medium underline-offset-4 hover:underline"
-                >
-                  {q.title}
-                </Link>
-                {q.aiGenerated && (
-                  <Badge variant="secondary">
-                    <Sparkles className="size-3" />
-                    {t("aiBadge")}
-                  </Badge>
+              <div key={q.id} className="bg-card flex flex-col rounded-xl border p-4">
+                <div className="flex items-start gap-2.5">
+                  <span
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                      color.soft,
+                      color.text
+                    )}
+                  >
+                    {React.createElement(Icon, { className: "size-5" })}
+                  </span>
+                  <Link
+                    href={`${basePath}/quizzes/${q.id}`}
+                    className="min-w-0 flex-1 font-medium underline-offset-4 hover:underline"
+                  >
+                    {q.title}
+                  </Link>
+                  {q.aiGenerated && <AiBadge iconOnly />}
+                </div>
+                {q.description && (
+                  <p className="text-muted-foreground mt-2 line-clamp-2 text-xs">{q.description}</p>
                 )}
-                <span className="text-muted-foreground text-xs">
+                <div className="text-muted-foreground mt-3 flex items-center gap-2 text-xs">
+                  <HelpCircle className="size-3.5" />
                   {t("questions", { count: q.questions.length })}
-                  {finished.length > 0 &&
-                    ` · ${t("attempts", { count: finished.length })} · ${t("bestScore", { score: best })}`}
-                </span>
-                <DeleteButton action={deleteQuiz.bind(null, q.id)} />
-              </li>
+                  {finished.length > 0 && (
+                    <span className="ml-auto tabular-nums">{t("bestScore", { score: best })}</span>
+                  )}
+                </div>
+                <div className="mt-3 flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    disabled={q.questions.length === 0}
+                    nativeButton={false}
+                    render={<Link href={`${basePath}/quizzes/${q.id}?run=1`} />}
+                  >
+                    <Play className="size-4" />
+                    {t("start")}
+                  </Button>
+                  <DeleteButton action={deleteQuiz.bind(null, q.id)} />
+                </div>
+              </div>
             )
           })}
-        </ul>
+        </div>
       )}
     </div>
   )

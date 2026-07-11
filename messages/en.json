@@ -842,7 +842,8 @@
         "kindMixed": "Mixed (MC + free text)",
         "submit": "Generate",
         "generating": "Generating quiz …"
-      }
+      },
+      "description": "Description (optional)"
     },
     "aiUnavailable": "No AI model configured — AI features disabled.",
     "questionForm": {

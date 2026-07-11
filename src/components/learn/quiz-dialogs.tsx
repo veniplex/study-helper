@@ -50,6 +50,7 @@ export function QuizDialog({
     try {
       const result = await createQuiz({
         title: String(form.get("title")),
+        description: String(form.get("description") || "") || null,
         moduleId: moduleId || null,
       })
       setOpen(false)
@@ -74,6 +75,10 @@ export function QuizDialog({
           <div className="space-y-1.5">
             <Label htmlFor="q-title">{t("title")}</Label>
             <Input id="q-title" name="title" required />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="q-desc">{t("description")}</Label>
+            <Textarea id="q-desc" name="description" rows={2} />
           </div>
           {!fixedModuleId && (
             <div className="space-y-1.5">

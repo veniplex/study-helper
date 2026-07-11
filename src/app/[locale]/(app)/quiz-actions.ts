@@ -25,6 +25,7 @@ async function ownQuiz(quizId: string, userId: string) {
 
 const quizSchema = z.object({
   title: z.string().min(1).max(300),
+  description: z.string().max(1000).optional().nullable(),
   moduleId: z.string().optional().nullable(),
 })
 
@@ -34,7 +35,12 @@ export async function createQuiz(input: unknown) {
   if (data.moduleId) await ownModule(data.moduleId, session.user.id)
   const [created] = await db
     .insert(quiz)
-    .values({ userId: session.user.id, title: data.title, moduleId: data.moduleId || null })
+    .values({
+      userId: session.user.id,
+      title: data.title,
+      description: data.description || null,
+      moduleId: data.moduleId || null,
+    })
     .returning()
   await logAudit({
     userId: session.user.id,
@@ -111,8 +117,11 @@ export async function addQuestion(quizId: string, input: unknown) {
 export async function updateQuiz(quizId: string, input: unknown) {
   const session = await requireSession()
   const before = await ownQuiz(quizId, session.user.id)
-  const data = quizSchema.pick({ title: true }).parse(input)
-  await db.update(quiz).set({ title: data.title }).where(eq(quiz.id, quizId))
+  const data = quizSchema.pick({ title: true, description: true }).parse(input)
+  await db
+    .update(quiz)
+    .set({ title: data.title, description: data.description || null })
+    .where(eq(quiz.id, quizId))
   await logAudit({
     userId: session.user.id,
     operation: "update",
@@ -191,6 +200,7 @@ const generateQuizInput = z.object({
 
 const generatedQuizSchema = z.object({
   title: z.string(),
+  description: z.string().describe("one short sentence describing the quiz topic"),
   questions: z
     .array(
       z.object({
@@ -244,6 +254,7 @@ Each question gets a short explanation of the correct answer. Write in the same 
     .values({
       userId: session.user.id,
       title: object.title,
+      description: object.description || null,
       moduleId: data.moduleId || null,
       aiGenerated: true,
     })
