@@ -96,6 +96,8 @@ export const studyModule = pgTable(
     instructor: text("instructor"),
     examType: text("exam_type"), // e.g. written exam, oral, project
     status: text("status").$type<ModuleStatus>().notNull().default("planned"),
+    /** Marks the degree thesis — a special module with grade + ECTS weight. */
+    isThesis: boolean("is_thesis").notNull().default(false),
     icon: text("icon"),
     color: text("color"),
     /** How many exam attempts (incl. retakes) this module allows. */

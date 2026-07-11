@@ -373,7 +373,8 @@
       "statusFailed": "Failed",
       "notes": "Notes",
       "grade": "Grade",
-      "empty": "No modules in this semester yet."
+      "empty": "No modules in this semester yet.",
+      "thesisBadge": "Thesis"
     },
     "moduleDialog": {
       "appearance": "Appearance",
@@ -399,7 +400,8 @@
       "bonusValueHintSteps": "Grade steps, e.g. 0.3",
       "bonusMinAvg": "Min. avg result (%)",
       "bonusMinShare": "Min. share completed (0–1)",
-      "bonusHint": "Bonus applies only when the conditions are met. Only graded assignments count."
+      "bonusHint": "Bonus applies only when the conditions are met. Only graded assignments count.",
+      "isThesis": "Is thesis (final project)"
     },
     "contacts": {
       "title": "Contacts",

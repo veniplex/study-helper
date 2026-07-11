@@ -23,7 +23,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
 import { createModule, updateModule } from "@/app/[locale]/(app)/studies/actions"
 import type { AssessmentType, BonusType, ModuleStatus } from "@/db/schema/studies"
 import {
@@ -70,7 +69,7 @@ type ModuleData = {
   instructor: string | null
   examType: string | null
   status: ModuleStatus
-  notes: string | null
+  isThesis?: boolean
   icon?: string | null
   color?: string | null
   maxAttempts?: number
@@ -107,6 +106,7 @@ export function ModuleDialog({
   }
   const [pending, setPending] = React.useState(false)
   const [status, setStatus] = React.useState<ModuleStatus>(module?.status ?? "planned")
+  const [isThesis, setIsThesis] = React.useState(module?.isThesis ?? false)
   const [icon, setIcon] = React.useState<string | null>(module?.icon ?? null)
   const [color, setColor] = React.useState<string | null>(module?.color ?? null)
   const [passFail, setPassFail] = React.useState(module?.passFail ?? false)
@@ -137,7 +137,7 @@ export function ModuleDialog({
       instructor: String(form.get("instructor") || "") || null,
       examType: String(form.get("examType") || "") || null,
       status,
-      notes: String(form.get("notes") || "") || null,
+      isThesis,
       icon,
       color,
       maxAttempts: Number(form.get("maxAttempts")) || 3,
@@ -322,6 +322,10 @@ export function ModuleDialog({
               <Switch checked={passFail} onCheckedChange={setPassFail} />
               {tDialog("passFail")}
             </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={isThesis} onCheckedChange={setIsThesis} />
+              {tDialog("isThesis")}
+            </label>
           </div>
 
           {/* Bonus */}
@@ -396,10 +400,6 @@ export function ModuleDialog({
             )}
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="m-notes">{t("module.notes")}</Label>
-            <Textarea id="m-notes" name="notes" rows={3} defaultValue={module?.notes ?? ""} />
-          </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               {tCommon("cancel")}

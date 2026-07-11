@@ -1,4 +1,4 @@
-import { GraduationCap, Settings } from "lucide-react"
+import { Settings } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import type { FinalGrade } from "@/lib/grades"
 import { formatGrade, programAverageFromFinals } from "@/lib/grades"
@@ -36,7 +36,6 @@ export async function SemesterOverviewCard({
 }) {
   const t = await getTranslations("dashboard")
   const tStudies = await getTranslations("studies")
-  const tNav = await getTranslations("nav")
   const format = await getFormatter()
 
   const allModules = semesters.flatMap((s) => s.modules)
@@ -106,13 +105,6 @@ export async function SemesterOverviewCard({
           </dl>
         </div>
         <div className="flex items-center gap-3">
-          <Link
-            href="/thesis"
-            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
-          >
-            <GraduationCap className="size-3.5" />
-            {tNav("thesis")}
-          </Link>
           <Link
             href={`/studies/${programId}/settings`}
             className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"

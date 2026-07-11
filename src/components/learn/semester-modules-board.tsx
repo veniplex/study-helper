@@ -212,17 +212,28 @@ export function SemesterModulesBoard({
       onDragCancel={onDragCancel}
     >
       {semesters.map((sem) => (
-        <div key={sem.id} className="space-y-2">
-          <SemesterHeaderRow programId={programId} semester={sem} labels={labels} />
-          <SemesterDropZone
-            semesterId={sem.id}
-            ids={columns[sem.id] ?? []}
-            modulesById={modulesById}
-            gradeLabel={gradeLabel}
-            preparedness={preparedness}
-            programId={programId}
-            labels={labels}
-          />
+        <div key={sem.id} className="overflow-x-auto">
+          <div className="min-w-[40rem] space-y-2">
+            <SemesterHeaderRow programId={programId} semester={sem} labels={labels} />
+            <SemesterDropZone
+              semesterId={sem.id}
+              ids={columns[sem.id] ?? []}
+              modulesById={modulesById}
+              gradeLabel={gradeLabel}
+              preparedness={preparedness}
+              programId={programId}
+              labels={labels}
+            />
+            <div className="flex justify-end">
+              <Link
+                href={`/plan/${sem.id}`}
+                className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+              >
+                {labels.toPlan}
+                <ArrowRight className="size-3" />
+              </Link>
+            </div>
+          </div>
         </div>
       ))}
       <DragOverlay>
@@ -262,55 +273,64 @@ function SemesterHeaderRow({
   const [deleteOpen, setDeleteOpen] = React.useState(false)
 
   return (
-    <div className="group flex flex-wrap items-center gap-2 border-b pb-1.5">
-      <span className="font-medium">{sem.name}</span>
-      <button
-        type="button"
-        onClick={() => setAddModuleOpen(true)}
-        className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
-        title={tStudies("newModule")}
-      >
-        <Plus className="size-3.5" />
-        <span className="sr-only">{tStudies("newModule")}</span>
-      </button>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
-              aria-label={sem.name}
-            />
-          }
+    <div className="group flex items-center gap-3 border-b pb-1.5">
+      <span className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="truncate font-medium">{sem.name}</span>
+        <button
+          type="button"
+          onClick={() => setAddModuleOpen(true)}
+          className="text-muted-foreground hover:text-foreground shrink-0 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
+          title={tStudies("newModule")}
         >
-          <MoreHorizontal className="size-3.5" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-44">
-          <DropdownMenuItem onClick={() => setEditOpen(true)}>
-            <Pencil className="size-4" />
-            {tCommon("edit")}
-          </DropdownMenuItem>
-          <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
-            <Trash2 className="size-4" />
-            {tCommon("delete")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {sem.isCurrent && (
-        <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">
-          {labels.currentSemester}
-        </span>
-      )}
-      {sem.dateRangeLabel && (
-        <span className="text-muted-foreground text-xs">{sem.dateRangeLabel}</span>
-      )}
-      <Link
-        href={`/plan/${sem.id}`}
-        className="text-muted-foreground hover:text-foreground ml-auto flex items-center gap-1 text-xs"
-      >
-        {labels.toPlan}
-        <ArrowRight className="size-3" />
-      </Link>
+          <Plus className="size-3.5" />
+          <span className="sr-only">{tStudies("newModule")}</span>
+        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground shrink-0 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
+                aria-label={sem.name}
+              />
+            }
+          >
+            <MoreHorizontal className="size-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-44">
+            <DropdownMenuItem onClick={() => setEditOpen(true)}>
+              <Pencil className="size-4" />
+              {tCommon("edit")}
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4" />
+              {tCommon("delete")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {sem.isCurrent && (
+          <span className="shrink-0 rounded-full bg-sky-500/15 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">
+            {labels.currentSemester}
+          </span>
+        )}
+        {sem.dateRangeLabel && (
+          <span className="text-muted-foreground shrink-0 text-xs">{sem.dateRangeLabel}</span>
+        )}
+      </span>
+      {/* Column labels — same fixed widths as the module rows below */}
+      <span className="w-20 shrink-0" />
+      <span className="text-muted-foreground w-20 shrink-0 truncate text-xs font-medium">
+        {labels.examType}
+      </span>
+      <span className="text-muted-foreground w-9 shrink-0 truncate text-right text-xs font-medium">
+        {labels.ects}
+      </span>
+      <span className="text-muted-foreground w-9 shrink-0 truncate text-right text-xs font-medium">
+        {labels.grade}
+      </span>
+      <span className="text-muted-foreground w-28 shrink-0 truncate text-xs font-medium">
+        {labels.prep}
+      </span>
 
       <ModuleDialog semesterId={sem.id} open={addModuleOpen} onOpenChange={setAddModuleOpen} />
       <SemesterDialog
@@ -356,34 +376,23 @@ function SemesterDropZone({
       {ids.length === 0 ? (
         <p className="text-muted-foreground py-2 text-sm">{labels.noModules}</p>
       ) : (
-        <div className="overflow-x-auto">
-          <div className="min-w-[40rem] space-y-1">
-            <div className="text-muted-foreground flex items-center gap-3 pb-1 text-xs font-medium">
-              <span className="w-5 shrink-0" />
-              <span className="min-w-0 flex-1" />
-              <span className="w-20 shrink-0" />
-              <span className="w-20 shrink-0 truncate">{labels.examType}</span>
-              <span className="w-9 shrink-0 truncate text-right">{labels.ects}</span>
-              <span className="w-9 shrink-0 truncate text-right">{labels.grade}</span>
-              <span className="w-28 shrink-0 truncate">{labels.prep}</span>
-            </div>
-            <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-              {ids.map((id) => {
-                const mod = modulesById.get(id)
-                if (!mod) return null
-                return (
-                  <ModuleRow
-                    key={id}
-                    module={mod}
-                    semesterId={semesterId}
-                    programId={programId}
-                    gradeLabel={gradeLabel.get(id) ?? "–"}
-                    prep={mod.status === "active" ? (preparedness.get(id) ?? null) : null}
-                  />
-                )
-              })}
-            </SortableContext>
-          </div>
+        <div className="space-y-1">
+          <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+            {ids.map((id) => {
+              const mod = modulesById.get(id)
+              if (!mod) return null
+              return (
+                <ModuleRow
+                  key={id}
+                  module={mod}
+                  semesterId={semesterId}
+                  programId={programId}
+                  gradeLabel={gradeLabel.get(id) ?? "–"}
+                  prep={mod.status === "active" ? (preparedness.get(id) ?? null) : null}
+                />
+              )
+            })}
+          </SortableContext>
         </div>
       )}
     </div>
@@ -407,6 +416,7 @@ function ModuleRow({
     id: m.id,
   })
   const tCommon = useTranslations("common")
+  const tStudiesModule = useTranslations("studies.module")
   const router = useRouter()
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
@@ -444,6 +454,11 @@ function ModuleRow({
             <ModuleGlyph iconKey={m.icon} className="size-3.5" />
           </span>
           <span className="truncate">{m.name}</span>
+          {m.isThesis && (
+            <span className="bg-violet-500/15 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
+              {tStudiesModule("thesisBadge")}
+            </span>
+          )}
         </Link>
         <DropdownMenu>
           <DropdownMenuTrigger

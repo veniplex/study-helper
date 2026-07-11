@@ -5,9 +5,8 @@ import { db } from "@/db"
 import { aiConversation, aiMessage } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { listAvailableModels } from "@/lib/ai/registry"
-import { Chat } from "@/components/ai/chat"
-import { MinimizeChatButton } from "@/components/ai/minimize-chat-button"
-import { Badge } from "@/components/ui/badge"
+import { getStudyContext } from "@/lib/studies/context"
+import { ConversationPanel } from "@/components/ai/conversation-panel"
 
 export default async function ConversationPage({
   params,
@@ -17,39 +16,47 @@ export default async function ConversationPage({
   const { conversationId } = await params
   const session = await requireSession()
 
-  const conversation = await db.query.aiConversation.findFirst({
-    where: and(
-      eq(aiConversation.id, conversationId),
-      eq(aiConversation.userId, session.user.id)
-    ),
-    with: {
-      module: true,
-      messages: { orderBy: [asc(aiMessage.createdAt)] },
-    },
-  })
+  const [conversation, { models, defaultModel }, context] = await Promise.all([
+    db.query.aiConversation.findFirst({
+      where: and(
+        eq(aiConversation.id, conversationId),
+        eq(aiConversation.userId, session.user.id)
+      ),
+      with: {
+        module: true,
+        messages: { orderBy: [asc(aiMessage.createdAt)] },
+      },
+    }),
+    listAvailableModels(),
+    getStudyContext(session.user.id),
+  ])
   if (!conversation) notFound()
-
-  const { models, defaultModel } = await listAvailableModels()
 
   const initialMessages: UIMessage[] = conversation.messages.map((m) => ({
     id: m.id,
     role: m.role,
     parts: m.parts as UIMessage["parts"],
   }))
+  const modules = context.tree.flatMap((s) =>
+    s.modules.map((m) => ({ id: m.id, name: m.name }))
+  )
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col">
-      <div className="mb-3 flex items-center gap-2">
-        <h1 className="min-w-0 flex-1 truncate text-sm font-medium">{conversation.title}</h1>
-        {conversation.module && <Badge variant="secondary">{conversation.module.name}</Badge>}
-        <MinimizeChatButton conversationId={conversation.id} />
+    <div className="mx-auto flex h-[calc(100dvh-9.5rem)] w-full max-w-3xl flex-col md:h-[calc(100dvh-6.5rem)]">
+      <div className="bg-background min-h-0 flex-1 rounded-xl border">
+        <ConversationPanel
+          variant="page"
+          model={conversation.model ?? defaultModel ?? models[0]?.ref ?? null}
+          modules={modules}
+          initialConversation={{
+            id: conversation.id,
+            title: conversation.title,
+            moduleId: conversation.moduleId,
+            moduleName: conversation.module?.name ?? null,
+          }}
+          initialMessages={initialMessages}
+        />
       </div>
-      <Chat
-        conversationId={conversation.id}
-        initialMessages={initialMessages}
-        models={models}
-        initialModel={conversation.model ?? defaultModel}
-      />
     </div>
   )
 }

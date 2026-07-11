@@ -218,27 +218,31 @@ export function MiniCalendar({
           ) : (
             <ul className="space-y-1.5">
               {selectedEvents.map((e) => (
-                <li
-                  key={e.id}
-                  className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-2 text-sm"
-                >
-                  <span className="text-muted-foreground text-xs tabular-nums">{eventTime(e)}</span>
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <span className={cn("size-1.5 shrink-0 rounded-full", TYPE_DOT[e.type])} />
-                    <span className="truncate font-medium">{e.title}</span>
-                    {e.aiGenerated && <AiBadge iconOnly />}
-                  </span>
-                  {e.moduleName ? (
-                    <span className="text-muted-foreground flex items-center gap-1 text-xs">
-                      <ModuleGlyph
-                        iconKey={e.moduleIcon}
-                        className={cn("size-3", getModuleColorClasses(e.moduleColor).text)}
-                      />
-                      <span className="max-w-24 truncate">{e.moduleName}</span>
+                <li key={e.id}>
+                  <Link
+                    href="/calendar"
+                    className="hover:bg-accent -mx-1.5 grid grid-cols-[5.5rem_1fr_auto] items-center gap-2 rounded-md px-1.5 py-0.5 text-sm transition-colors"
+                  >
+                    <span className="text-muted-foreground text-xs tabular-nums">
+                      {eventTime(e)}
                     </span>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">{typeLabels[e.type]}</span>
-                  )}
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span className={cn("size-1.5 shrink-0 rounded-full", TYPE_DOT[e.type])} />
+                      <span className="truncate font-medium">{e.title}</span>
+                      {e.aiGenerated && <AiBadge iconOnly />}
+                    </span>
+                    {e.moduleName ? (
+                      <span className="text-muted-foreground flex items-center gap-1 text-xs">
+                        <ModuleGlyph
+                          iconKey={e.moduleIcon}
+                          className={cn("size-3", getModuleColorClasses(e.moduleColor).text)}
+                        />
+                        <span className="max-w-24 truncate">{e.moduleName}</span>
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">{typeLabels[e.type]}</span>
+                    )}
+                  </Link>
                 </li>
               ))}
             </ul>

@@ -11,6 +11,7 @@ export type SemesterModule = {
   instructor: string | null
   examType: string | null
   status: "planned" | "active" | "passed" | "failed"
+  isThesis: boolean
   notes: string | null
   icon: string | null
   color: string | null
@@ -80,6 +81,7 @@ export async function getStudyContext(userId: string): Promise<StudyContext> {
                 instructor: true,
                 examType: true,
                 status: true,
+                isThesis: true,
                 notes: true,
                 icon: true,
                 color: true,
@@ -140,6 +142,7 @@ export async function getStudyContext(userId: string): Promise<StudyContext> {
         instructor: m.instructor,
         examType: m.examType,
         status: m.status,
+        isThesis: m.isThesis,
         notes: m.notes,
         icon: m.icon,
         color: m.color,

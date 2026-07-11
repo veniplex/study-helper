@@ -19,24 +19,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     image: session.user.image,
     isAdmin: session.user.role === "admin",
   }
+  // All modules of the active program (incl. thesis modules), not just the
+  // current semester — the chat can be assigned to any of them.
+  const allModules = context.tree.flatMap((s) =>
+    s.modules.map((m) => ({ id: m.id, name: m.name }))
+  )
 
   return (
     <PageContextProvider>
       <div className="flex min-h-dvh flex-col">
         <AppSidebar context={context} isAdmin={user.isAdmin} />
         <div className="flex flex-1 flex-col pb-16 md:pb-0 md:pl-60">
-          <AppHeader
-            user={user}
-            modules={context.modules.map((m) => ({ id: m.id, name: m.name }))}
-          />
+          <AppHeader user={user} modules={allModules} />
           <main className="flex-1 p-4 md:p-6">{children}</main>
         </div>
         <BottomNav context={context} />
-        <ChatDock
-          models={models}
-          initialModel={defaultModel}
-          modules={context.modules.map((m) => ({ id: m.id, name: m.name }))}
-        />
+        <ChatDock models={models} initialModel={defaultModel} modules={allModules} />
       </div>
     </PageContextProvider>
   )

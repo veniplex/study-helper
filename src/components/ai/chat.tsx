@@ -13,13 +13,6 @@ import { Link } from "@/i18n/navigation"
 import { executeAiTool } from "@/app/[locale]/(app)/ai/actions"
 import { WRITE_TOOL_NAMES } from "@/lib/ai/tools"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Markdown } from "./markdown"
 import { describePageContext, usePageContext } from "./page-context"
@@ -144,21 +137,20 @@ function ToolCard({
 export function Chat({
   conversationId,
   initialMessages,
-  models,
-  initialModel,
+  model: modelProp,
   className,
   suggestions,
 }: {
   conversationId: string
   initialMessages: UIMessage[]
-  models: { ref: string; label: string }[]
-  initialModel: string | null
+  /** Fixed chat model reference (no user-facing switcher). */
+  model: string | null
   className?: string
   /** Prompt suggestions shown as pills while the chat is empty. */
   suggestions?: string[]
 }) {
   const t = useTranslations("ai")
-  const [model, setModel] = React.useState(initialModel ?? models[0]?.ref ?? "")
+  const model = modelProp ?? ""
   const [input, setInput] = React.useState("")
   const bottomRef = React.useRef<HTMLDivElement>(null)
 
@@ -199,10 +191,8 @@ export function Chat({
 
   const busy = status === "submitted" || status === "streaming"
 
-  function submit() {
-    const text = input.trim()
+  function send(text: string) {
     if (!text || busy || !model) return
-    setInput("")
     void sendMessage(
       { text },
       {
@@ -215,13 +205,16 @@ export function Chat({
     )
   }
 
+  function submit() {
+    const text = input.trim()
+    if (!text) return
+    setInput("")
+    send(text)
+  }
+
   return (
-    <div
-      className={cn(
-        "flex h-[calc(100dvh-10rem)] flex-col md:h-[calc(100dvh-9rem)]",
-        className
-      )}
-    >
+    // Height comes from the parent (dock panel / fullscreen container).
+    <div className={cn("flex h-full min-h-0 flex-col", className)}>
       <div className="flex-1 space-y-4 overflow-y-auto pb-4">
         {messages.length === 0 && (
           <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-3 px-2 text-sm">
@@ -233,7 +226,7 @@ export function Chat({
                   <button
                     key={s}
                     type="button"
-                    onClick={() => setInput(s)}
+                    onClick={() => send(s)}
                     className="hover:border-primary/50 hover:text-foreground rounded-full border px-3 py-1 text-xs transition-colors"
                   >
                     {s}
@@ -330,7 +323,7 @@ export function Chat({
         <div ref={bottomRef} />
       </div>
 
-      <div className="space-y-2 border-t pt-3">
+      <div className="border-t pt-3">
         <div className="flex items-end gap-2">
           <Textarea
             value={input}
@@ -349,20 +342,6 @@ export function Chat({
             {busy ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
           </Button>
         </div>
-        <Select value={model} onValueChange={(v) => setModel(v ?? "")}>
-          <SelectTrigger className="h-7 w-fit gap-1 border-none px-2 text-xs shadow-none">
-            <SelectValue>
-              {models.find((m) => m.ref === model)?.label ?? t("noModel")}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {models.map((m) => (
-              <SelectItem key={m.ref} value={m.ref}>
-                {m.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
     </div>
   )

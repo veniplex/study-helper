@@ -148,6 +148,13 @@
       "when": 1783764729624,
       "tag": "0020_grading_system_german",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1783770731645,
+      "tag": "0021_lively_nemesis",
+      "breakpoints": true
     }
   ]
 }

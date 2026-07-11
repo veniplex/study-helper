@@ -1,0 +1,1 @@
+ALTER TABLE "module" ADD COLUMN "is_thesis" boolean DEFAULT false NOT NULL;
