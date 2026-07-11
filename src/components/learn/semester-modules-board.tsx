@@ -3,6 +3,7 @@
 import * as React from "react"
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   closestCenter,
   useDroppable,
@@ -10,6 +11,7 @@ import {
   useSensors,
   type DragEndEvent,
   type DragOverEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core"
 import {
   SortableContext,
@@ -83,11 +85,17 @@ export function SemesterModulesBoard({
   const [columns, setColumns] = React.useState<Record<string, string[]>>(() =>
     initColumns(semesters)
   )
+  const [activeId, setActiveId] = React.useState<string | null>(null)
+  // Snapshot taken at drag start — lets us skip the write entirely when a
+  // drag ends up back where it started (no DB round-trip for a plain click).
+  const dragStartColumns = React.useRef<Record<string, string[]> | null>(null)
   const [prevSemesters, setPrevSemesters] = React.useState(semesters)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   // Sync with server data after a revalidate (React "derived state" pattern).
-  if (prevSemesters !== semesters) {
+  // Skipped mid-drag/pending-refresh so the just-set optimistic order isn't
+  // clobbered by a stale server response racing the mutation.
+  if (prevSemesters !== semesters && activeId == null) {
     setPrevSemesters(semesters)
     setColumns(initColumns(semesters))
   }
@@ -98,6 +106,11 @@ export function SemesterModulesBoard({
     if (id.startsWith(CONTAINER_PREFIX)) return id.slice(CONTAINER_PREFIX.length)
     for (const [semId, ids] of Object.entries(columns)) if (ids.includes(id)) return semId
     return null
+  }
+
+  function onDragStart(event: DragStartEvent) {
+    dragStartColumns.current = columns
+    setActiveId(String(event.active.id))
   }
 
   function onDragOver(event: DragOverEvent) {
@@ -126,18 +139,22 @@ export function SemesterModulesBoard({
   }
 
   async function onDragEnd(event: DragEndEvent) {
+    const startColumns = dragStartColumns.current
+    dragStartColumns.current = null
+    setActiveId(null)
+
     const { active, over } = event
-    if (!over) return
-    const activeId = String(active.id)
+    if (!over || !startColumns) return
+    const activeDragId = String(active.id)
     const overId = String(over.id)
-    const activeContainer = findContainer(activeId)
+    const activeContainer = findContainer(activeDragId)
     const overContainer = findContainer(overId)
     if (!activeContainer || !overContainer) return
 
     let finalColumns = columns
     if (activeContainer === overContainer) {
       const items = columns[activeContainer]
-      const oldIndex = items.indexOf(activeId)
+      const oldIndex = items.indexOf(activeDragId)
       const newIndex = items.indexOf(overId)
       if (oldIndex >= 0 && newIndex >= 0 && oldIndex !== newIndex) {
         finalColumns = { ...columns, [activeContainer]: arrayMove(items, oldIndex, newIndex) }
@@ -145,24 +162,47 @@ export function SemesterModulesBoard({
       }
     }
 
+    // Dropped back exactly where it started (e.g. a plain click) — no need
+    // to touch the database or trigger a refresh.
+    const unchanged =
+      JSON.stringify(finalColumns[activeContainer]) ===
+        JSON.stringify(startColumns[activeContainer]) &&
+      (activeContainer === overContainer ||
+        JSON.stringify(finalColumns[overContainer]) === JSON.stringify(startColumns[overContainer]))
+    if (unchanged) return
+
     try {
       await reorderModulesAcrossSemesters(
         Object.entries(finalColumns).map(([semesterId, ids]) => ({ semesterId, ids }))
       )
-      router.refresh()
+      // Keep the optimistic order on screen while the server data streams
+      // back in, instead of suspending the board on every drop.
+      React.startTransition(() => {
+        router.refresh()
+      })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
       setColumns(initColumns(semesters))
     }
   }
 
+  function onDragCancel() {
+    dragStartColumns.current = null
+    setActiveId(null)
+    setColumns(initColumns(semesters))
+  }
+
+  const activeModule = activeId ? (modulesById.get(activeId) ?? null) : null
+
   return (
     <DndContext
       id="semester-modules-board"
       sensors={sensors}
       collisionDetection={closestCenter}
+      onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
+      onDragCancel={onDragCancel}
     >
       {semesters.map((sem) => (
         <div key={sem.id} className="space-y-2">
@@ -209,6 +249,22 @@ export function SemesterModulesBoard({
           />
         </div>
       ))}
+      <DragOverlay>
+        {activeModule && (
+          <div className="bg-card flex items-center gap-2 rounded-md border px-2 py-1 shadow-lg">
+            <span
+              className={cn(
+                "flex size-6 shrink-0 items-center justify-center rounded",
+                getModuleColorClasses(activeModule.color).soft,
+                getModuleColorClasses(activeModule.color).text
+              )}
+            >
+              <ModuleGlyph iconKey={activeModule.icon} className="size-3.5" />
+            </span>
+            <span className="truncate text-sm font-medium">{activeModule.name}</span>
+          </div>
+        )}
+      </DragOverlay>
     </DndContext>
   )
 }
