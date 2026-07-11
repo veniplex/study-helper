@@ -1,5 +1,5 @@
 import "server-only"
-import { asc, eq } from "drizzle-orm"
+import { asc, eq, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { degreeProgram, thesisProject, userPrefs } from "@/db/schema"
 
@@ -65,8 +65,10 @@ export async function getStudyContext(userId: string): Promise<StudyContext> {
       where: eq(degreeProgram.userId, userId),
       orderBy: [asc(degreeProgram.sortOrder), asc(degreeProgram.createdAt)],
       with: {
+        // Semesters are always shown oldest → newest by their date range
+        // (undated semesters sort last), never by manual order.
         semesters: {
-          orderBy: (s) => [asc(s.sortOrder), asc(s.createdAt)],
+          orderBy: (s) => [asc(sql`coalesce(${s.startDate}, '9999-12-31')`), asc(s.createdAt)],
           with: {
             modules: {
               orderBy: (m) => [asc(m.sortOrder), asc(m.createdAt)],

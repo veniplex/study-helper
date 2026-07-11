@@ -1,23 +1,13 @@
-import * as React from "react"
-import { ArrowRight, GraduationCap, Settings } from "lucide-react"
+import { GraduationCap, Settings } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import type { FinalGrade } from "@/lib/grades"
 import { formatGrade, programAverageFromFinals } from "@/lib/grades"
 import type { GradingSystem } from "@/db/schema/studies"
 import type { SemesterModule } from "@/lib/studies/context"
-import { getModuleColorClasses, getModuleIcon } from "@/lib/module-visuals"
-import {
-  deleteModule,
-  deleteSemester,
-} from "@/app/[locale]/(app)/studies/actions"
-import { DeleteButton } from "@/components/studies/delete-button"
-import { ModuleDialog } from "@/components/studies/module-dialog"
 import { SemesterDialog } from "@/components/studies/semester-dialog"
-import { ModuleStatusBadge } from "@/components/learn/module-status-badge"
-import { MoveModuleButtons } from "@/components/learn/move-module-buttons"
+import { SemesterModulesBoard, type BoardSemester } from "@/components/learn/semester-modules-board"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Link } from "@/i18n/navigation"
-import { cn } from "@/lib/utils"
 
 type SemesterRow = {
   id: string
@@ -25,10 +15,6 @@ type SemesterRow = {
   startDate: string | null
   endDate: string | null
   modules: SemesterModule[]
-}
-
-function ModuleGlyph({ iconKey, className }: { iconKey: string | null; className?: string }) {
-  return React.createElement(getModuleIcon(iconKey), { className })
 }
 
 export async function SemesterOverviewCard({
@@ -71,19 +57,39 @@ export async function SemesterOverviewCard({
     { label: tStudies("stats.semesters"), value: String(semesters.length) },
   ]
 
-  function gradeCell(m: SemesterModule): string {
+  const gradeLabel = new Map<string, string>()
+  for (const m of allModules) {
     const final = finalGrades.get(m.id)
-    if (!final) return "–"
-    if (m.passFail) return final.passed == null ? "–" : final.passed ? "✓" : "✗"
-    return final.grade != null ? formatGrade(final.grade, gradingSystem) : "–"
+    const label = !final
+      ? "–"
+      : m.passFail
+        ? final.passed == null
+          ? "–"
+          : final.passed
+            ? "✓"
+            : "✗"
+        : final.grade != null
+          ? formatGrade(final.grade, gradingSystem)
+          : "–"
+    gradeLabel.set(m.id, label)
   }
 
-  function dateRange(s: SemesterRow): string | null {
+  function dateRangeLabel(s: SemesterRow): string | null {
     if (!s.startDate && !s.endDate) return null
     const fmt = (d: string) => format.dateTime(new Date(d), { dateStyle: "medium" })
     if (s.startDate && s.endDate) return `${fmt(s.startDate)} – ${fmt(s.endDate)}`
     return fmt((s.startDate ?? s.endDate)!)
   }
+
+  const boardSemesters: BoardSemester[] = semesters.map((s) => ({
+    id: s.id,
+    name: s.name,
+    startDate: s.startDate,
+    endDate: s.endDate,
+    dateRangeLabel: dateRangeLabel(s),
+    isCurrent: s.id === currentSemesterId,
+    modules: s.modules,
+  }))
 
   return (
     <Card>
@@ -118,128 +124,25 @@ export async function SemesterOverviewCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
-        {semesters.length === 0 && (
+        {semesters.length === 0 ? (
           <p className="text-muted-foreground text-sm">{t("noModules")}</p>
+        ) : (
+          <SemesterModulesBoard
+            programId={programId}
+            semesters={boardSemesters}
+            gradeLabel={gradeLabel}
+            preparedness={preparedness}
+            labels={{
+              examType: tStudies("module.examType"),
+              ects: tStudies("stats.ects"),
+              grade: t("columnGrade"),
+              prep: t("columnPreparedness"),
+              noModules: t("noModules"),
+              toPlan: t("toPlan"),
+              currentSemester: t("currentSemester"),
+            }}
+          />
         )}
-        {semesters.map((sem) => {
-          const orderedIds = sem.modules.map((m) => m.id)
-          return (
-            <div key={sem.id} className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2 border-b pb-1.5">
-                <span className="font-medium">{sem.name}</span>
-                {sem.id === currentSemesterId && (
-                  <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">
-                    {t("currentSemester")}
-                  </span>
-                )}
-                {dateRange(sem) && (
-                  <span className="text-muted-foreground text-xs">{dateRange(sem)}</span>
-                )}
-                <span className="ml-auto flex items-center gap-1">
-                  <Link
-                    href={`/plan/${sem.id}`}
-                    className="text-muted-foreground hover:text-foreground mr-1 flex items-center gap-1 text-xs"
-                  >
-                    {t("toPlan")}
-                    <ArrowRight className="size-3" />
-                  </Link>
-                  <ModuleDialog semesterId={sem.id} />
-                  <SemesterDialog
-                    programId={programId}
-                    semester={{
-                      id: sem.id,
-                      name: sem.name,
-                      startDate: sem.startDate,
-                      endDate: sem.endDate,
-                    }}
-                  />
-                  <DeleteButton action={deleteSemester.bind(null, sem.id)} />
-                </span>
-              </div>
-              {sem.modules.length === 0 ? (
-                <p className="text-muted-foreground py-1 text-sm">{t("noModules")}</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <div className="grid min-w-[42rem] grid-cols-[auto_1.6fr_7rem_6rem_3rem_3rem_8rem_auto] items-center gap-x-3 gap-y-2 text-sm">
-                    <span />
-                    <span />
-                    <span />
-                    <span className="text-muted-foreground text-xs font-medium">
-                      {tStudies("module.examType")}
-                    </span>
-                    <span className="text-muted-foreground text-right text-xs font-medium">
-                      {tStudies("stats.ects")}
-                    </span>
-                    <span className="text-muted-foreground text-right text-xs font-medium">
-                      {t("columnGrade")}
-                    </span>
-                    <span className="text-muted-foreground text-xs font-medium">
-                      {t("columnPreparedness")}
-                    </span>
-                    <span />
-                    {sem.modules.map((m, i) => {
-                      const color = getModuleColorClasses(m.color)
-                      const prep = m.status === "active" ? preparedness.get(m.id) ?? null : null
-                      return (
-                        <React.Fragment key={m.id}>
-                          <MoveModuleButtons
-                            semesterId={sem.id}
-                            orderedIds={orderedIds}
-                            index={i}
-                          />
-                          <Link
-                            href={`/studies/${programId}/${m.id}`}
-                            className="flex min-w-0 items-center gap-2 font-medium underline-offset-4 hover:underline"
-                          >
-                            <span
-                              className={cn(
-                                "flex size-6 shrink-0 items-center justify-center rounded",
-                                color.soft,
-                                color.text
-                              )}
-                            >
-                              <ModuleGlyph iconKey={m.icon} className="size-3.5" />
-                            </span>
-                            <span className="truncate">{m.name}</span>
-                          </Link>
-                          <ModuleStatusBadge status={m.status} className="justify-self-start" />
-                          <span className="text-muted-foreground truncate text-xs">
-                            {m.examType ?? "–"}
-                          </span>
-                          <span className="text-muted-foreground text-right text-xs tabular-nums">
-                            {m.ects ?? "–"}
-                          </span>
-                          <span className="text-right text-xs tabular-nums">{gradeCell(m)}</span>
-                          {m.status === "active" ? (
-                            <span className="flex items-center gap-2">
-                              <span className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
-                                {prep != null && (
-                                  <span
-                                    className="bg-primary block h-full rounded-full"
-                                    style={{ width: `${prep}%` }}
-                                  />
-                                )}
-                              </span>
-                              <span className="text-muted-foreground w-8 text-right text-xs tabular-nums">
-                                {prep != null ? `${prep}%` : "–"}
-                              </span>
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">–</span>
-                          )}
-                          <span className="flex items-center justify-end gap-0.5">
-                            <ModuleDialog semesterId={sem.id} module={m} />
-                            <DeleteButton action={deleteModule.bind(null, m.id)} />
-                          </span>
-                        </React.Fragment>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        })}
       </CardContent>
     </Card>
   )

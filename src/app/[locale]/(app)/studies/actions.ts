@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { and, eq } from "drizzle-orm"
+import { and, eq, inArray } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
 import {
@@ -223,6 +223,56 @@ export async function reorderModules(semesterId: string, ids: unknown) {
     )
   )
   revalidatePath(`/studies/${sem.programId}`)
+  return { ok: true as const }
+}
+
+const reorderMovesSchema = z
+  .array(z.object({ semesterId: z.string(), ids: z.array(z.string()).max(200) }))
+  .max(50)
+
+/**
+ * Persists a drag-and-drop reorder that may also move modules between
+ * semesters (dashboard board): sets sortOrder per position and, for modules
+ * whose semester changed, moves them into the target semester.
+ */
+export async function reorderModulesAcrossSemesters(input: unknown) {
+  const session = await requireSession()
+  const moves = reorderMovesSchema.parse(input)
+
+  const semesterIds = [...new Set(moves.map((m) => m.semesterId))]
+  const semesters = await Promise.all(semesterIds.map((id) => ownSemester(id, session.user.id)))
+  const semesterById = new Map(semesterIds.map((id, i) => [id, semesters[i]]))
+
+  const allModuleIds = moves.flatMap((m) => m.ids)
+  if (allModuleIds.length > 0) {
+    const owned = await db.query.studyModule.findMany({
+      where: inArray(studyModule.id, allModuleIds),
+      with: { semester: { with: { program: true } } },
+    })
+    const ownedIds = new Set(owned.map((m) => m.id))
+    if (
+      owned.length !== allModuleIds.length ||
+      owned.some((m) => m.semester.program.userId !== session.user.id) ||
+      allModuleIds.some((id) => !ownedIds.has(id))
+    ) {
+      throw new Error("Not found")
+    }
+  }
+
+  await Promise.all(
+    moves.flatMap((m) =>
+      m.ids.map((id, i) =>
+        db
+          .update(studyModule)
+          .set({ sortOrder: i, semesterId: m.semesterId })
+          .where(eq(studyModule.id, id))
+      )
+    )
+  )
+
+  const programIds = new Set(semesterIds.map((id) => semesterById.get(id)!.programId))
+  for (const programId of programIds) revalidatePath(`/studies/${programId}`)
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
