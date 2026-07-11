@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { externalResource, moduleContact, studyModule } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
+import { isAiAvailable } from "@/lib/ai/registry"
 import { decrypt } from "@/lib/crypto"
 import { getModuleFinalGrade } from "@/lib/studies/grades-server"
 import { getModuleStats } from "@/lib/learning/stats-server"
@@ -62,6 +63,7 @@ export default async function ModuleOverviewPage({
   const gradingSystem = mod.semester.program.gradingSystem
   const finalGrade = await getModuleFinalGrade(moduleId)
   const stats = await getModuleStats(session.user.id, moduleId)
+  const aiAvailable = await isAiAvailable()
   const tStats = await getTranslations("stats")
 
   const [decks, quizzes] = await Promise.all([
@@ -80,7 +82,7 @@ export default async function ModuleOverviewPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap justify-end gap-2">
-        <AnalyzeButton moduleId={moduleId} />
+        {aiAvailable && <AnalyzeButton moduleId={moduleId} />}
         <SessionStartDialog
           basePath={`/studies/${programId}/${moduleId}`}
           moduleId={moduleId}

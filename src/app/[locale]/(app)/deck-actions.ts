@@ -7,7 +7,7 @@ import { z } from "zod"
 import { db } from "@/db"
 import { deck, flashcard, reviewLog } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
-import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
+import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { searchChunks } from "@/lib/ai/rag"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
 import { scheduleReview, type ReviewRating } from "@/lib/learning/fsrs"
@@ -164,7 +164,7 @@ export async function generateCards(input: unknown) {
   const data = generateCardsInput.parse(input)
   const deckRow = await ownDeck(data.deckId, session.user.id)
 
-  const { defaultModel } = await listAvailableModels()
+  const defaultModel = await resolveModelForUser(session.user.id)
   if (!defaultModel) throw new Error("No AI model configured")
   const model = await getLanguageModel(defaultModel, session.user.id)
 

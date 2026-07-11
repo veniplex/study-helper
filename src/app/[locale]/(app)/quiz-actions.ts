@@ -7,7 +7,7 @@ import { z } from "zod"
 import { db } from "@/db"
 import { answerLog, question, quiz, quizAttempt } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
-import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
+import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { searchChunks } from "@/lib/ai/rag"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
 import { logAudit } from "@/lib/audit"
@@ -201,7 +201,7 @@ export async function generateQuiz(input: unknown) {
   const data = generateQuizInput.parse(input)
   if (data.moduleId) await ownModule(data.moduleId, session.user.id)
 
-  const { defaultModel } = await listAvailableModels()
+  const defaultModel = await resolveModelForUser(session.user.id)
   if (!defaultModel) throw new Error("No AI model configured")
   const model = await getLanguageModel(defaultModel, session.user.id)
 
@@ -298,7 +298,7 @@ export async function submitAttempt(input: unknown): Promise<AttemptResult> {
   let gradeFreeText:
     | ((prompt: string, reference: string, answer: string) => Promise<{ correct: boolean; feedback: string }>)
     | null = null
-  const { defaultModel } = await listAvailableModels()
+  const defaultModel = await resolveModelForUser(session.user.id)
   if (defaultModel && data.answers.some((a) => byId.get(a.questionId)?.kind === "free_text")) {
     await assertWithinLimit(session.user.id)
     const model = await getLanguageModel(defaultModel, session.user.id)

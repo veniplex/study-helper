@@ -8,7 +8,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import type { EmbeddingModel, LanguageModel } from "ai"
 import { and, eq } from "drizzle-orm"
 import { db } from "@/db"
-import { userAiKey } from "@/db/schema"
+import { userAiKey, userPrefs } from "@/db/schema"
 import { decrypt } from "@/lib/crypto"
 import { getSetting, type AiProvider } from "@/lib/settings"
 
@@ -91,4 +91,27 @@ export async function listAvailableModels(): Promise<{
       ? ai.defaultModel
       : (models[0]?.ref ?? null)
   return { models, defaultModel }
+}
+
+/** True when at least one AI provider/model is configured (admin settings). */
+export async function isAiAvailable(): Promise<boolean> {
+  const { models } = await listAvailableModels()
+  return models.length > 0
+}
+
+/**
+ * The model a user's AI requests should use: their preferred model (if still
+ * available), otherwise the admin-configured global default. Null when no
+ * provider is configured — AI features are hidden entirely then.
+ */
+export async function resolveModelForUser(userId: string): Promise<string | null> {
+  const { models, defaultModel } = await listAvailableModels()
+  if (models.length === 0) return null
+  const prefs = await db.query.userPrefs.findFirst({
+    where: eq(userPrefs.userId, userId),
+    columns: { preferredModel: true },
+  })
+  const preferred = prefs?.preferredModel
+  if (preferred && models.some((m) => m.ref === preferred)) return preferred
+  return defaultModel
 }

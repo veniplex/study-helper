@@ -67,12 +67,14 @@ function SidebarModule({
   module: mod,
   open,
   onToggle,
+  aiAvailable,
 }: {
   programId: string
   semesterId: string
   module: SemesterModule
   open: boolean
   onToggle: () => void
+  aiAvailable: boolean
 }) {
   const t = useTranslations("moduleTabs")
   const tCommon = useTranslations("common")
@@ -147,7 +149,9 @@ function SidebarModule({
       </div>
       {open && (
         <div className="mt-0.5 mb-1 ml-4 space-y-0.5 border-l pl-2">
-          {moduleTabs.map((tab) => {
+          {moduleTabs
+            .filter((tab) => aiAvailable || tab.key !== "chat")
+            .map((tab) => {
             const tabHref = `${href}${tab.segment}`
             const active =
               tab.segment === "" ? pathname === href : pathname.startsWith(tabHref)
@@ -194,12 +198,14 @@ function SidebarSemester({
   open,
   active,
   onOpen,
+  aiAvailable,
 }: {
   semester: SemesterNode
   programId: string
   open: boolean
   active: boolean
   onOpen: () => void
+  aiAvailable: boolean
 }) {
   const tContext = useTranslations("context")
   const tStudies = useTranslations("studies")
@@ -300,6 +306,7 @@ function SidebarSemester({
               module={mod}
               open={openModule === mod.id || currentModule?.id === mod.id}
               onToggle={() => setOpenModule(openModule === mod.id ? null : mod.id)}
+              aiAvailable={aiAvailable}
             />
           ))}
           {semester.theses.map((thesis) => (
@@ -347,7 +354,15 @@ function SidebarSemester({
   )
 }
 
-export function AppSidebar({ context, isAdmin }: { context: StudyContext; isAdmin: boolean }) {
+export function AppSidebar({
+  context,
+  isAdmin,
+  aiAvailable,
+}: {
+  context: StudyContext
+  isAdmin: boolean
+  aiAvailable: boolean
+}) {
   const t = useTranslations("nav")
   const tApp = useTranslations("app")
   const tContext = useTranslations("context")
@@ -415,6 +430,7 @@ export function AppSidebar({ context, isAdmin }: { context: StudyContext; isAdmi
                 open={openSemester === sem.id}
                 active={context.currentSemesterId === sem.id}
                 onOpen={() => toggleSemester(sem.id)}
+                aiAvailable={aiAvailable}
               />
             ))}
             {context.tree.length === 0 && (

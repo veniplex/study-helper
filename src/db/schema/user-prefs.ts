@@ -16,5 +16,7 @@ export const userPrefs = pgTable("user_prefs", {
   activeSemesterId: text("active_semester_id").references(() => semester.id, {
     onDelete: "set null",
   }),
+  /** User's preferred AI model ref ("providerId:modelId"); null = global default. */
+  preferredModel: text("preferred_model"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })

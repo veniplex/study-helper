@@ -326,6 +326,12 @@
       "passkeyDeleted": "Passkey removed.",
       "noPasskeys": "No passkeys registered yet.",
       "passwordRequired": "Password required"
+    },
+    "aiModel": {
+      "title": "AI model",
+      "description": "Pick your preferred AI model. Without a choice the global default model is used.",
+      "globalDefault": "Global default",
+      "saved": "Saved"
     }
   },
   "studies": {

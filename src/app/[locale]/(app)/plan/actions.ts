@@ -13,7 +13,7 @@ import {
   type PlanAvailability,
 } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
-import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
+import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
 import { logAudit } from "@/lib/audit"
 import { expandAbsences, validateCron } from "@/lib/plan/absences"
@@ -124,7 +124,7 @@ export async function generateSemesterPlan(semesterId: string) {
     }),
   ])
 
-  const { defaultModel } = await listAvailableModels()
+  const defaultModel = await resolveModelForUser(session.user.id)
   if (!defaultModel) throw new Error("No AI model configured")
   const model = await getLanguageModel(defaultModel, session.user.id)
 

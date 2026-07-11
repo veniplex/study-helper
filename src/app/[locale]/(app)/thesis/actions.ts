@@ -8,7 +8,7 @@ import { db } from "@/db"
 import { studyEvent, thesisMilestone, thesisProject } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { ownProgram } from "@/lib/studies/access"
-import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
+import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
 
 async function ownThesis(thesisId: string, userId: string) {
@@ -20,7 +20,7 @@ async function ownThesis(thesisId: string, userId: string) {
 }
 
 async function getModel(userId: string) {
-  const { defaultModel } = await listAvailableModels()
+  const defaultModel = await resolveModelForUser(userId)
   if (!defaultModel) throw new Error("No AI model configured")
   return { ref: defaultModel, model: await getLanguageModel(defaultModel, userId) }
 }

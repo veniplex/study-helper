@@ -9,10 +9,16 @@ import { ModuleSheet } from "./module-sheet"
 import type { StudyContext } from "@/lib/studies/context"
 import { cn } from "@/lib/utils"
 
-export function BottomNav({ context }: { context: StudyContext }) {
+export function BottomNav({
+  context,
+  aiAvailable,
+}: {
+  context: StudyContext
+  aiAvailable: boolean
+}) {
   const t = useTranslations("nav")
   const pathname = usePathname()
-  const items = navItems.filter((i) => i.mobile)
+  const items = navItems.filter((i) => i.mobile && (aiAvailable || i.key !== "ai"))
 
   const linkClass = (active: boolean) =>
     cn(

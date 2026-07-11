@@ -7,7 +7,7 @@ import { z } from "zod"
 import { db } from "@/db"
 import { studyPlan, studyPlanItem } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
-import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
+import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { searchChunks } from "@/lib/ai/rag"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
 import { ownModule } from "@/lib/studies/access"
@@ -174,7 +174,7 @@ export async function generateStudyPlan(input: unknown) {
   const data = generatePlanInputSchema.parse(input)
   await ownModuleOrNull(data.moduleId, session.user.id)
 
-  const { defaultModel } = await listAvailableModels()
+  const defaultModel = await resolveModelForUser(session.user.id)
   if (!defaultModel) throw new Error("No AI model configured")
   const model = await getLanguageModel(defaultModel, session.user.id)
 
@@ -313,7 +313,7 @@ export async function analyzeProgress(moduleId: string) {
     })),
   }
 
-  const { defaultModel } = await listAvailableModels()
+  const defaultModel = await resolveModelForUser(session.user.id)
   if (!defaultModel) throw new Error("No AI model configured")
   const model = await getLanguageModel(defaultModel, session.user.id)
 

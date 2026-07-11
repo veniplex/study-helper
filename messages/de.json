@@ -326,6 +326,12 @@
       "passkeyDeleted": "Passkey entfernt.",
       "noPasskeys": "Noch keine Passkeys registriert.",
       "passwordRequired": "Passwort erforderlich"
+    },
+    "aiModel": {
+      "title": "KI-Modell",
+      "description": "Wähle dein bevorzugtes KI-Modell. Ohne Auswahl wird das globale Standardmodell verwendet.",
+      "globalDefault": "Globaler Standard",
+      "saved": "Gespeichert"
     }
   },
   "studies": {
