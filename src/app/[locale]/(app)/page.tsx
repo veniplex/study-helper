@@ -1,28 +1,52 @@
-import { ArrowRight, Check } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { and, asc, eq, gte, lte } from "drizzle-orm"
 import { db } from "@/db"
 import { semesterPlan, studyEvent } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
+import { isAiAvailable } from "@/lib/ai/registry"
 import { getDashboardStats, getPreparednessByModule } from "@/lib/learning/stats-server"
 import { getModuleFinalGrades } from "@/lib/studies/grades-server"
 import { getStudyContext } from "@/lib/studies/context"
 import type { MiniCalendarEvent } from "@/app/[locale]/(app)/dashboard-actions"
-import { Link } from "@/i18n/navigation"
 import { MiniCalendar } from "@/components/learn/mini-calendar"
+import { OnboardingWizard } from "@/components/learn/onboarding-wizard"
 import { SemesterOverviewCard } from "@/components/learn/semester-overview-card"
 import { StatsCard } from "@/components/learn/stats-card"
 import { TodayPlanCard } from "@/components/plan/today-plan-card"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default async function DashboardPage() {
   const session = await requireSession()
   const t = await getTranslations("dashboard")
-  const tOnboarding = await getTranslations("onboarding")
 
   const context = await getStudyContext(session.user.id)
   const activeProgram = context.activeProgram
   const programInfo = context.programs.find((p) => p.id === activeProgram?.id) ?? null
+
+  const activeModuleIdsEarly = context.tree.flatMap((s) => s.modules.map((m) => m.id))
+  const firstName = session.user.name.split(" ")[0]
+
+  // Brand-new users (no module yet) get a focused onboarding flow instead of a
+  // dashboard full of empty widgets.
+  if (activeModuleIdsEarly.length === 0) {
+    const aiConfigured = await isAiAvailable()
+    return (
+      <div className="mx-auto w-full max-w-3xl space-y-6">
+        <h1 className="font-heading text-xl font-semibold tracking-tight">
+          {t("greeting", { name: firstName })}
+        </h1>
+        <OnboardingWizard
+          name={firstName}
+          hasProgram={context.programs.length > 0}
+          hasSemester={context.tree.length > 0}
+          hasModule={false}
+          programId={activeProgram?.id ?? null}
+          semesterId={context.tree[0]?.id ?? null}
+          isAdmin={session.user.role === "admin"}
+          aiConfigured={aiConfigured}
+        />
+      </div>
+    )
+  }
 
   const stats = await getDashboardStats(session.user.id)
 
@@ -78,56 +102,11 @@ export default async function DashboardPage() {
     },
   })
 
-  const hasProgram = context.programs.length > 0
-  const hasModule = activeModuleIds.length > 0
-  const hasSemester = context.tree.length > 0
-  const onboardingSteps = [
-    { key: "program", done: hasProgram },
-    { key: "semester", done: hasSemester },
-    { key: "module", done: hasModule },
-  ] as const
-
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
       <h1 className="font-heading text-xl font-semibold tracking-tight">
-        {t("greeting", { name: session.user.name.split(" ")[0] })}
+        {t("greeting", { name: firstName })}
       </h1>
-
-      {!hasModule && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{tOnboarding("title")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground text-sm">{tOnboarding("intro")}</p>
-            <ol className="space-y-2">
-              {onboardingSteps.map((step, i) => (
-                <li key={step.key} className="flex items-center gap-3 text-sm">
-                  <span
-                    className={
-                      step.done
-                        ? "flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
-                        : "bg-muted text-muted-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-                    }
-                  >
-                    {step.done ? <Check className="size-3.5" /> : i + 1}
-                  </span>
-                  <span className={step.done ? "text-muted-foreground line-through" : "font-medium"}>
-                    {tOnboarding(`step_${step.key}`)}
-                  </span>
-                </li>
-              ))}
-            </ol>
-            <Link
-              href="/studies"
-              className="text-primary inline-flex items-center gap-1 text-sm font-medium hover:underline"
-            >
-              {tOnboarding("cta")}
-              <ArrowRight className="size-3.5" />
-            </Link>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <StatsCard stats={stats} />

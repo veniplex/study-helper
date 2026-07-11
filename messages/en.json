@@ -922,12 +922,20 @@
     "attemptOf": "Attempt {n} of {max}"
   },
   "onboarding": {
-    "title": "Getting started",
-    "intro": "Set up your studies to use modules, materials and learning tools.",
+    "title": "Get started",
+    "heroTitle": "Welcome, {name}!",
+    "intro": "Set up your studies in three short steps.",
     "step_program": "Create a degree program",
-    "step_semester": "Add a semester",
-    "step_module": "Create modules",
-    "cta": "Set up now"
+    "step_program_desc": "Name, degree, institution and target ECTS.",
+    "step_semester": "Add your first semester",
+    "step_semester_desc": "The period in which you take modules.",
+    "step_module": "Create your first module",
+    "step_module_desc": "A subject with exam, materials and flashcards.",
+    "start": "Start",
+    "cta": "Set up now",
+    "aiTitle": "Enable AI features",
+    "aiDesc": "As an admin you can add an AI provider to unlock chat, quiz and flashcard generation.",
+    "aiCta": "Set up AI"
   },
   "context": {
     "program": "Degree program",

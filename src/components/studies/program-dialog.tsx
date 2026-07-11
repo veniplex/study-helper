@@ -27,11 +27,28 @@ type ProgramData = {
   thesisMaxAttempts?: number
 }
 
-export function ProgramDialog({ program }: { program?: ProgramData }) {
+export function ProgramDialog({
+  program,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger,
+}: {
+  program?: ProgramData
+  /** Controlled mode (e.g. onboarding wizard). */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  hideTrigger?: boolean
+}) {
   const t = useTranslations("studies")
   const tCommon = useTranslations("common")
   const router = useRouter()
-  const [open, setOpen] = React.useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+  const controlled = controlledOpen !== undefined
+  const open = controlled ? controlledOpen : uncontrolledOpen
+  const setOpen = (v: boolean) => {
+    if (controlled) onOpenChange?.(v)
+    else setUncontrolledOpen(v)
+  }
   const [pending, setPending] = React.useState(false)
   const isEdit = Boolean(program?.id)
 
@@ -61,24 +78,26 @@ export function ProgramDialog({ program }: { program?: ProgramData }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          isEdit ? (
-            <Button variant="ghost" size="icon-sm" />
+      {!hideTrigger && (
+        <DialogTrigger
+          render={
+            isEdit ? (
+              <Button variant="ghost" size="icon-sm" />
+            ) : (
+              <Button />
+            )
+          }
+        >
+          {isEdit ? (
+            <Pencil className="size-3.5" />
           ) : (
-            <Button />
-          )
-        }
-      >
-        {isEdit ? (
-          <Pencil className="size-3.5" />
-        ) : (
-          <>
-            <Plus className="size-4" />
-            {t("newProgram")}
-          </>
-        )}
-      </DialogTrigger>
+            <>
+              <Plus className="size-4" />
+              {t("newProgram")}
+            </>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{isEdit ? t("editProgram") : t("newProgram")}</DialogTitle>

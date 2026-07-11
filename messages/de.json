@@ -923,11 +923,19 @@
   },
   "onboarding": {
     "title": "Erste Schritte",
-    "intro": "Richte dein Studium ein, um Module, Materialien und Lernwerkzeuge zu nutzen.",
+    "heroTitle": "Willkommen, {name}!",
+    "intro": "Richte in drei kurzen Schritten dein Studium ein.",
     "step_program": "Studiengang anlegen",
-    "step_semester": "Semester hinzufügen",
-    "step_module": "Module anlegen",
-    "cta": "Jetzt einrichten"
+    "step_program_desc": "Name, Abschluss, Hochschule und Ziel-ECTS.",
+    "step_semester": "Erstes Semester hinzufügen",
+    "step_semester_desc": "Zeitraum, in dem du Module belegst.",
+    "step_module": "Erstes Modul anlegen",
+    "step_module_desc": "Fach mit Prüfung, Materialien und Lernkarten.",
+    "start": "Starten",
+    "cta": "Jetzt einrichten",
+    "aiTitle": "KI-Funktionen aktivieren",
+    "aiDesc": "Als Administrator kannst du einen KI-Anbieter hinterlegen, um Chat, Quiz- und Karten-Generierung freizuschalten.",
+    "aiCta": "KI einrichten"
   },
   "context": {
     "program": "Studiengang",
