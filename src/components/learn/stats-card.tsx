@@ -3,6 +3,7 @@ import { Clock, Flame, Layers, Target, TrendingUp } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import type { DashboardStats } from "@/lib/learning/stats-server"
 import { getModuleColorClasses, getModuleIcon } from "@/lib/module-visuals"
+import { Link } from "@/i18n/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
@@ -33,7 +34,14 @@ export async function StatsCard({ stats }: { stats: DashboardStats }) {
 
   const topColor = stats.topModule ? getModuleColorClasses(stats.topModule.color) : null
 
-  const tiles: { key: string; label: string; value: string; icon: typeof Flame; accent: string }[] = [
+  const tiles: {
+    key: string
+    label: string
+    value: string
+    icon: typeof Flame
+    accent: string
+    href?: string
+  }[] = [
     {
       key: "streak",
       label: t("streakLabel"),
@@ -61,6 +69,7 @@ export async function StatsCard({ stats }: { stats: DashboardStats }) {
       value: String(stats.dueToday),
       icon: Layers,
       accent: "text-violet-500",
+      href: stats.dueToday > 0 ? "/study/due" : undefined,
     },
     {
       key: "quiz",
@@ -85,15 +94,30 @@ export async function StatsCard({ stats }: { stats: DashboardStats }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {tiles.map((tile) => (
-            <div key={tile.key} className="rounded-lg border p-2.5">
-              <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                <tile.icon className={cn("size-3.5", tile.accent)} />
-                {tile.label}
+          {tiles.map((tile) => {
+            const inner = (
+              <>
+                <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                  <tile.icon className={cn("size-3.5", tile.accent)} />
+                  {tile.label}
+                </div>
+                <p className="mt-1 text-lg font-semibold tabular-nums">{tile.value}</p>
+              </>
+            )
+            return tile.href ? (
+              <Link
+                key={tile.key}
+                href={tile.href}
+                className="hover:border-primary/50 hover:bg-accent/40 rounded-lg border p-2.5 transition-colors"
+              >
+                {inner}
+              </Link>
+            ) : (
+              <div key={tile.key} className="rounded-lg border p-2.5">
+                {inner}
               </div>
-              <p className="mt-1 text-lg font-semibold tabular-nums">{tile.value}</p>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {stats.topModule && topColor && (
