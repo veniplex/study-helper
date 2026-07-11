@@ -10,7 +10,6 @@ import {
   GraduationCap,
   Layers,
   LayoutList,
-  Loader2,
   MessageSquare,
   MoreHorizontal,
   Pencil,
@@ -22,22 +21,15 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { toast } from "sonner"
 import { Link, usePathname, useRouter } from "@/i18n/navigation"
 import { navItems } from "@/config/nav"
 import { deleteModule, deleteSemester } from "@/app/[locale]/(app)/studies/actions"
+import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 import { ModuleDialog } from "@/components/studies/module-dialog"
 import { SemesterDialog } from "@/components/studies/semester-dialog"
 import { ContextSwitcher } from "./context-switcher"
 import type { SemesterModule, SemesterNode, StudyContext } from "@/lib/studies/context"
 import { getModuleColorClasses, getModuleIcon, STATUS_DOT } from "@/lib/module-visuals"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,56 +59,6 @@ const itemClass = (active: boolean) =>
       ? "bg-sidebar-accent text-sidebar-accent-foreground"
       : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
   )
-
-function ConfirmDeleteDialog({
-  open,
-  onOpenChange,
-  label,
-  onConfirm,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  label: string
-  onConfirm: () => Promise<void>
-}) {
-  const t = useTranslations("studies")
-  const tCommon = useTranslations("common")
-  const [pending, setPending] = React.useState(false)
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{label}</DialogTitle>
-        </DialogHeader>
-        <p className="text-muted-foreground text-sm">{t("deleteConfirm")}</p>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {tCommon("cancel")}
-          </Button>
-          <Button
-            variant="destructive"
-            disabled={pending}
-            onClick={async () => {
-              setPending(true)
-              try {
-                await onConfirm()
-                onOpenChange(false)
-              } catch (error) {
-                toast.error(error instanceof Error ? error.message : String(error))
-              } finally {
-                setPending(false)
-              }
-            }}
-          >
-            {pending && <Loader2 className="size-4 animate-spin" />}
-            {tCommon("delete")}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
 
 function SidebarModule({
   programId,

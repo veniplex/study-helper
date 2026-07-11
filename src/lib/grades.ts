@@ -52,7 +52,7 @@ export function formatGrade(value: number | null, system: GradingSystem): string
   if (value == null) return "–"
   switch (system) {
     case "german":
-      return value.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 2 })
+      return value.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
     case "points":
       return value.toLocaleString(undefined, { maximumFractionDigits: 1 })
     case "passfail":

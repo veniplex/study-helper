@@ -20,8 +20,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { ArrowRight, GripVertical } from "lucide-react"
+import { ArrowRight, GripVertical, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import {
   deleteModule,
@@ -30,10 +31,16 @@ import {
 } from "@/app/[locale]/(app)/studies/actions"
 import type { SemesterModule } from "@/lib/studies/context"
 import { getModuleColorClasses, getModuleIcon } from "@/lib/module-visuals"
+import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 import { ModuleDialog } from "@/components/studies/module-dialog"
 import { SemesterDialog } from "@/components/studies/semester-dialog"
 import { ModuleStatusBadge } from "@/components/learn/module-status-badge"
-import { DeleteButton } from "@/components/studies/delete-button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Link } from "@/i18n/navigation"
 import { cn } from "@/lib/utils"
 
@@ -206,38 +213,7 @@ export function SemesterModulesBoard({
     >
       {semesters.map((sem) => (
         <div key={sem.id} className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2 border-b pb-1.5">
-            <span className="font-medium">{sem.name}</span>
-            {sem.isCurrent && (
-              <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">
-                {labels.currentSemester}
-              </span>
-            )}
-            {sem.dateRangeLabel && (
-              <span className="text-muted-foreground text-xs">{sem.dateRangeLabel}</span>
-            )}
-            <span className="ml-auto flex items-center gap-1">
-              <Link
-                href={`/plan/${sem.id}`}
-                className="text-muted-foreground hover:text-foreground mr-1 flex items-center gap-1 text-xs"
-              >
-                {labels.toPlan}
-                <ArrowRight className="size-3" />
-              </Link>
-              <ModuleDialog semesterId={sem.id} />
-              <SemesterDialog
-                programId={programId}
-                semester={{
-                  id: sem.id,
-                  name: sem.name,
-                  startDate: sem.startDate,
-                  endDate: sem.endDate,
-                }}
-              />
-              <DeleteButton action={deleteSemester.bind(null, sem.id)} />
-            </span>
-          </div>
-
+          <SemesterHeaderRow programId={programId} semester={sem} labels={labels} />
           <SemesterDropZone
             semesterId={sem.id}
             ids={columns[sem.id] ?? []}
@@ -269,6 +245,93 @@ export function SemesterModulesBoard({
   )
 }
 
+function SemesterHeaderRow({
+  programId,
+  semester: sem,
+  labels,
+}: {
+  programId: string
+  semester: BoardSemester
+  labels: BoardLabels
+}) {
+  const tCommon = useTranslations("common")
+  const tStudies = useTranslations("studies")
+  const router = useRouter()
+  const [addModuleOpen, setAddModuleOpen] = React.useState(false)
+  const [editOpen, setEditOpen] = React.useState(false)
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
+
+  return (
+    <div className="group flex flex-wrap items-center gap-2 border-b pb-1.5">
+      <span className="font-medium">{sem.name}</span>
+      <button
+        type="button"
+        onClick={() => setAddModuleOpen(true)}
+        className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
+        title={tStudies("newModule")}
+      >
+        <Plus className="size-3.5" />
+        <span className="sr-only">{tStudies("newModule")}</span>
+      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
+              aria-label={sem.name}
+            />
+          }
+        >
+          <MoreHorizontal className="size-3.5" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-44">
+          <DropdownMenuItem onClick={() => setEditOpen(true)}>
+            <Pencil className="size-4" />
+            {tCommon("edit")}
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+            <Trash2 className="size-4" />
+            {tCommon("delete")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {sem.isCurrent && (
+        <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">
+          {labels.currentSemester}
+        </span>
+      )}
+      {sem.dateRangeLabel && (
+        <span className="text-muted-foreground text-xs">{sem.dateRangeLabel}</span>
+      )}
+      <Link
+        href={`/plan/${sem.id}`}
+        className="text-muted-foreground hover:text-foreground ml-auto flex items-center gap-1 text-xs"
+      >
+        {labels.toPlan}
+        <ArrowRight className="size-3" />
+      </Link>
+
+      <ModuleDialog semesterId={sem.id} open={addModuleOpen} onOpenChange={setAddModuleOpen} />
+      <SemesterDialog
+        programId={programId}
+        semester={{ id: sem.id, name: sem.name, startDate: sem.startDate, endDate: sem.endDate }}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        label={sem.name}
+        onConfirm={async () => {
+          await deleteSemester(sem.id)
+          router.refresh()
+        }}
+      />
+    </div>
+  )
+}
+
 function SemesterDropZone({
   semesterId,
   ids,
@@ -294,16 +357,15 @@ function SemesterDropZone({
         <p className="text-muted-foreground py-2 text-sm">{labels.noModules}</p>
       ) : (
         <div className="overflow-x-auto">
-          <div className="min-w-[42rem] space-y-1">
+          <div className="min-w-[40rem] space-y-1">
             <div className="text-muted-foreground flex items-center gap-3 pb-1 text-xs font-medium">
               <span className="w-5 shrink-0" />
               <span className="min-w-0 flex-1" />
-              <span className="w-24 shrink-0" />
-              <span className="w-24 shrink-0">{labels.examType}</span>
-              <span className="w-10 shrink-0 text-right">{labels.ects}</span>
-              <span className="w-10 shrink-0 text-right">{labels.grade}</span>
-              <span className="w-28 shrink-0">{labels.prep}</span>
-              <span className="w-16 shrink-0" />
+              <span className="w-20 shrink-0" />
+              <span className="w-20 shrink-0 truncate">{labels.examType}</span>
+              <span className="w-9 shrink-0 truncate text-right">{labels.ects}</span>
+              <span className="w-9 shrink-0 truncate text-right">{labels.grade}</span>
+              <span className="w-28 shrink-0 truncate">{labels.prep}</span>
             </div>
             <SortableContext items={ids} strategy={verticalListSortingStrategy}>
               {ids.map((id) => {
@@ -344,6 +406,10 @@ function ModuleRow({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: m.id,
   })
+  const tCommon = useTranslations("common")
+  const router = useRouter()
+  const [editOpen, setEditOpen] = React.useState(false)
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
   const color = getModuleColorClasses(m.color)
 
   return (
@@ -363,31 +429,56 @@ function ModuleRow({
       >
         <GripVertical className="size-4" />
       </button>
-      <Link
-        href={`/studies/${programId}/${m.id}`}
-        className="flex min-w-0 flex-1 items-center gap-2 font-medium underline-offset-4 hover:underline"
-      >
-        <span
-          className={cn(
-            "flex size-6 shrink-0 items-center justify-center rounded",
-            color.soft,
-            color.text
-          )}
+      <span className="group/name flex min-w-0 flex-1 items-center gap-1">
+        <Link
+          href={`/studies/${programId}/${m.id}`}
+          className="flex min-w-0 flex-1 items-center gap-2 font-medium underline-offset-4 hover:underline"
         >
-          <ModuleGlyph iconKey={m.icon} className="size-3.5" />
-        </span>
-        <span className="truncate">{m.name}</span>
-      </Link>
-      <span className="w-24 shrink-0">
+          <span
+            className={cn(
+              "flex size-6 shrink-0 items-center justify-center rounded",
+              color.soft,
+              color.text
+            )}
+          >
+            <ModuleGlyph iconKey={m.icon} className="size-3.5" />
+          </span>
+          <span className="truncate">{m.name}</span>
+        </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground shrink-0 rounded p-1 opacity-0 transition-opacity group-hover/name:opacity-100 data-popup-open:opacity-100"
+                aria-label={m.name}
+              />
+            }
+          >
+            <MoreHorizontal className="size-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-44">
+            <DropdownMenuItem onClick={() => setEditOpen(true)}>
+              <Pencil className="size-4" />
+              {tCommon("edit")}
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4" />
+              {tCommon("delete")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </span>
+      <span className="w-20 shrink-0">
         <ModuleStatusBadge status={m.status} />
       </span>
-      <span className="text-muted-foreground w-24 shrink-0 truncate text-xs">
+      <span className="text-muted-foreground w-20 shrink-0 truncate text-xs">
         {m.examType ?? "–"}
       </span>
-      <span className="text-muted-foreground w-10 shrink-0 text-right text-xs tabular-nums">
+      <span className="text-muted-foreground w-9 shrink-0 truncate text-right text-xs tabular-nums">
         {m.ects ?? "–"}
       </span>
-      <span className="w-10 shrink-0 text-right text-xs tabular-nums">{gradeLabel}</span>
+      <span className="w-9 shrink-0 text-right text-xs tabular-nums">{gradeLabel}</span>
       {m.status === "active" ? (
         <span className="flex w-28 shrink-0 items-center gap-2">
           <span className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
@@ -402,10 +493,22 @@ function ModuleRow({
       ) : (
         <span className="text-muted-foreground w-28 shrink-0 text-xs">–</span>
       )}
-      <span className="flex w-16 shrink-0 items-center justify-end gap-0.5">
-        <ModuleDialog semesterId={semesterId} module={m} />
-        <DeleteButton action={deleteModule.bind(null, m.id)} />
-      </span>
+
+      <ModuleDialog
+        semesterId={semesterId}
+        module={m}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        label={m.name}
+        onConfirm={async () => {
+          await deleteModule(m.id)
+          router.refresh()
+        }}
+      />
     </div>
   )
 }
