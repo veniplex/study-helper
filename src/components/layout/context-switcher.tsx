@@ -38,7 +38,7 @@ export function ContextSwitcher({ context }: { context: StudyContext }) {
 
   if (context.programs.length === 0) {
     return (
-      <div className="space-y-2 border-b p-3">
+      <div className="space-y-2 border-b px-4 py-3">
         <p className="text-muted-foreground text-xs">{t("noProgram")}</p>
         <Button
           variant="outline"
@@ -55,7 +55,7 @@ export function ContextSwitcher({ context }: { context: StudyContext }) {
   }
 
   return (
-    <div className="flex items-center gap-1 border-b p-3">
+    <div className="flex items-center gap-2 border-b px-4 py-3">
       <Select
         value={context.activeProgram?.id ?? ""}
         onValueChange={(v) => v && change(v)}

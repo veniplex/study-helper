@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
 import { logStudySession } from "@/app/[locale]/(app)/learn-actions"
 import { ModuleSelect, type ModuleOption } from "@/components/learn/module-select"
+import { POMODORO_START_EVENT } from "@/components/learn/session-start-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -208,8 +209,8 @@ export function Pomodoro({ modules }: { modules: ModuleOption[] }) {
         remainingMs: s.focusMin * 60 * 1000,
       }))
     }
-    window.addEventListener("studyhelper:pomodoro-start", onStart)
-    return () => window.removeEventListener("studyhelper:pomodoro-start", onStart)
+    window.addEventListener(POMODORO_START_EVENT, onStart)
+    return () => window.removeEventListener(POMODORO_START_EVENT, onStart)
   }, [])
 
   // Tick while running; complete the phase when time is up

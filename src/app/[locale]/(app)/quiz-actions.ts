@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { and, desc, eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { generateObject } from "ai"
 import { z } from "zod"
 import { db } from "@/db"
@@ -114,26 +114,6 @@ export async function addQuestion(quizId: string, input: unknown) {
   return { ok: true as const }
 }
 
-export async function updateQuiz(quizId: string, input: unknown) {
-  const session = await requireSession()
-  const before = await ownQuiz(quizId, session.user.id)
-  const data = quizSchema.pick({ title: true, description: true }).parse(input)
-  await db
-    .update(quiz)
-    .set({ title: data.title, description: data.description || null })
-    .where(eq(quiz.id, quizId))
-  await logAudit({
-    userId: session.user.id,
-    operation: "update",
-    entityType: "quiz",
-    entityId: quizId,
-    entityLabel: data.title,
-    before,
-    after: { ...before, title: data.title },
-  })
-  revalidatePath("/", "layout")
-  return { ok: true as const }
-}
 
 export async function updateQuestion(questionId: string, input: unknown) {
   const session = await requireSession()
@@ -416,15 +396,3 @@ Judge leniently on wording but strictly on content. Reply with correct=true/fals
   return { score, results }
 }
 
-/** Question ids answered incorrectly in the user's latest finished attempt. */
-export async function getWrongQuestionIds(quizId: string): Promise<string[]> {
-  const session = await requireSession()
-  await ownQuiz(quizId, session.user.id)
-  const latest = await db.query.quizAttempt.findFirst({
-    where: and(eq(quizAttempt.quizId, quizId), eq(quizAttempt.userId, session.user.id)),
-    orderBy: [desc(quizAttempt.startedAt)],
-    with: { answers: true },
-  })
-  if (!latest) return []
-  return latest.answers.filter((a) => a.correct === false).map((a) => a.questionId)
-}

@@ -27,51 +27,6 @@ const timestamps = {
     .$onUpdate(() => new Date()),
 }
 
-// ---- Tasks -------------------------------------------------------------------
-
-export type TaskPriority = "low" | "medium" | "high"
-export type TaskStatus = "open" | "doing" | "done"
-
-export const studyTask = pgTable(
-  "study_task",
-  {
-    id: id(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    moduleId: text("module_id").references(() => studyModule.id, { onDelete: "set null" }),
-    parentId: text("parent_id"),
-    title: text("title").notNull(),
-    notes: text("notes"),
-    priority: text("priority").$type<TaskPriority>().notNull().default("medium"),
-    status: text("status").$type<TaskStatus>().notNull().default("open"),
-    dueDate: date("due_date"),
-    completedAt: timestamp("completed_at", { withTimezone: true }),
-    sortOrder: integer("sort_order").notNull().default(0),
-    ...timestamps,
-  },
-  (t) => [index("study_task_userId_idx").on(t.userId)]
-)
-
-// ---- Learning goals ----------------------------------------------------------
-
-export const learningGoal = pgTable(
-  "learning_goal",
-  {
-    id: id(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    moduleId: text("module_id").references(() => studyModule.id, { onDelete: "set null" }),
-    title: text("title").notNull(),
-    description: text("description"),
-    progress: integer("progress").notNull().default(0), // 0-100
-    targetDate: date("target_date"),
-    ...timestamps,
-  },
-  (t) => [index("learning_goal_userId_idx").on(t.userId)]
-)
-
 // ---- Study plans ---------------------------------------------------------------
 
 export const studyPlan = pgTable(
@@ -249,20 +204,6 @@ export const answerLog = pgTable(
 )
 
 // ---- Relations -----------------------------------------------------------------
-
-export const studyTaskRelations = relations(studyTask, ({ one, many }) => ({
-  module: one(studyModule, { fields: [studyTask.moduleId], references: [studyModule.id] }),
-  parent: one(studyTask, {
-    fields: [studyTask.parentId],
-    references: [studyTask.id],
-    relationName: "subtasks",
-  }),
-  subtasks: many(studyTask, { relationName: "subtasks" }),
-}))
-
-export const learningGoalRelations = relations(learningGoal, ({ one }) => ({
-  module: one(studyModule, { fields: [learningGoal.moduleId], references: [studyModule.id] }),
-}))
 
 export const studyPlanRelations = relations(studyPlan, ({ one, many }) => ({
   module: one(studyModule, { fields: [studyPlan.moduleId], references: [studyModule.id] }),

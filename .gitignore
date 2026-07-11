@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# generated service worker (built by serwist)
+/public/sw.js
+
 # debug
 npm-debug.log*
 yarn-debug.log*

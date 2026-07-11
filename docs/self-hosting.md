@@ -9,7 +9,7 @@
 ## Quick start
 
 ```bash
-git clone <repo-url> && cd study-helper
+git clone https://github.com/veniplex/study-helper.git && cd study-helper
 cp .env.example .env
 # edit .env: set BETTER_AUTH_SECRET, ENCRYPTION_KEY (openssl rand -base64 32), APP_URL, POSTGRES_PASSWORD
 docker compose up -d
@@ -37,6 +37,7 @@ Everything else is configured in **Admin → Settings**:
 | `BETTER_AUTH_SECRET` | yes | Session signing secret (32+ random bytes) |
 | `ENCRYPTION_KEY` | yes | Encrypts stored secrets (API keys, SMTP, notes) |
 | `UPLOAD_DIR` | no | Upload directory (default `/data/uploads` in Docker) |
+| `SEED_TEST_DATA` | no | `true` seeds demo accounts (admin@example.com / admin-test-1234, user@example.com / user-test-1234) with sample study content on startup — for evaluation only, never in production |
 
 **Do not lose `ENCRYPTION_KEY`** — encrypted settings (AI keys, SMTP, OIDC secrets) become unreadable without it.
 

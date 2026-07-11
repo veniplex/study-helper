@@ -30,6 +30,7 @@ import { SemesterDialog } from "@/components/studies/semester-dialog"
 import { ContextSwitcher } from "./context-switcher"
 import type { SemesterModule, SemesterNode, StudyContext } from "@/lib/studies/context"
 import { getModuleColorClasses, getModuleIcon, STATUS_DOT } from "@/lib/module-visuals"
+import { APP_VERSION, REPO_URL } from "@/lib/version"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -440,6 +441,14 @@ export function AppSidebar({ context, isAdmin }: { context: StudyContext; isAdmi
               {t("admin")}
             </Link>
           )}
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-muted-foreground/70 hover:text-muted-foreground block px-3 pt-1 text-[11px] transition-colors"
+          >
+            v{APP_VERSION}
+          </a>
         </div>
       </nav>
     </aside>

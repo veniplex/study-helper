@@ -8,15 +8,6 @@ import { assessmentAttempt, moduleAssessment } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { ownModule } from "@/lib/studies/access"
 
-const ASSESSMENT_TYPES = [
-  "exam",
-  "term_paper",
-  "oral_presentation",
-  "oral_exam",
-  "project",
-  "other",
-] as const
-
 const attemptSchema = z.object({
   resultPercent: z.number().min(0).max(100).optional().nullable(),
   date: z.string().date().optional().nullable(),
@@ -54,17 +45,6 @@ async function ownAttempt(attemptId: string, userId: string) {
   return row
 }
 
-export async function setAssessmentType(moduleId: string, type: unknown) {
-  const session = await requireSession()
-  const mod = await ownModule(moduleId, session.user.id)
-  const parsed = z.enum(ASSESSMENT_TYPES).parse(type)
-  await db
-    .insert(moduleAssessment)
-    .values({ moduleId, type: parsed })
-    .onConflictDoUpdate({ target: moduleAssessment.moduleId, set: { type: parsed } })
-  revalidatePath(`/studies/${mod.semester.programId}/${moduleId}`)
-  return { ok: true as const }
-}
 
 export async function addAttempt(moduleId: string, input: unknown) {
   const session = await requireSession()

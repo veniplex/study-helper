@@ -7,7 +7,6 @@ import { db } from "@/db"
 import {
   degreeProgram,
   externalResource,
-  grade,
   moduleAssessment,
   semester,
   studyModule,
@@ -212,21 +211,6 @@ export async function deleteModule(moduleId: string) {
   return { ok: true as const }
 }
 
-export async function reorderModules(semesterId: string, ids: unknown) {
-  const session = await requireSession()
-  const sem = await ownSemester(semesterId, session.user.id)
-  const list = z.array(z.string()).max(200).parse(ids)
-  await Promise.all(
-    list.map((id, i) =>
-      db
-        .update(studyModule)
-        .set({ sortOrder: i })
-        .where(and(eq(studyModule.id, id), eq(studyModule.semesterId, semesterId)))
-    )
-  )
-  revalidatePath(`/studies/${sem.programId}`)
-  return { ok: true as const }
-}
 
 const reorderMovesSchema = z
   .array(z.object({ semesterId: z.string(), ids: z.array(z.string()).max(200) }))
@@ -280,42 +264,7 @@ export async function reorderModulesAcrossSemesters(input: unknown) {
 
 // ---- Grades ------------------------------------------------------------------
 
-const gradeSchema = z.object({
-  value: z.number().min(0).max(1000),
-  weight: z.number().positive().max(100).default(1),
-  attempt: z.number().int().min(1).max(10).default(1),
-  gradedAt: z.string().date().optional().nullable(),
-  note: z.string().max(500).optional().nullable(),
-})
 
-export async function addGrade(moduleId: string, input: unknown) {
-  const session = await requireSession()
-  const mod = await ownModule(moduleId, session.user.id)
-  const data = gradeSchema.parse(input)
-  await db.insert(grade).values({
-    moduleId,
-    value: String(data.value),
-    weight: String(data.weight),
-    attempt: data.attempt,
-    gradedAt: data.gradedAt ?? null,
-    note: data.note ?? null,
-  })
-  revalidatePath(`/studies/${mod.semester.programId}`)
-  return { ok: true as const }
-}
-
-export async function deleteGrade(gradeId: string) {
-  const session = await requireSession()
-  const row = await db.query.grade.findFirst({
-    where: eq(grade.id, gradeId),
-    with: { module: { with: { semester: true } } },
-  })
-  if (!row) throw new Error("Not found")
-  await ownModule(row.moduleId, session.user.id)
-  await db.delete(grade).where(eq(grade.id, gradeId))
-  revalidatePath(`/studies/${row.module.semester.programId}`)
-  return { ok: true as const }
-}
 
 // ---- External resources ------------------------------------------------------
 

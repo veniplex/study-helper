@@ -1,4 +1,7 @@
 # Development: only the database. Run the app with `npm run dev`.
+# Separate project name so it never collides with the production stack
+# (docker-compose.yml) in the same directory.
+name: study-helper-dev
 services:
   db:
     image: pgvector/pgvector:pg17

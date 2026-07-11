@@ -13,7 +13,7 @@ import type { ModuleOption } from "@/components/learn/module-select"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-export { CHAT_OPEN_EVENT, LAST_CHAT_KEY }
+export { CHAT_OPEN_EVENT }
 
 /** Floating chat launcher + dock panel (conversation UI lives in ConversationPanel). */
 export function ChatDock({
