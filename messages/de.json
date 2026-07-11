@@ -820,7 +820,8 @@
         "topics": "Themen (optional, sonst aus Materialien)",
         "submit": "Generieren",
         "generating": "Generiere Karten …"
-      }
+      },
+      "edit": "Bearbeiten"
     },
     "quizzes": {
       "new": "Quiz anlegen",
@@ -855,7 +856,8 @@
         "generating": "Generiere Quiz …"
       },
       "description": "Beschreibung (optional)",
-      "correctAnswer": "Richtige Antwort"
+      "correctAnswer": "Richtige Antwort",
+      "edit": "Bearbeiten"
     },
     "aiUnavailable": "Kein KI-Modell konfiguriert — KI-Funktionen deaktiviert.",
     "questionForm": {

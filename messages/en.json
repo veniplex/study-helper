@@ -820,7 +820,8 @@
         "topics": "Topics (optional, otherwise from materials)",
         "submit": "Generate",
         "generating": "Generating cards …"
-      }
+      },
+      "edit": "Edit"
     },
     "quizzes": {
       "new": "Create quiz",
@@ -855,7 +856,8 @@
         "generating": "Generating quiz …"
       },
       "description": "Description (optional)",
-      "correctAnswer": "Correct answer"
+      "correctAnswer": "Correct answer",
+      "edit": "Edit"
     },
     "aiUnavailable": "No AI model configured — AI features disabled.",
     "questionForm": {

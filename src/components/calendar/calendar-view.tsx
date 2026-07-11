@@ -8,10 +8,11 @@ import interactionPlugin from "@fullcalendar/interaction"
 import deLocale from "@fullcalendar/core/locales/de"
 import type { EventClickArg, EventDropArg, EventInput } from "@fullcalendar/core"
 import type { EventResizeDoneArg } from "@fullcalendar/interaction"
+import { Pencil, Trash2 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
-import { moveEvent } from "@/app/[locale]/(app)/calendar/actions"
+import { deleteEvent, moveEvent } from "@/app/[locale]/(app)/calendar/actions"
 import { EventDialog, type EventData, type ModuleOption } from "./event-dialog"
 import type { EventType } from "@/db/schema/studies"
 import type { AbsenceWindow } from "@/lib/plan/absences"
@@ -97,11 +98,27 @@ export function CalendarView({
   const locale = useLocale()
   const t = useTranslations("calendar.filters")
   const tEvent = useTranslations("calendar.event")
+  const tCommon = useTranslations("common")
   const router = useRouter()
   const [selected, setSelected] = React.useState<EventData | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [moduleFilter, setModuleFilter] = React.useState("")
   const [hidden, setHidden] = React.useState<Set<CategoryKey>>(new Set())
+  const [ctxMenu, setCtxMenu] = React.useState<{ id: string; x: number; y: number } | null>(null)
+
+  // Close the right-click menu on any outside interaction.
+  React.useEffect(() => {
+    if (!ctxMenu) return
+    const close = () => setCtxMenu(null)
+    window.addEventListener("click", close)
+    window.addEventListener("scroll", close, true)
+    window.addEventListener("keydown", close)
+    return () => {
+      window.removeEventListener("click", close)
+      window.removeEventListener("scroll", close, true)
+      window.removeEventListener("keydown", close)
+    }
+  }, [ctxMenu])
 
   const byId = React.useMemo(() => new Map(events.map((e) => [e.id, e])), [events])
 
@@ -133,6 +150,22 @@ export function CalendarView({
     if (!data) return
     setSelected(data)
     setDialogOpen(true)
+  }
+
+  function editById(id: string) {
+    const data = byId.get(id)
+    if (!data) return
+    setSelected(data)
+    setDialogOpen(true)
+  }
+
+  async function deleteById(id: string) {
+    try {
+      await deleteEvent(id)
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error))
+    }
   }
 
   function openNew(dateStr: string) {
@@ -292,7 +325,45 @@ export function CalendarView({
           dateClick={(arg) => openNew(arg.dateStr)}
           eventDrop={onMove}
           eventResize={onMove}
+          eventDidMount={(info) => {
+            // Right-click a real (editable) event → edit/delete menu.
+            if (info.event.id.includes(":")) return
+            info.el.addEventListener("contextmenu", (e) => {
+              e.preventDefault()
+              setCtxMenu({ id: info.event.id, x: e.clientX, y: e.clientY })
+            })
+          }}
         />
+        {ctxMenu && (
+          <div
+            className="bg-popover text-popover-foreground fixed z-50 min-w-40 rounded-lg border p-1 shadow-md ring-1 ring-foreground/10"
+            style={{ top: ctxMenu.y, left: ctxMenu.x }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+              onClick={() => {
+                editById(ctxMenu.id)
+                setCtxMenu(null)
+              }}
+            >
+              <Pencil className="size-4" />
+              {tCommon("edit")}
+            </button>
+            <button
+              type="button"
+              className="text-destructive hover:bg-destructive/10 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+              onClick={() => {
+                void deleteById(ctxMenu.id)
+                setCtxMenu(null)
+              }}
+            >
+              <Trash2 className="size-4" />
+              {tCommon("delete")}
+            </button>
+          </div>
+        )}
         <EventDialog
           key={selected?.id ?? `new-${selected?.startsAt ?? ""}`}
           modules={modules}

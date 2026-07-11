@@ -23,8 +23,75 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { createQuiz, generateQuiz } from "@/app/[locale]/(app)/quiz-actions"
+import { createQuiz, generateQuiz, updateQuiz } from "@/app/[locale]/(app)/quiz-actions"
 import { ModuleSelect, type ModuleOption } from "./module-select"
+
+/** Controlled edit dialog for a quiz's title/description (used by row menus). */
+export function EditQuizDialog({
+  quizId,
+  initialTitle,
+  initialDescription,
+  open,
+  onOpenChange,
+}: {
+  quizId: string
+  initialTitle: string
+  initialDescription: string | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const t = useTranslations("learn.quizzes")
+  const tCommon = useTranslations("common")
+  const router = useRouter()
+  const [pending, setPending] = React.useState(false)
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const form = new FormData(e.currentTarget)
+    setPending(true)
+    try {
+      await updateQuiz(quizId, {
+        title: String(form.get("title")),
+        description: String(form.get("description") || "") || null,
+      })
+      onOpenChange(false)
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("edit")}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="eq-title">{t("title")}</Label>
+            <Input id="eq-title" name="title" defaultValue={initialTitle} required />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="eq-desc">{t("description")}</Label>
+            <Textarea id="eq-desc" name="description" rows={2} defaultValue={initialDescription ?? ""} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {tCommon("cancel")}
+            </Button>
+            <Button type="submit" disabled={pending}>
+              {pending && <Loader2 className="size-4 animate-spin" />}
+              {tCommon("save")}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 export function QuizDialog({
   modules,

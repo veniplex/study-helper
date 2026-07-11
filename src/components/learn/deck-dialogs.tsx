@@ -16,8 +16,75 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { addCard, createDeck, generateCards } from "@/app/[locale]/(app)/deck-actions"
+import { addCard, createDeck, generateCards, updateDeck } from "@/app/[locale]/(app)/deck-actions"
 import { ModuleSelect, type ModuleOption } from "./module-select"
+
+/** Controlled edit dialog for a deck's name/description (used by row menus). */
+export function EditDeckDialog({
+  deckId,
+  initialName,
+  initialDescription,
+  open,
+  onOpenChange,
+}: {
+  deckId: string
+  initialName: string
+  initialDescription: string | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const t = useTranslations("learn.decks")
+  const tCommon = useTranslations("common")
+  const router = useRouter()
+  const [pending, setPending] = React.useState(false)
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const form = new FormData(e.currentTarget)
+    setPending(true)
+    try {
+      await updateDeck(deckId, {
+        name: String(form.get("name")),
+        description: String(form.get("description") || "") || null,
+      })
+      onOpenChange(false)
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("edit")}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="ed-name">{t("name")}</Label>
+            <Input id="ed-name" name="name" defaultValue={initialName} required />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ed-desc">{t("description")}</Label>
+            <Textarea id="ed-desc" name="description" rows={2} defaultValue={initialDescription ?? ""} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {tCommon("cancel")}
+            </Button>
+            <Button type="submit" disabled={pending}>
+              {pending && <Loader2 className="size-4 animate-spin" />}
+              {tCommon("save")}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 export function DeckDialog({
   modules,

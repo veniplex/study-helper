@@ -1,6 +1,5 @@
 import * as React from "react"
 import { and, desc, eq } from "drizzle-orm"
-import { HelpCircle, Play } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { quiz } from "@/db/schema"
@@ -8,13 +7,8 @@ import { requireSession } from "@/lib/auth/session"
 import { listAvailableModels } from "@/lib/ai/registry"
 import { ownModule } from "@/lib/studies/access"
 import { getModuleColorClasses, getModuleIcon } from "@/lib/module-visuals"
-import { Link } from "@/i18n/navigation"
-import { deleteQuiz } from "@/app/[locale]/(app)/quiz-actions"
-import { AiBadge } from "@/components/ai/ai-badge"
+import { QuizCard } from "@/components/learn/quiz-card"
 import { GenerateQuizDialog, QuizDialog } from "@/components/learn/quiz-dialogs"
-import { DeleteButton } from "@/components/studies/delete-button"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 export default async function ModuleQuizzesPage({
   params,
@@ -58,49 +52,22 @@ export default async function ModuleQuizzesPage({
             const finished = q.attempts.filter((a) => a.finishedAt)
             const best = finished.reduce((max, a) => Math.max(max, Number(a.score ?? 0)), 0)
             return (
-              <div key={q.id} className="bg-card flex flex-col rounded-xl border p-4">
-                <div className="flex items-start gap-2.5">
-                  <span
-                    className={cn(
-                      "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                      color.soft,
-                      color.text
-                    )}
-                  >
-                    {React.createElement(Icon, { className: "size-5" })}
-                  </span>
-                  <Link
-                    href={`${basePath}/quizzes/${q.id}`}
-                    className="min-w-0 flex-1 font-medium underline-offset-4 hover:underline"
-                  >
-                    {q.title}
-                  </Link>
-                  {q.aiGenerated && <AiBadge iconOnly />}
-                </div>
-                {q.description && (
-                  <p className="text-muted-foreground mt-2 line-clamp-2 text-xs">{q.description}</p>
-                )}
-                <div className="text-muted-foreground mt-3 flex items-center gap-2 text-xs">
-                  <HelpCircle className="size-3.5" />
-                  {t("questions", { count: q.questions.length })}
-                  {finished.length > 0 && (
-                    <span className="ml-auto tabular-nums">{t("bestScore", { score: best })}</span>
-                  )}
-                </div>
-                <div className="mt-3 flex items-center gap-1.5">
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    disabled={q.questions.length === 0}
-                    nativeButton={false}
-                    render={<Link href={`${basePath}/quizzes/${q.id}?run=1`} />}
-                  >
-                    <Play className="size-4" />
-                    {t("start")}
-                  </Button>
-                  <DeleteButton action={deleteQuiz.bind(null, q.id)} />
-                </div>
-              </div>
+              <QuizCard
+                key={q.id}
+                quiz={{
+                  id: q.id,
+                  title: q.title,
+                  description: q.description,
+                  aiGenerated: q.aiGenerated,
+                  questionCount: q.questions.length,
+                  finishedCount: finished.length,
+                  bestScore: best,
+                }}
+                basePath={basePath}
+                glyph={React.createElement(Icon, { className: "size-5" })}
+                colorSoft={color.soft}
+                colorText={color.text}
+              />
             )
           })}
         </div>
