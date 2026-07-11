@@ -1,12 +1,13 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { and, eq } from "drizzle-orm"
+import { and, eq, isNull } from "drizzle-orm"
 import { generateObject, generateText } from "ai"
 import { z } from "zod"
 import { db } from "@/db"
 import { studyEvent, thesisMilestone, thesisProject } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
+import { ownProgram } from "@/lib/studies/access"
 import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
 
@@ -31,6 +32,7 @@ const thesisSchema = z.object({
   thesisType: z.string().max(50).optional().nullable(),
   dueDate: z.string().date().optional().nullable(),
   semesterId: z.string().optional().nullable(),
+  programId: z.string().optional().nullable(),
 })
 
 async function assertOwnSemester(semesterId: string, userId: string) {
@@ -45,6 +47,23 @@ export async function createThesis(input: unknown) {
   const session = await requireSession()
   const data = thesisSchema.parse(input)
   if (data.semesterId) await assertOwnSemester(data.semesterId, session.user.id)
+  if (data.programId) await ownProgram(data.programId, session.user.id)
+
+  // One active (non-superseded) thesis per program.
+  if (data.programId) {
+    const existing = await db.query.thesisProject.findFirst({
+      where: and(
+        eq(thesisProject.userId, session.user.id),
+        eq(thesisProject.programId, data.programId),
+        isNull(thesisProject.supersededById)
+      ),
+      columns: { id: true },
+    })
+    if (existing) {
+      throw new Error("Für diesen Studiengang existiert bereits eine aktive Abschlussarbeit.")
+    }
+  }
+
   const [created] = await db
     .insert(thesisProject)
     .values({
@@ -53,8 +72,35 @@ export async function createThesis(input: unknown) {
       thesisType: data.thesisType ?? null,
       dueDate: data.dueDate ?? null,
       semesterId: data.semesterId ?? null,
+      programId: data.programId ?? null,
     })
     .returning({ id: thesisProject.id })
+  revalidatePath("/thesis")
+  return { ok: true as const, id: created.id }
+}
+
+/** Marks a failed thesis as superseded and starts a fresh attempt (new topic). */
+export async function retryThesis(thesisId: string) {
+  const session = await requireSession()
+  const prev = await ownThesis(thesisId, session.user.id)
+  if (prev.supersededById) throw new Error("Not found")
+
+  const [created] = await db
+    .insert(thesisProject)
+    .values({
+      userId: session.user.id,
+      title: prev.title,
+      thesisType: prev.thesisType,
+      programId: prev.programId,
+      semesterId: prev.semesterId,
+      attempt: prev.attempt + 1,
+      phase: "topic",
+    })
+    .returning({ id: thesisProject.id })
+  await db
+    .update(thesisProject)
+    .set({ supersededById: created.id })
+    .where(eq(thesisProject.id, thesisId))
   revalidatePath("/thesis")
   return { ok: true as const, id: created.id }
 }

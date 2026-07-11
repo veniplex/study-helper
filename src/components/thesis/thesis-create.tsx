@@ -26,7 +26,13 @@ import { Textarea } from "@/components/ui/textarea"
 import type { SemesterOption } from "@/components/thesis/thesis-workspace"
 import { brainstormTopics, createThesis, updateThesis } from "@/app/[locale]/(app)/thesis/actions"
 
-export function ThesisCreateDialog({ semesters }: { semesters: SemesterOption[] }) {
+export function ThesisCreateDialog({
+  semesters,
+  programId,
+}: {
+  semesters: SemesterOption[]
+  programId: string
+}) {
   const t = useTranslations("thesis")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -44,6 +50,7 @@ export function ThesisCreateDialog({ semesters }: { semesters: SemesterOption[] 
         thesisType: String(form.get("thesisType") || "") || null,
         dueDate: String(form.get("dueDate") || "") || null,
         semesterId: semesterId || null,
+        programId,
       })
       setOpen(false)
       router.refresh()
@@ -114,7 +121,13 @@ export function ThesisCreateDialog({ semesters }: { semesters: SemesterOption[] 
 
 type Topic = { title: string; description: string; researchQuestion: string }
 
-export function BrainstormDialog({ aiAvailable }: { aiAvailable: boolean }) {
+export function BrainstormDialog({
+  aiAvailable,
+  programId,
+}: {
+  aiAvailable: boolean
+  programId: string
+}) {
   const t = useTranslations("thesis.brainstormDialog")
   const tThesis = useTranslations("thesis")
   const router = useRouter()
@@ -142,7 +155,7 @@ export function BrainstormDialog({ aiAvailable }: { aiAvailable: boolean }) {
   async function adopt(topic: Topic, index: number) {
     setAdopting(index)
     try {
-      const { id } = await createThesis({ title: topic.title })
+      const { id } = await createThesis({ title: topic.title, programId })
       await updateThesis(id, { researchQuestion: topic.researchQuestion, notes: topic.description })
       setOpen(false)
       router.refresh()

@@ -864,7 +864,7 @@
   },
   "thesis": {
     "title": "Thesis",
-    "empty": "No thesis project yet. Create one or get topic suggestions.",
+    "empty": "No thesis yet. Create one or get topic suggestions.",
     "new": "Create project",
     "projectTitle": "Title / working title",
     "semester": "Semester",
@@ -899,7 +899,12 @@
       "useTopic": "Use as project"
     },
     "saved": "Saved.",
-    "generating": "Generating …"
+    "generating": "Generating …",
+    "attempt": "Attempt {n}",
+    "newAttempt": "New attempt",
+    "newAttemptConfirm": "The current thesis will be archived as failed and a new attempt with a new topic begins. Continue?",
+    "previousAttempts": "Previous attempts ({count})",
+    "noProgram": "Create a degree program first to plan a thesis."
   },
   "onboarding": {
     "title": "Getting started",
