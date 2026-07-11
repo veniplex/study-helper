@@ -59,7 +59,7 @@ async function runTool(
       const mod = await resolveModule(input.moduleId, userId)
       const [created] = await db
         .insert(deck)
-        .values({ userId, moduleId: mod?.id ?? null, name: input.name })
+        .values({ userId, moduleId: mod?.id ?? null, name: input.name, aiGenerated: true })
         .returning({ id: deck.id })
       await db.insert(flashcard).values(
         input.cards.map((c) => ({ deckId: created.id, front: c.front, back: c.back }))
@@ -118,6 +118,7 @@ async function runTool(
           notes: input.notes ?? null,
           moduleId: mod?.id ?? null,
           reminderOffsets: [1440],
+          aiGenerated: true,
         })
         .returning({ id: studyEvent.id })
       return {
@@ -141,6 +142,7 @@ async function runTool(
           description: input.description ?? null,
           dueDate,
           pointsMax: input.pointsMax != null ? String(input.pointsMax) : null,
+          aiGenerated: true,
         })
         .returning({ id: assignment.id })
       return {

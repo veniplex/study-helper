@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/auth/session"
 import { ownModule } from "@/lib/studies/access"
 import { deleteAssignment } from "@/app/[locale]/(app)/assignment-actions"
 import { AssignmentDialog } from "@/components/learn/assignment-dialog"
+import { AiBadge } from "@/components/ai/ai-badge"
 import { DeleteButton } from "@/components/studies/delete-button"
 import { Badge } from "@/components/ui/badge"
 
@@ -60,6 +61,7 @@ export default async function ModuleAssignmentsPage({
                     <Badge variant="outline">{t("kind.practice")}</Badge>
                   )}
                   <span className="font-medium">{a.title}</span>
+                  {a.aiGenerated && <AiBadge iconOnly />}
                   {a.pointsMax != null && (
                     <span className="text-muted-foreground text-xs tabular-nums">
                       {a.pointsAchieved ?? "–"} / {a.pointsMax} {t("points")}

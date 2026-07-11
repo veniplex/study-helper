@@ -10,6 +10,8 @@ import { searchChunks } from "@/lib/ai/rag"
 import { MODE_PROMPTS, type ChatMode } from "@/lib/ai/modes"
 import { writeToolDescriptions, writeToolSchemas, WRITE_TOOL_NAMES } from "@/lib/ai/tools"
 import { getStudyContext } from "@/lib/studies/context"
+import { getModuleDetail } from "@/lib/studies/module-detail"
+import { getModuleFinalGrades } from "@/lib/studies/grades-server"
 import { getSetting } from "@/lib/settings"
 
 export const maxDuration = 300
@@ -155,32 +157,55 @@ export async function POST(request: Request) {
         : {}),
       getContext: tool({
         description:
-          "Look up the user's study context: modules of the active semester (with ids), upcoming exams and deadlines. Use before creating things that need a moduleId or dates.",
+          "Look up the user's study context: semesters (with date ranges) and their modules (id, name, status, final grade), upcoming exams and deadlines. Use before creating things that need a moduleId or dates, or for overview questions. For deep questions about ONE module (grades, assignments, contacts, bonus) call getModuleDetails instead.",
         inputSchema: z.object({}),
         execute: async () => {
           const ctx = await getStudyContext(userId)
           const moduleIds = ctx.tree.flatMap((s) => s.modules.map((m) => m.id))
-          const events = moduleIds.length
-            ? await db.query.studyEvent.findMany({
-                where: and(
-                  eq(studyEvent.userId, userId),
-                  gte(studyEvent.startsAt, new Date()),
-                  inArray(studyEvent.moduleId, moduleIds)
-                ),
-                orderBy: [asc(studyEvent.startsAt)],
-                limit: 20,
-                columns: { title: true, type: true, startsAt: true, moduleId: true },
-              })
-            : []
+          const [events, finalGrades] = await Promise.all([
+            moduleIds.length
+              ? db.query.studyEvent.findMany({
+                  where: and(
+                    eq(studyEvent.userId, userId),
+                    gte(studyEvent.startsAt, new Date()),
+                    inArray(studyEvent.moduleId, moduleIds)
+                  ),
+                  orderBy: [asc(studyEvent.startsAt)],
+                  limit: 20,
+                  columns: { title: true, type: true, startsAt: true, moduleId: true },
+                })
+              : [],
+            ctx.activeProgram ? getModuleFinalGrades(ctx.activeProgram.id) : Promise.resolve(new Map()),
+          ])
           return {
             activeProgram: ctx.activeProgram?.name ?? null,
-            activeSemester: ctx.activeSemester?.name ?? null,
+            currentSemesterId: ctx.currentSemesterId,
             semesters: ctx.tree.map((s) => ({
               id: s.id,
               name: s.name,
-              modules: s.modules.map((m) => ({ id: m.id, name: m.name, status: m.status })),
+              startDate: s.startDate,
+              endDate: s.endDate,
+              isCurrent: s.id === ctx.currentSemesterId,
+              modules: s.modules.map((m) => ({
+                id: m.id,
+                name: m.name,
+                status: m.status,
+                finalGrade: finalGrades.get(m.id)?.grade ?? null,
+              })),
             })),
             upcomingEvents: events,
+          }
+        },
+      }),
+      getModuleDetails: tool({
+        description:
+          "Get everything about ONE module: status, ECTS, exam type, assessment attempts and computed final grade, assignment bonus progress, contacts, assignments, upcoming events and deck/quiz counts. Pass the module id from getContext.",
+        inputSchema: z.object({ moduleId: z.string().describe("Module id from getContext") }),
+        execute: async ({ moduleId: id }) => {
+          try {
+            return await getModuleDetail(userId, id)
+          } catch {
+            return { error: "Module not found or not accessible." }
           }
         },
       }),
