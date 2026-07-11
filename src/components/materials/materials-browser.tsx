@@ -39,6 +39,7 @@ import {
   renameMaterial,
 } from "@/app/[locale]/(app)/materials-actions"
 import { DeleteButton } from "@/components/studies/delete-button"
+import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -200,6 +201,7 @@ function FolderGroup({
   const [open, setOpen] = React.useState(true)
   const [renaming, setRenaming] = React.useState(false)
   const [newName, setNewName] = React.useState(name)
+  const [confirmDelete, setConfirmDelete] = React.useState(false)
   const { setNodeRef, isOver } = useDroppable({ id: isRoot ? "__root__" : `folder:${name}` })
 
   async function onRenameFolder() {
@@ -276,7 +278,7 @@ function FolderGroup({
                 variant="ghost"
                 size="icon-sm"
                 title={t("deleteFolder")}
-                onClick={() => void onDeleteFolder()}
+                onClick={() => setConfirmDelete(true)}
               >
                 <Trash2 className="size-3" />
                 <span className="sr-only">{t("deleteFolder")}</span>
@@ -297,6 +299,12 @@ function FolderGroup({
           )}
         </ul>
       )}
+      <ConfirmDeleteDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        label={name}
+        onConfirm={onDeleteFolder}
+      />
     </div>
   )
 }

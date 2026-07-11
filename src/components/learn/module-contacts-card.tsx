@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Mail, Pencil, Plus, Trash2, UserRound } from "lucide-react"
+import { Loader2, Mail, MoreHorizontal, Pencil, Plus, Trash2, UserRound } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
@@ -10,6 +10,8 @@ import {
   deleteContact,
   updateContact,
 } from "@/app/[locale]/(app)/studies/contact-actions"
+import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
+import { EntityContextMenu, type ContextMenuAction } from "@/components/entity-context-menu"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -18,6 +20,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -41,6 +49,7 @@ export function ModuleContactsCard({
   const [editing, setEditing] = React.useState<ModuleContact | null>(null)
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
+  const [deleteTarget, setDeleteTarget] = React.useState<ModuleContact | null>(null)
 
   function openNew() {
     setEditing(null)
@@ -98,33 +107,61 @@ export function ModuleContactsCard({
           <p className="text-muted-foreground text-sm">{t("empty")}</p>
         ) : (
           <ul className="space-y-2">
-            {contacts.map((c) => (
-              <li
-                key={c.id}
-                className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm"
-              >
-                <UserRound className="text-muted-foreground size-4 shrink-0" />
-                <span className="font-medium">{c.name}</span>
-                {c.role && <span className="text-muted-foreground text-xs">{c.role}</span>}
-                {c.email && (
-                  <a
-                    href={`mailto:${c.email}`}
-                    className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs underline-offset-4 hover:underline"
-                  >
-                    <Mail className="size-3" />
-                    {c.email}
-                  </a>
-                )}
-                <span className="ml-auto flex items-center gap-1">
-                  <Button variant="ghost" size="icon-sm" onClick={() => openEdit(c)}>
-                    <Pencil className="size-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon-sm" onClick={() => void onDelete(c.id)}>
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </span>
-              </li>
-            ))}
+            {contacts.map((c) => {
+              const actions: ContextMenuAction[] = [
+                { label: tCommon("edit"), icon: Pencil, onSelect: () => openEdit(c) },
+                {
+                  label: tCommon("delete"),
+                  icon: Trash2,
+                  destructive: true,
+                  onSelect: () => setDeleteTarget(c),
+                  separatorBefore: true,
+                },
+              ]
+              return (
+                <EntityContextMenu key={c.id} items={actions} label={c.name}>
+                  <li className="group flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                    <UserRound className="text-muted-foreground size-4 shrink-0" />
+                    <span className="font-medium">{c.name}</span>
+                    {c.role && <span className="text-muted-foreground text-xs">{c.role}</span>}
+                    {c.email && (
+                      <a
+                        href={`mailto:${c.email}`}
+                        className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs underline-offset-4 hover:underline"
+                      >
+                        <Mail className="size-3" />
+                        {c.email}
+                      </a>
+                    )}
+                    <span className="ml-auto">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
+                              aria-label={c.name}
+                            />
+                          }
+                        >
+                          <MoreHorizontal className="size-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem onClick={() => openEdit(c)}>
+                            <Pencil className="size-4" />
+                            {tCommon("edit")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(c)}>
+                            <Trash2 className="size-4" />
+                            {tCommon("delete")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </span>
+                  </li>
+                </EntityContextMenu>
+              )
+            })}
           </ul>
         )}
       </CardContent>
@@ -164,6 +201,15 @@ export function ModuleContactsCard({
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteTarget !== null}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        label={deleteTarget?.name ?? ""}
+        onConfirm={async () => {
+          if (deleteTarget) await onDelete(deleteTarget.id)
+        }}
+      />
     </Card>
   )
 }

@@ -1,12 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Pencil } from "lucide-react"
+import { Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
 import { deleteQuestion, updateQuestion } from "@/app/[locale]/(app)/quiz-actions"
-import { DeleteButton } from "@/components/studies/delete-button"
+import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
+import { EntityContextMenu, type ContextMenuAction } from "@/components/entity-context-menu"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,6 +16,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -148,36 +155,76 @@ function EditQuestionDialog({
 export function QuestionList({ questions }: { questions: QuestionItem[] }) {
   const tForm = useTranslations("learn.questionForm")
   const tCommon = useTranslations("common")
+  const router = useRouter()
   const [editing, setEditing] = React.useState<string | null>(null)
+  const [deleting, setDeleting] = React.useState<QuestionItem | null>(null)
 
   if (questions.length === 0) return null
 
   return (
     <ul className="space-y-1.5">
-      {questions.map((q, i) => (
-        <li key={q.id} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-          <span className="text-muted-foreground text-xs tabular-nums">{i + 1}.</span>
-          <span className="min-w-0 flex-1 truncate">{q.prompt}</span>
-          <Badge variant="outline">
-            {q.kind === "multiple_choice" ? tForm("mc") : tForm("freeText")}
-          </Badge>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title={tCommon("edit")}
-            onClick={() => setEditing(q.id)}
-          >
-            <Pencil className="size-3.5" />
-            <span className="sr-only">{tCommon("edit")}</span>
-          </Button>
-          <DeleteButton action={deleteQuestion.bind(null, q.id)} />
-          <EditQuestionDialog
-            question={q}
-            open={editing === q.id}
-            onOpenChange={(v) => setEditing(v ? q.id : null)}
-          />
-        </li>
-      ))}
+      {questions.map((q, i) => {
+        const actions: ContextMenuAction[] = [
+          { label: tCommon("edit"), icon: Pencil, onSelect: () => setEditing(q.id) },
+          {
+            label: tCommon("delete"),
+            icon: Trash2,
+            destructive: true,
+            onSelect: () => setDeleting(q),
+            separatorBefore: true,
+          },
+        ]
+        return (
+          <EntityContextMenu key={q.id} items={actions} label={q.prompt.slice(0, 40)}>
+            <li className="group flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <span className="text-muted-foreground text-xs tabular-nums">{i + 1}.</span>
+              <span className="min-w-0 flex-1 truncate">{q.prompt}</span>
+              <Badge variant="outline">
+                {q.kind === "multiple_choice" ? tForm("mc") : tForm("freeText")}
+              </Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
+                      aria-label={q.prompt.slice(0, 40)}
+                    />
+                  }
+                >
+                  <MoreHorizontal className="size-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem onClick={() => setEditing(q.id)}>
+                    <Pencil className="size-4" />
+                    {tCommon("edit")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem variant="destructive" onClick={() => setDeleting(q)}>
+                    <Trash2 className="size-4" />
+                    {tCommon("delete")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <EditQuestionDialog
+                question={q}
+                open={editing === q.id}
+                onOpenChange={(v) => setEditing(v ? q.id : null)}
+              />
+            </li>
+          </EntityContextMenu>
+        )
+      })}
+      <ConfirmDeleteDialog
+        open={deleting !== null}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        label={deleting?.prompt.slice(0, 40) ?? ""}
+        onConfirm={async () => {
+          if (deleting) {
+            await deleteQuestion(deleting.id)
+            router.refresh()
+          }
+        }}
+      />
     </ul>
   )
 }
