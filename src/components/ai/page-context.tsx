@@ -62,6 +62,7 @@ export function describePageContext(ctx: PageContext | null): string | undefined
   if (!ctx) return undefined
   const parts = [`path: ${ctx.pathname}`]
   if (ctx.moduleName) parts.push(`module: ${ctx.moduleName}`)
+  if (ctx.moduleId) parts.push(`moduleId: ${ctx.moduleId}`)
   if (ctx.pageTitle) parts.push(`page: ${ctx.pageTitle}`)
   return parts.join(" · ")
 }

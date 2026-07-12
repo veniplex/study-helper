@@ -16,25 +16,34 @@ import { getSetting } from "@/lib/settings"
 
 export const maxDuration = 300
 
+const LOCALE_NAMES: Record<string, string> = { de: "German", en: "English" }
+
 function buildSystemPrompt(
   moduleName: string | null | undefined,
+  moduleId: string | null | undefined,
   ragEnabled: boolean,
   mode: ChatMode,
-  pageContext?: string
+  pageContext?: string,
+  locale?: string
 ): string {
+  const language = locale ? LOCALE_NAMES[locale] : undefined
   return [
     "You are StudyHelper, an AI study assistant for university students.",
-    "Answer in the language the user writes in.",
+    language
+      ? `The user's app language is ${language}. Always answer in ${language}, and write ALL generated content — flashcard fronts/backs, quiz questions, options, reference answers, explanations, deck/quiz titles, event titles — in ${language}, even if the source materials or the user's message are in another language, unless the user explicitly asks for a different language.`
+      : "Answer in the language the user writes in.",
     "Use Markdown. Use LaTeX math ($...$ inline, $$...$$ display) where helpful.",
-    moduleName ? `The current conversation is about the module "${moduleName}".` : "",
+    moduleName
+      ? `The current conversation is about the module "${moduleName}"${moduleId ? ` (moduleId: ${moduleId})` : ""}. Use this moduleId for write tools that target this module.`
+      : "",
     MODE_PROMPTS[mode] ?? "",
     ragEnabled
       ? "You can search the user's uploaded study materials with the searchMaterials tool. Use it whenever a question may relate to their course content, and cite the source material names in your answer."
       : "",
     pageContext
-      ? `The user is currently looking at this page in the app: ${pageContext}. Use this as context when the question refers to "this module", "this page", or similar.`
+      ? `The user is currently looking at this page in the app: ${pageContext}. Use this as context when the question refers to "this module", "this page", or similar. If the page context contains a moduleId, use it directly as the moduleId for write tools (decks, quizzes, events, assignments) unless the user names a different module.`
       : "",
-    `You are an agent inside the StudyHelper app and can create things for the user with the tools ${WRITE_TOOL_NAMES.join(", ")}. Each write tool shows the user a confirmation card before anything is saved. Use getContext to look up the user's modules, exams and deadlines when you need ids or dates. When the user's request is ambiguous (e.g. which module or scope), ask a short clarifying question first instead of guessing. Infer the module from the conversation/page context when obvious.`,
+    `You are an agent inside the StudyHelper app and can create things for the user with the tools ${WRITE_TOOL_NAMES.join(", ")}. Each write tool shows the user a confirmation card before anything is saved. Use getContext to look up the user's modules, exams and deadlines when you need ids or dates. When creating a deck or quiz for a module, pass that module's id — take it from the page context or conversation module if present, otherwise call getContext to resolve it; never leave moduleId empty when the user clearly means a specific module. When the user's request is ambiguous (e.g. which module or scope), ask a short clarifying question first instead of guessing.`,
   ]
     .filter(Boolean)
     .join(" ")
@@ -57,6 +66,7 @@ export async function POST(request: Request) {
     conversationId: string
     model: string
     pageContext?: string
+    locale?: string
   } | null
   if (
     !body ||
@@ -68,6 +78,7 @@ export async function POST(request: Request) {
   }
   const pageContext =
     typeof body.pageContext === "string" ? body.pageContext.slice(0, 500) : undefined
+  const locale = typeof body.locale === "string" ? body.locale.slice(0, 10) : undefined
 
   // Only allow models the admin actually configured — otherwise arbitrary
   // model ids could be run against the globally configured API keys.
@@ -133,9 +144,11 @@ export async function POST(request: Request) {
     model,
     system: buildSystemPrompt(
       conversation.module?.name,
+      conversation.moduleId,
       ragEnabled,
       (conversation.mode as ChatMode) ?? "general",
-      pageContext
+      pageContext,
+      locale
     ),
     messages: await convertToModelMessages(body.messages),
     stopWhen: stepCountIs(8),

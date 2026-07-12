@@ -8,7 +8,7 @@ import {
   type UIMessage,
 } from "ai"
 import { ArrowUp, Check, FileSearch, Loader2, Sparkles, Wrench, X } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { Link } from "@/i18n/navigation"
 import { executeAiTool } from "@/app/[locale]/(app)/ai/actions"
 import { WRITE_TOOL_NAMES } from "@/lib/ai/tools"
@@ -150,6 +150,7 @@ export function Chat({
   suggestions?: string[]
 }) {
   const t = useTranslations("ai")
+  const locale = useLocale()
   const model = modelProp ?? ""
   const [input, setInput] = React.useState("")
   const bottomRef = React.useRef<HTMLDivElement>(null)
@@ -160,12 +161,13 @@ export function Chat({
   // body; per-send bodies are merged on top for regular sends. A stable holder
   // object (updated in an effect) lets the transport read the latest values at
   // request time.
-  const bodyRef = React.useRef({ conversationId, model, pageContext: "" })
+  const bodyRef = React.useRef({ conversationId, model, pageContext: "", locale })
   React.useEffect(() => {
     bodyRef.current = {
       conversationId,
       model,
       pageContext: describePageContext(pageContext) ?? "",
+      locale,
     }
   })
   const [transport] = React.useState(
@@ -200,6 +202,7 @@ export function Chat({
           conversationId,
           model,
           pageContext: describePageContext(pageContext),
+          locale,
         },
       }
     )
