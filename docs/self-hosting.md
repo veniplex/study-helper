@@ -8,15 +8,36 @@
 
 ## Quick start
 
+You only need two files — no repository checkout, no local build. The app runs
+from the prebuilt image `ghcr.io/veniplex/study-helper`.
+
 ```bash
-git clone https://github.com/veniplex/study-helper.git && cd study-helper
-cp .env.example .env
+mkdir studyhelper && cd studyhelper
+
+# Grab the compose file and the env template
+curl -O https://raw.githubusercontent.com/veniplex/study-helper/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/veniplex/study-helper/main/.env.example
+
 # edit .env: set BETTER_AUTH_SECRET, ENCRYPTION_KEY (openssl rand -base64 32), APP_URL, POSTGRES_PASSWORD
 docker compose up -d
 ```
 
 Open the app, register — **the first account automatically becomes admin.**
 Database migrations run automatically on startup.
+
+### Image versions
+
+`docker-compose.yml` uses `:latest` by default. For reproducible deploys, pin a
+version in `.env`:
+
+```bash
+STUDYHELPER_VERSION=1.0.0
+```
+
+Available tags on the [package page](https://github.com/veniplex/study-helper/pkgs/container/study-helper):
+`latest` (newest release), `1.0.0`/`1.0`/`1` (semver), `edge` (latest `main`).
+Update with `docker compose pull && docker compose up -d`. Images are built for
+`linux/amd64` and `linux/arm64`.
 
 ## Where data is stored
 
@@ -59,6 +80,7 @@ Everything else is configured in **Admin → Settings**:
 | `APP_URL` | yes | Public base URL (auth callbacks, emails, push) |
 | `BETTER_AUTH_SECRET` | yes | Session signing secret (32+ random bytes) |
 | `ENCRYPTION_KEY` | yes | Encrypts stored secrets (API keys, SMTP, notes) |
+| `STUDYHELPER_VERSION` | no | Image tag to run (default `latest`); pin e.g. `1.0.0` for reproducible deploys |
 | `DATA_DIR` | no | Host directory for the database + uploads volumes (default `./data`, next to `docker-compose.yml`) — see [Where data is stored](#where-data-is-stored) |
 | `UPLOAD_DIR` | no | Upload path **inside the container** (default `/data/uploads`) — only relevant for non-Docker deployments; Docker users should set `DATA_DIR` instead |
 | `SEED_TEST_DATA` | no | `true` seeds demo accounts (admin@example.com / admin-test-1234, user@example.com / user-test-1234) with sample study content on startup — for evaluation only, never in production |

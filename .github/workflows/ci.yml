@@ -20,7 +20,9 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  # Validate the image builds on PRs. Pushes to main/tags publish via release.yml.
   docker:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

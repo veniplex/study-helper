@@ -1,12 +1,13 @@
 # Production self-hosting: app + database.
-# 1. Copy .env.example to .env and fill in the values.
-# 2. docker compose up -d
+# You only need this file — no repository checkout required.
+# 1. Download docker-compose.yml and .env.example (rename to .env)
+# 2. Fill in .env, then: docker compose up -d
 name: study-helper
 services:
   app:
-    build: .
-    # Or use the published image instead of building locally:
-    # image: ghcr.io/OWNER/study-helper:latest
+    # Prebuilt image from GitHub Container Registry.
+    # Pin a version (e.g. :1.0.0) for reproducible deploys; :latest tracks releases.
+    image: ghcr.io/veniplex/study-helper:${STUDYHELPER_VERSION:-latest}
     ports:
       - "3000:3000"
     environment:

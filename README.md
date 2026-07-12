@@ -2,8 +2,6 @@
 
 Open-source, self-hostable study companion. Plan your entire degree, manage learning materials, and prepare for exams with AI support — as an offline-capable PWA.
 
-> ⚠️ Beta (0.x) — things may still change or break.
-
 ## Features
 
 - 🎓 Degree programs, semesters, modules (icon, color, status, thesis flag) — managed inline from the sidebar tree and a drag & drop semester board on the dashboard
@@ -39,8 +37,13 @@ Open http://localhost:3000.
 
 ## Self-hosting (production)
 
+Runs from the prebuilt image `ghcr.io/veniplex/study-helper` — you only need
+`docker-compose.yml` and a `.env`, no repository checkout:
+
 ```bash
-cp .env.example .env   # fill in secrets
+curl -O https://raw.githubusercontent.com/veniplex/study-helper/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/veniplex/study-helper/main/.env.example
+# fill in secrets in .env
 docker compose up -d
 ```
 
