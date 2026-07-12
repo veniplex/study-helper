@@ -20,7 +20,7 @@ services:
       # Set to your users' timezone; containers default to UTC otherwise.
       TZ: ${TZ:-Europe/Berlin}
     volumes:
-      - ./data/uploads:/data/uploads
+      - ${DATA_DIR:-./data}/uploads:/data/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -33,7 +33,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-study}
       POSTGRES_DB: study
     volumes:
-      - ./data/db:/var/lib/postgresql/data
+      - ${DATA_DIR:-./data}/db:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U study -d study"]
       interval: 5s

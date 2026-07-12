@@ -16,8 +16,31 @@ docker compose up -d
 ```
 
 Open the app, register — **the first account automatically becomes admin.**
-Database migrations run automatically on startup. Uploads are stored in
-`./data/uploads`, the database in `./data/db`.
+Database migrations run automatically on startup.
+
+## Where data is stored
+
+`docker compose` mounts two directories from the **host** into the
+containers, so your data survives container restarts/rebuilds:
+
+| Host path (default) | Container path | Contents |
+|---|---|---|
+| `./data/db` | Postgres data dir | Everything except files: users, modules, flashcards, grades, events, chat history, settings |
+| `./data/uploads` | `/data/uploads` | Uploaded files (PDFs, images, …) |
+
+By default both live under `./data`, next to `docker-compose.yml`. To store
+them elsewhere — a separate disk, a NAS mount, outside the git checkout —
+set `DATA_DIR` in `.env` to an absolute path:
+
+```bash
+DATA_DIR=/srv/studyhelper/data
+```
+
+Then `docker compose up -d` creates `/srv/studyhelper/data/db` and
+`/srv/studyhelper/data/uploads` there instead. Changing `DATA_DIR` after the
+first start does **not** move existing data — copy the old directory over
+first (see Backup below), or set it correctly before the first
+`docker compose up`.
 
 Everything else is configured in **Admin → Settings**:
 
@@ -36,7 +59,8 @@ Everything else is configured in **Admin → Settings**:
 | `APP_URL` | yes | Public base URL (auth callbacks, emails, push) |
 | `BETTER_AUTH_SECRET` | yes | Session signing secret (32+ random bytes) |
 | `ENCRYPTION_KEY` | yes | Encrypts stored secrets (API keys, SMTP, notes) |
-| `UPLOAD_DIR` | no | Upload directory (default `/data/uploads` in Docker) |
+| `DATA_DIR` | no | Host directory for the database + uploads volumes (default `./data`, next to `docker-compose.yml`) — see [Where data is stored](#where-data-is-stored) |
+| `UPLOAD_DIR` | no | Upload path **inside the container** (default `/data/uploads`) — only relevant for non-Docker deployments; Docker users should set `DATA_DIR` instead |
 | `SEED_TEST_DATA` | no | `true` seeds demo accounts (admin@example.com / admin-test-1234, user@example.com / user-test-1234) with sample study content on startup — for evaluation only, never in production |
 
 **Do not lose `ENCRYPTION_KEY`** — encrypted settings (AI keys, SMTP, OIDC secrets) become unreadable without it.
@@ -61,4 +85,13 @@ Admin → Sign-in & SSO.
 
 ## Backup
 
-Back up the `./data` directory (database + uploads) and your `.env`.
+Back up the data directory (`DATA_DIR`, or `./data` if unset — database +
+uploads) and your `.env`. To move data to a new `DATA_DIR`:
+
+```bash
+docker compose down
+mkdir -p /new/path
+cp -a ./data/. /new/path/
+# set DATA_DIR=/new/path in .env
+docker compose up -d
+```
