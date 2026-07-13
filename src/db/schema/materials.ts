@@ -1,9 +1,54 @@
-import { bigint, index, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import {
+  type AnyPgColumn,
+  bigint,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { user } from "./auth"
 import { studyModule } from "./studies"
 
 export type MaterialKind = "file" | "link"
+
+/**
+ * A folder in a module's material tree. Self-referencing: `parentId` null means
+ * a root-level folder. Sibling names are kept unique via a COALESCE expression
+ * index added in the migration (Drizzle's `.unique()` treats NULL parents as
+ * always-distinct, which would allow duplicate root folder names).
+ */
+export const materialFolder = pgTable(
+  "material_folder",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    moduleId: text("module_id")
+      .notNull()
+      .references(() => studyModule.id, { onDelete: "cascade" }),
+    /** Parent folder, or null for a root-level folder. */
+    parentId: text("parent_id").references((): AnyPgColumn => materialFolder.id, {
+      onDelete: "cascade",
+    }),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    index("material_folder_userId_idx").on(t.userId),
+    index("material_folder_moduleId_idx").on(t.moduleId),
+    index("material_folder_parentId_idx").on(t.parentId),
+  ]
+)
 
 export const material = pgTable(
   "material",
@@ -25,8 +70,15 @@ export const material = pgTable(
     storagePath: text("storage_path"),
     mimeType: text("mime_type"),
     sizeBytes: bigint("size_bytes", { mode: "number" }),
+    /**
+     * @deprecated Legacy single-level folder name. Superseded by `folderId`
+     * (real folder tree). Kept for backfill/rollback safety; drop in a later
+     * migration once verified.
+     */
     folder: text("folder"),
-    /** Extracted plain text (PDF/PPTX) — basis for search and RAG. */
+    /** The folder this material lives in, or null for the module root. */
+    folderId: text("folder_id").references(() => materialFolder.id, { onDelete: "set null" }),
+    /** Extracted plain text (any supported type) — basis for search and RAG. */
     textContent: text("text_content"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -37,6 +89,7 @@ export const material = pgTable(
   (t) => [
     index("material_userId_idx").on(t.userId),
     index("material_moduleId_idx").on(t.moduleId),
+    index("material_folderId_idx").on(t.folderId),
   ]
 )
 
@@ -73,7 +126,25 @@ export const materialRelations = relations(material, ({ one, many }) => ({
     fields: [material.moduleId],
     references: [studyModule.id],
   }),
+  folder: one(materialFolder, {
+    fields: [material.folderId],
+    references: [materialFolder.id],
+  }),
   annotations: many(materialAnnotation),
+}))
+
+export const materialFolderRelations = relations(materialFolder, ({ one, many }) => ({
+  module: one(studyModule, {
+    fields: [materialFolder.moduleId],
+    references: [studyModule.id],
+  }),
+  parent: one(materialFolder, {
+    fields: [materialFolder.parentId],
+    references: [materialFolder.id],
+    relationName: "folderTree",
+  }),
+  children: many(materialFolder, { relationName: "folderTree" }),
+  materials: many(material),
 }))
 
 export const materialAnnotationRelations = relations(materialAnnotation, ({ one }) => ({

@@ -5,6 +5,7 @@ import { env } from "@/lib/env"
 const globalForBoss = globalThis as unknown as { boss?: Promise<PgBoss> }
 
 export const QUEUE_EMBED_MATERIAL = "embed-material"
+export const QUEUE_UNPACK_ZIP = "unpack-zip"
 export const QUEUE_SEND_REMINDERS = "send-reminders"
 export const QUEUE_DAILY_PLAN = "daily-plan-reminder"
 export const QUEUE_CHECK_UPDATES = "check-updates"
@@ -20,6 +21,14 @@ async function start(): Promise<PgBoss> {
     const { processMaterial } = await import("@/lib/ai/rag")
     for (const job of jobs) {
       await processMaterial(job.data.materialId)
+    }
+  })
+
+  await boss.createQueue(QUEUE_UNPACK_ZIP)
+  await boss.work<import("./unpack-zip").UnpackZipPayload>(QUEUE_UNPACK_ZIP, async (jobs) => {
+    const { unpackZip } = await import("./unpack-zip")
+    for (const job of jobs) {
+      await unpackZip(job.data)
     }
   })
 
@@ -58,4 +67,12 @@ export function getBoss(): Promise<PgBoss> {
 export async function enqueueEmbedMaterial(materialId: string): Promise<void> {
   const boss = await getBoss()
   await boss.send(QUEUE_EMBED_MATERIAL, { materialId }, { retryLimit: 2, retryDelay: 30 })
+}
+
+export async function enqueueUnpackZip(
+  payload: import("./unpack-zip").UnpackZipPayload
+): Promise<void> {
+  const boss = await getBoss()
+  // Unpacking isn't idempotent (would duplicate files), so don't retry.
+  await boss.send(QUEUE_UNPACK_ZIP, payload, { retryLimit: 0 })
 }

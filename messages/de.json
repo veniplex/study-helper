@@ -198,7 +198,9 @@
       "description": "Name und Erscheinungsbild der Instanz",
       "appName": "App-Name",
       "maxUploadMb": "Max. Upload-Größe (MB)",
-      "saved": "Gespeichert."
+      "saved": "Gespeichert.",
+      "storageQuotaMb": "Speicher-Quota pro Benutzer (MB)",
+      "storageQuotaHint": "Maximale Gesamt-Uploadgröße pro Benutzer. 0 = unbegrenzt."
     }
   },
   "assignments": {
@@ -369,6 +371,14 @@
       "title": "AI-Funktionen sind inaktiv",
       "description": "Chat, Karten-Generierung, Quiz-Bewertung und Lernpläne brauchen einen AI-Provider. Konfiguriere einen im Admin-Bereich — Nutzer können danach auch eigene API-Keys hinterlegen.",
       "cta": "AI-Provider konfigurieren"
+    },
+    "storage": {
+      "title": "Dein Speicher",
+      "files": "Dateien",
+      "used": "Belegt",
+      "quota": "Kontingent",
+      "unlimited": "unbegrenzt",
+      "utilization": "Auslastung"
     }
   },
   "studies": {
@@ -733,7 +743,29 @@
     "annotator": {
       "hint": "Auf der Seite ziehen zum Markieren; Markierung anklicken für Notiz oder Löschen.",
       "notePlaceholder": "Notiz zu dieser Markierung …"
-    }
+    },
+    "stats": {
+      "files": "{count, plural, =1 {# Datei} other {# Dateien}}",
+      "folders": "{count, plural, =1 {# Ordner} other {# Ordner}}",
+      "size": "{size} gesamt"
+    },
+    "folderStats": "{files} Dateien · {subfolders} Ordner · {size}",
+    "newSubfolder": "Neuer Unterordner",
+    "moveTo": "Verschieben nach …",
+    "move": "Verschieben",
+    "selectedCount": "{count, plural, =1 {1 ausgewählt} other {# ausgewählt}}",
+    "deleteSelected": "Löschen",
+    "clearSelection": "Auswahl aufheben",
+    "upOneLevel": "Eine Ebene nach oben",
+    "breadcrumbRoot": "Materialien",
+    "viewList": "Listenansicht",
+    "viewGrid": "Kachelansicht",
+    "dropToUpload": "Dateien oder Ordner zum Hochladen ablegen",
+    "unpacking": "Archiv wird im Hintergrund entpackt …",
+    "uploadingCount": "Lädt hoch … {done}/{total}",
+    "uploadHint": "Wähle Dateien oder einen ganzen Ordner. Ordner behalten ihre Struktur; .zip-Archive werden automatisch entpackt.",
+    "chooseFiles": "Dateien wählen",
+    "chooseFolder": "Ordner wählen"
   },
   "search": {
     "modules": "Module",

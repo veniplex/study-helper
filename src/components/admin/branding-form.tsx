@@ -22,19 +22,22 @@ export function BrandingForm({
   uploads,
 }: {
   initial: { appName: string }
-  uploads: { maxUploadMb: number }
+  uploads: { maxUploadMb: number; storageQuotaMbPerUser: number }
 }) {
   const t = useTranslations("admin.branding")
   const tCommon = useTranslations("common")
   const [pending, setPending] = React.useState(false)
   const [appName, setAppName] = React.useState(initial.appName)
   const [maxUploadMb, setMaxUploadMb] = React.useState(uploads.maxUploadMb)
+  const [storageQuotaMbPerUser, setStorageQuotaMbPerUser] = React.useState(
+    uploads.storageQuotaMbPerUser
+  )
 
   async function save() {
     setPending(true)
     try {
       await saveBranding({ appName })
-      await saveUploads({ maxUploadMb })
+      await saveUploads({ maxUploadMb, storageQuotaMbPerUser })
       toast.success(t("saved"))
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
@@ -64,6 +67,17 @@ export function BrandingForm({
               value={maxUploadMb}
               onChange={(e) => setMaxUploadMb(Number(e.target.value))}
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="storageQuota">{t("storageQuotaMb")}</Label>
+            <Input
+              id="storageQuota"
+              type="number"
+              min={0}
+              value={storageQuotaMbPerUser}
+              onChange={(e) => setStorageQuotaMbPerUser(Number(e.target.value))}
+            />
+            <p className="text-muted-foreground text-xs">{t("storageQuotaHint")}</p>
           </div>
         </div>
       </CardContent>

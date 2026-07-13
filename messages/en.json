@@ -198,7 +198,9 @@
       "description": "Name and appearance of this instance",
       "appName": "App name",
       "maxUploadMb": "Max upload size (MB)",
-      "saved": "Saved."
+      "saved": "Saved.",
+      "storageQuotaMb": "Storage quota per user (MB)",
+      "storageQuotaHint": "Maximum total upload size per user. 0 = unlimited."
     }
   },
   "assignments": {
@@ -369,6 +371,14 @@
       "title": "AI features are inactive",
       "description": "Chat, flashcard generation, quiz grading and study plans need an AI provider. Configure one in the admin panel — your users can then bring their own API keys too.",
       "cta": "Configure AI provider"
+    },
+    "storage": {
+      "title": "Your storage",
+      "files": "Files",
+      "used": "Used",
+      "quota": "Quota",
+      "unlimited": "unlimited",
+      "utilization": "Utilization"
     }
   },
   "studies": {
@@ -733,7 +743,29 @@
     "annotator": {
       "hint": "Drag on a page to highlight; click a highlight to add a note or delete it.",
       "notePlaceholder": "Note for this highlight …"
-    }
+    },
+    "stats": {
+      "files": "{count, plural, =1 {# file} other {# files}}",
+      "folders": "{count, plural, =1 {# folder} other {# folders}}",
+      "size": "{size} total"
+    },
+    "folderStats": "{files} files · {subfolders} folders · {size}",
+    "newSubfolder": "New subfolder",
+    "moveTo": "Move to …",
+    "move": "Move",
+    "selectedCount": "{count, plural, =1 {1 selected} other {# selected}}",
+    "deleteSelected": "Delete",
+    "clearSelection": "Clear",
+    "upOneLevel": "Up one level",
+    "breadcrumbRoot": "Materials",
+    "viewList": "List view",
+    "viewGrid": "Grid view",
+    "dropToUpload": "Drop files or folders to upload",
+    "unpacking": "Archive is being unpacked in the background …",
+    "uploadingCount": "Uploading … {done}/{total}",
+    "uploadHint": "Choose files or a whole folder. Folders keep their structure; .zip archives are unpacked automatically.",
+    "chooseFiles": "Choose files",
+    "chooseFolder": "Choose folder"
   },
   "search": {
     "modules": "Modules",

@@ -42,6 +42,8 @@ export const brandingSchema = z.object({
 
 export const uploadsSchema = z.object({
   maxUploadMb: z.number().int().min(1).max(10240).default(200),
+  /** Per-user total storage quota in MB (input+output of all files). 0 = unlimited */
+  storageQuotaMbPerUser: z.number().int().min(0).default(0),
 })
 
 export const vapidSchema = z.object({
@@ -128,7 +130,7 @@ const defaults: { [K in SettingKey]: SettingValue<K> } = {
   "auth.oidcProviders": [],
   smtp: undefined as never, // no default — unset means email disabled
   branding: { appName: "StudyHelper" },
-  uploads: { maxUploadMb: 200 },
+  uploads: { maxUploadMb: 200, storageQuotaMbPerUser: 0 },
   ai: { providers: [], monthlyTokenLimitPerUser: 0 },
   "push.vapid": undefined as never, // generated on first use
   "system.updateCheck": undefined as never, // set once the first check has run
