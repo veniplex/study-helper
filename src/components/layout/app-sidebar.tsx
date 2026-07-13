@@ -556,27 +556,25 @@ export function AppSidebar({
           <div className="flex items-center gap-1 px-1">
             <LocaleSwitcher />
             <ThemeToggle />
-            <div className="ml-auto flex items-center gap-1 px-2">
-              <a
-                href={REPO_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="text-muted-foreground/70 hover:text-muted-foreground text-[11px] transition-colors"
-              >
-                v{APP_VERSION}
-              </a>
-              {newRelease && (
+            <div className="ml-auto px-2">
+              {newRelease ? (
                 <a
                   href={newRelease.url}
                   target="_blank"
                   rel="noreferrer"
                   title={t("updateAvailable", { version: newRelease.version })}
-                  className="flex items-center"
+                  className="text-primary hover:text-primary/80 text-[11px] font-medium transition-colors"
                 >
-                  <span className="bg-primary block size-1.5 rounded-full" aria-hidden />
-                  <span className="sr-only">
-                    {t("updateAvailable", { version: newRelease.version })}
-                  </span>
+                  v{APP_VERSION} → v{newRelease.version}
+                </a>
+              ) : (
+                <a
+                  href={REPO_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-muted-foreground/70 hover:text-muted-foreground text-[11px] transition-colors"
+                >
+                  v{APP_VERSION}
                 </a>
               )}
             </div>
