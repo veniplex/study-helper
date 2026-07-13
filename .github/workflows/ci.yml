@@ -20,9 +20,31 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  # Validate the image builds on PRs. Pushes to main/tags publish via release.yml.
-  docker:
+  # Validate the image builds on PRs, but only when Docker-relevant files
+  # actually changed — most PRs touch only app code and don't need this.
+  # Pushes to main/tags publish the real image via release.yml.
+  docker-changes:
     if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: check
+        run: |
+          git fetch --depth=1 origin "${{ github.base_ref }}"
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+              | grep -Eq '^(Dockerfile|docker-entrypoint\.sh|docker-compose.*\.ya?ml|package(-lock)?\.json|drizzle\.config\.ts|drizzle/|\.dockerignore)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  docker:
+    needs: docker-changes
+    if: needs.docker-changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
