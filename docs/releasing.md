@@ -42,6 +42,15 @@ GitHub Actions, gated behind a label so releases are a deliberate choice.
    the merge itself, and the versioned tags (including `:latest`) follow
    once `version-bump.yml` tags and dispatches the release build.
 
+   **No duplicate builds on merge.** The pre-merge validation build
+   (`release-candidate.yml`) only builds — it never publishes. If you merge a
+   labeled PR while that validation build is still running, `version-bump.yml`
+   cancels it as its first step, since the post-merge `release.yml` run
+   validates and publishes the real image anyway. The two post-merge
+   `release.yml` runs (`:edge` from the merge, semver from the tag) share the
+   GitHub Actions layer cache, so the second is mostly cache hits rather than
+   a full second build.
+
 4. **Update the deployment** (e.g. Portainer):
    - If the stack uses `:latest` (default), re-pull the image and
      recreate the container ("Re-pull image and redeploy" in Portainer).

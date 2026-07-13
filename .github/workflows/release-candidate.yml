@@ -11,6 +11,14 @@ on:
   pull_request:
     types: [labeled, synchronize]
 
+# One validation build per PR at a time: a new push cancels the previous
+# (now-stale) build for the same PR. version-bump.yml additionally cancels
+# whatever is still running here the moment the PR is merged, so a labeled
+# PR merged immediately doesn't build the image both here and post-merge.
+concurrency:
+  group: release-candidate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   docker-build:
     if: contains(github.event.pull_request.labels.*.name, 'release-candidate')

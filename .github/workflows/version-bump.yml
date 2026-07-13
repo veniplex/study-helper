@@ -42,6 +42,25 @@ jobs:
       !startsWith(github.event.pull_request.title, 'chore(release):')
     runs-on: ubuntu-latest
     steps:
+      - name: Cancel now-redundant release-candidate build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          # The pre-merge Docker validation (release-candidate.yml) is moot
+          # once this PR is merged: the build dispatched at the end of this
+          # job validates AND publishes the real (version-bumped, multi-arch)
+          # image. Cancel any validation run still in flight for this branch
+          # so a labeled PR merged immediately doesn't build the image twice.
+          ids=$(gh run list --repo "$REPO" --workflow=release-candidate.yml \
+            --branch "$HEAD_REF" --json databaseId,status \
+            --jq '.[] | select(.status=="in_progress" or .status=="queued") | .databaseId' || true)
+          for id in $ids; do
+            echo "Cancelling redundant release-candidate run $id"
+            gh run cancel "$id" --repo "$REPO" || true
+          done
+
       - uses: actions/checkout@v4
         with:
           ref: main
