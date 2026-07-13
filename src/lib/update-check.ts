@@ -1,6 +1,28 @@
 import "server-only"
+import { after } from "next/server"
 import { APP_VERSION, REPO_URL } from "./version"
 import { getSetting, setSetting, type SettingValue } from "./settings"
+
+// The daily cron (see src/lib/jobs/index.ts) already refreshes this, so a
+// page load normally just reads the cached setting below — no outbound
+// request. This is only a backstop for when the cron missed its run (e.g.
+// the server was down at 06:00): if the cache is older than this, a page
+// load triggers one background refresh after the response is sent.
+const STALE_AFTER_MS = 20 * 60 * 60 * 1000
+
+// Dedupes concurrent triggers within this process (e.g. several tabs/admins
+// loading a page at once while the cache is stale).
+let refreshInFlight: Promise<void> | null = null
+
+function triggerBackgroundRefresh() {
+  if (refreshInFlight) return
+  refreshInFlight = checkForUpdate()
+    .then(() => undefined)
+    .catch((error) => console.error("[update-check]", error))
+    .finally(() => {
+      refreshInFlight = null
+    })
+}
 
 const [REPO_OWNER, REPO_NAME] = new URL(REPO_URL).pathname.slice(1).split("/")
 
@@ -55,6 +77,10 @@ export async function getUpdateStatus(): Promise<{
   updateAvailable: boolean
 }> {
   const latest = await getSetting("system.updateCheck")
+
+  const stale = !latest || Date.now() - new Date(latest.checkedAt).getTime() > STALE_AFTER_MS
+  if (stale) after(triggerBackgroundRefresh)
+
   return {
     current: APP_VERSION,
     latest,
