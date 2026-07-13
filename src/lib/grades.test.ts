@@ -8,6 +8,7 @@ import {
   percentToGrade,
   programAverage,
   programAverageFromFinals,
+  requiredGradeForGoal,
   type BonusAssignment,
 } from "./grades"
 
@@ -259,6 +260,31 @@ describe("programAverageFromFinals", () => {
       { finalGrade: null, ects: 5 },
     ])
     expect(avg).toBeCloseTo(2.0)
+  })
+})
+
+describe("requiredGradeForGoal", () => {
+  // 60 ECTS graded at a 2.008 average, 60 ECTS remaining, 120 ECTS total.
+  const avg = 2.0083333
+  it("rounds the required grade to one decimal (consistent with the display)", () => {
+    // Reaching 1.5 needs 0.99 on the remainder → rounds to 1.0 (best achievable
+    // final is 1.504, shown as 1,5), so it is 'needed 1.0', not 'unreachable'.
+    expect(requiredGradeForGoal(1.5, avg, 60, 120)).toEqual({ kind: "needed", grade: 1.0 })
+    // Reaching 1.6 needs 1.19 → rounds to 1.2.
+    expect(requiredGradeForGoal(1.6, avg, 60, 120)).toEqual({ kind: "needed", grade: 1.2 })
+  })
+
+  it("flags a target as unreachable when it needs better than 1.0", () => {
+    // target 1.3 with a 2.5 average → needs 0.1 on the remainder.
+    expect(requiredGradeForGoal(1.3, 2.5, 60, 120)).toEqual({ kind: "unreachable" })
+  })
+
+  it("flags a target as safe when even a 4.0 keeps it", () => {
+    expect(requiredGradeForGoal(3.0, 2.0, 60, 120)).toEqual({ kind: "safe" })
+  })
+
+  it("returns null when no ECTS remain", () => {
+    expect(requiredGradeForGoal(2.0, 2.0, 120, 120)).toBeNull()
   })
 })
 

@@ -4,6 +4,7 @@ import * as React from "react"
 import { Target } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { updateGradeGoal } from "@/app/[locale]/(app)/studies/actions"
+import { requiredGradeForGoal } from "@/lib/grades"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -50,15 +51,7 @@ export function GradeGoal({
   const parsed = Number(target.replace(",", "."))
   const valid = Number.isFinite(parsed) && parsed >= 1 && parsed <= 4
 
-  let result: { kind: "needed"; value: number } | { kind: "safe" } | { kind: "unreachable" } | null =
-    null
-  if (valid && remainingEcts > 0) {
-    const required =
-      ((parsed * targetEcts - (average ?? 0) * gradedEcts) / remainingEcts) || 0
-    if (required < 1) result = { kind: "unreachable" }
-    else if (required >= 4) result = { kind: "safe" }
-    else result = { kind: "needed", value: required }
-  }
+  const result = valid ? requiredGradeForGoal(parsed, average, gradedEcts, targetEcts) : null
 
   if (remainingEcts <= 0) return null
 
@@ -80,7 +73,7 @@ export function GradeGoal({
           ? t("invalid")
           : result?.kind === "needed"
             ? t("needed", {
-                grade: result.value.toLocaleString("de-DE", {
+                grade: result.grade.toLocaleString("de-DE", {
                   minimumFractionDigits: 1,
                   maximumFractionDigits: 1,
                 }),
