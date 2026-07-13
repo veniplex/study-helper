@@ -25,13 +25,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    # version-bump.yml pushes a "chore(release): vX.Y.Z" commit to main, then
-    # immediately pushes the matching vX.Y.Z tag for that same commit — both
-    # pushes would otherwise trigger a build of the same image. Skip the
-    # main-branch build for that commit; the tag push builds it instead
-    # (:edge briefly lags by that one version-bump commit until the next
-    # regular push to main, which is harmless since it only touches package.json).
-    if: github.ref_type == 'tag' || !startsWith(github.event.head_commit.message, 'chore(release):')
     steps:
       - uses: actions/checkout@v4
 
