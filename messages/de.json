@@ -10,7 +10,8 @@
     "ai": "KI-Assistent",
     "thesis": "Abschlussarbeit",
     "settings": "Einstellungen",
-    "admin": "Admin"
+    "admin": "Admin",
+    "updateAvailable": "Version {version} ist auf GitHub verfügbar"
   },
   "theme": {
     "toggle": "Design wechseln",

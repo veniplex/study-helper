@@ -10,7 +10,8 @@
     "ai": "AI Assistant",
     "thesis": "Thesis",
     "settings": "Settings",
-    "admin": "Admin"
+    "admin": "Admin",
+    "updateAvailable": "Version {version} is available on GitHub"
   },
   "theme": {
     "toggle": "Toggle theme",

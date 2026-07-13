@@ -1,0 +1,26 @@
+name: Release Candidate Check
+
+# Validates that the Docker image builds for a PR marked ready to become a
+# release — not for every PR. Add the "release-candidate" label once a PR
+# is ready to ship; this then builds (but doesn't push) the image on every
+# subsequent push while the label is present, so a broken Dockerfile
+# surfaces before merge — before version-bump.yml bumps the version and
+# tags the release, not after.
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+
+jobs:
+  docker-build:
+    if: contains(github.event.pull_request.labels.*.name, 'release-candidate')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

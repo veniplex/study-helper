@@ -1,11 +1,19 @@
 # Releasing a new version
 
 Version bumps, git tags, and Docker images are all handled automatically by
-GitHub Actions. In the normal case there is nothing to do manually.
+GitHub Actions, gated behind a label so releases are a deliberate choice.
 
 ## How the pipeline works
 
-1. **On every PR merged into `main`**
+1. **Mark a PR release-worthy**: add the **`release-candidate`** label to it.
+   This is opt-in — a PR is never auto-released unless it carries this label
+   when merged.
+   - Adding the label (and every subsequent push while it's present) triggers
+     [`.github/workflows/release-candidate.yml`](../.github/workflows/release-candidate.yml),
+     which builds (but doesn't push) the Docker image. This surfaces a broken
+     Dockerfile **before** merge — before any version is bumped or tagged.
+
+2. **On merge, if the label is present**
    ([`.github/workflows/version-bump.yml`](../.github/workflows/version-bump.yml)):
    - The bump type (`patch`/`minor`/`major`) is derived from the PR title
      using [Conventional Commits](https://www.conventionalcommits.org/):
@@ -15,15 +23,15 @@ GitHub Actions. In the normal case there is nothing to do manually.
    - `package.json` / `package-lock.json` are bumped, committed directly to
      `main` as `chore(release): vX.Y.Z (#PR)`, tagged `vX.Y.Z`, and a GitHub
      Release is created.
-   - Add the **`skip-release`** label to a PR to opt it out entirely (e.g. a
-     docs-only or CI-only change that shouldn't ship a new image).
+   - PRs merged **without** the label just merge normally — no version bump,
+     no tag, no release.
    - The commit + tag are pushed with the default `GITHUB_TOKEN`, and GitHub
      does not let `GITHUB_TOKEN`-authored pushes trigger other workflows'
      `push` events (anti-recursion protection). So the last step explicitly
      runs `gh workflow run release.yml --ref vX.Y.Z` to kick off the image
      build — `workflow_dispatch` calls are exempt from that restriction.
 
-2. **`release.yml`** builds and publishes the image:
+3. **`release.yml`** builds and publishes the image:
 
    | Trigger | Published image tags |
    | --- | --- |
@@ -34,7 +42,7 @@ GitHub Actions. In the normal case there is nothing to do manually.
    the merge itself, and the versioned tags (including `:latest`) follow
    once `version-bump.yml` tags and dispatches the release build.
 
-3. **Update the deployment** (e.g. Portainer):
+4. **Update the deployment** (e.g. Portainer):
    - If the stack uses `:latest` (default), re-pull the image and
      recreate the container ("Re-pull image and redeploy" in Portainer).
    - If the version is pinned, set `STUDYHELPER_VERSION=X.Y.Z` in the

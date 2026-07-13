@@ -1,17 +1,19 @@
 name: Version Bump
 
-# Bumps the app version and tags the release the moment a PR is merged into
-# main, then explicitly triggers release.yml to build and publish the
-# Docker image. No manual release step is needed for normal PRs — see
-# docs/releasing.md.
+# Bumps the app version and tags the release the moment a PR labeled
+# "release-candidate" is merged into main, then explicitly triggers
+# release.yml to build and publish the Docker image. No manual release
+# step is needed — see docs/releasing.md.
+#
+# The label is opt-in: PRs are never auto-released unless someone adds
+# "release-candidate" to them. Adding the label also triggers a Docker
+# build validation before merge (see release-candidate.yml), so a broken
+# Dockerfile is caught before the version is bumped and tagged, not after.
 #
 # Bump type is derived from the PR title (Conventional Commits):
 #   - a "!" after the type, e.g. "feat!: ..." or "fix!: ..."  -> major
 #   - "feat: ..." / "feat(scope): ..."                        -> minor
 #   - anything else (fix, chore, docs, refactor, perf, ...)   -> patch
-#
-# Add the "skip-release" label to a PR to opt it out entirely (e.g. a
-# docs-only or CI-only change that shouldn't ship a new image).
 #
 # Note: the commit + tag below are pushed using the default GITHUB_TOKEN.
 # GitHub does not let GITHUB_TOKEN-authored pushes trigger other workflows'
@@ -36,7 +38,7 @@ jobs:
   bump:
     if: >
       github.event.pull_request.merged == true &&
-      !contains(github.event.pull_request.labels.*.name, 'skip-release') &&
+      contains(github.event.pull_request.labels.*.name, 'release-candidate') &&
       !startsWith(github.event.pull_request.title, 'chore(release):')
     runs-on: ubuntu-latest
     steps:
