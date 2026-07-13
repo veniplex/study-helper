@@ -174,9 +174,10 @@ export type FinalGrade = {
 }
 
 /**
- * Computes a module's final grade from its latest assessment attempt plus the
- * assignment bonus, falling back to legacy free-form grades when no attempt
- * exists. Pass/fail modules yield only a passed flag.
+ * Computes a module's final grade from its latest assessment attempt (achieved
+ * percentage → grade scale), falling back to legacy free-form grades when no
+ * attempt exists. The assignment bonus is computed and returned for display but
+ * does not alter the final grade. Pass/fail modules yield only a passed flag.
  */
 export function moduleFinalGrade(input: FinalGradeInput): FinalGrade {
   const { module, attempts, assignments, scale, legacyGrades } = input
@@ -198,12 +199,13 @@ export function moduleFinalGrade(input: FinalGradeInput): FinalGrade {
 
     const basePercent = num(latest.resultPercent)
     if (basePercent != null) {
-      const boostedPercent = Math.min(100, basePercent + bonus.percentPoints)
-      let grade = percentToGrade(scale, boostedPercent)
-      grade = Math.max(BEST_GRADE, grade - bonus.gradeSteps)
+      // The final grade is derived purely from the achieved percentage via the
+      // grade scale. A configured assignment bonus is reported for information
+      // only (see `bonus` below) and never shifts the final grade.
+      const grade = percentToGrade(scale, basePercent)
       return {
         grade,
-        percent: boostedPercent,
+        percent: basePercent,
         passed: grade <= PASS_THRESHOLD,
         attempt: latest.attempt,
         source: "assessment",

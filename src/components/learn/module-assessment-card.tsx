@@ -184,8 +184,6 @@ export function ModuleAssessmentCard({
           {!passFail && final.percent != null && (
             <p className="text-muted-foreground text-xs tabular-nums">
               {Math.round(final.percent)} %
-              {final.bonus && final.bonus.percentPoints > 0 &&
-                ` · ${t("bonusApplied", { points: final.bonus.percentPoints })}`}
             </p>
           )}
         </div>
