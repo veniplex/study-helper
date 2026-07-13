@@ -17,18 +17,22 @@ GitHub Actions. In the normal case there is nothing to do manually.
      Release is created.
    - Add the **`skip-release`** label to a PR to opt it out entirely (e.g. a
      docs-only or CI-only change that shouldn't ship a new image).
+   - The commit + tag are pushed with the default `GITHUB_TOKEN`, and GitHub
+     does not let `GITHUB_TOKEN`-authored pushes trigger other workflows'
+     `push` events (anti-recursion protection). So the last step explicitly
+     runs `gh workflow run release.yml --ref vX.Y.Z` to kick off the image
+     build — `workflow_dispatch` calls are exempt from that restriction.
 
-2. **On the resulting push to `main` and the `vX.Y.Z` tag**
-   ([`.github/workflows/release.yml`](../.github/workflows/release.yml)):
+2. **`release.yml`** builds and publishes the image:
 
-   | Git event | Published image tags |
+   | Trigger | Published image tags |
    | --- | --- |
-   | Push to `main` | `ghcr.io/veniplex/study-helper:main`, `:edge` |
-   | Push a tag `vX.Y.Z` | `:X.Y.Z`, `:X.Y`, `:X`, `:latest` |
+   | Push to `main` (a normal PR merge) | `ghcr.io/veniplex/study-helper:main`, `:edge` |
+   | `workflow_dispatch` on tag `vX.Y.Z` (from step 1) or a manual `v*` tag push | `:X.Y.Z`, `:X.Y`, `:X`, `:latest` |
 
-   So merging a PR produces both events back to back — `:main`/`:edge`
-   update immediately, and the versioned tags (including `:latest`) follow
-   right after once the tag is pushed.
+   So merging a PR produces both back to back — `:main`/`:edge` update from
+   the merge itself, and the versioned tags (including `:latest`) follow
+   once `version-bump.yml` tags and dispatches the release build.
 
 3. **Update the deployment** (e.g. Portainer):
    - If the stack uses `:latest` (default), re-pull the image and
