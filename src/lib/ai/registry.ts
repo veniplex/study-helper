@@ -76,6 +76,43 @@ export async function getEmbeddingModel(ref: string, userId: string): Promise<Em
   return sdk.textEmbeddingModel(modelId)
 }
 
+/**
+ * A language model for image understanding (OCR/description). Modern chat
+ * models are multimodal, so we reuse the user's resolved chat model. Returns
+ * null when no provider is configured.
+ */
+export async function getVisionModel(userId: string): Promise<LanguageModel | null> {
+  const ref = await resolveModelForUser(userId)
+  if (!ref) return null
+  return getLanguageModel(ref, userId)
+}
+
+/** Default transcription model per provider type that supports audio. */
+const TRANSCRIPTION_MODELS: Partial<Record<AiProvider["type"], string>> = {
+  openai: "whisper-1",
+  groq: "whisper-large-v3-turbo",
+}
+
+/**
+ * A speech-to-text model from the first configured provider that supports
+ * transcription (OpenAI or Groq), honoring BYOK keys. Returns null otherwise.
+ */
+export async function getTranscriptionModel(userId: string) {
+  const ai = await getSetting("ai")
+  for (const provider of ai?.providers ?? []) {
+    const modelId = TRANSCRIPTION_MODELS[provider.type]
+    if (!modelId) continue
+    const apiKey = await resolveApiKey(provider, userId)
+    if (!apiKey) continue
+    const sdk = instantiate(provider, apiKey)
+    const withTranscription = sdk as { transcription?: (id: string) => unknown }
+    if (typeof withTranscription.transcription === "function") {
+      return withTranscription.transcription(modelId)
+    }
+  }
+  return null
+}
+
 /** All model refs a user may pick from, plus the default. */
 export async function listAvailableModels(): Promise<{
   models: { ref: string; label: string }[]

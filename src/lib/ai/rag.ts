@@ -38,7 +38,20 @@ export async function processMaterial(materialId: string): Promise<void> {
   const row = await db.query.material.findFirst({ where: eq(material.id, materialId) })
   if (!row || row.kind !== "file" || !row.storagePath) return
 
-  const text = await extractText(row.storagePath, row.mimeType)
+  let text = await extractText(row.storagePath, row.mimeType)
+  // For media without extractable text (images, audio, video), fall back to the
+  // AI pipeline: OCR/describe images, transcribe audio/video. Best-effort.
+  if (!text) {
+    const { classifyFile } = await import("./filetypes")
+    const strategy = classifyFile(row.storagePath, row.mimeType)
+    if (strategy === "image") {
+      const { extractImageText } = await import("./media")
+      text = await extractImageText(row.storagePath, row.mimeType, row.userId)
+    } else if (strategy === "audio") {
+      const { transcribeMedia } = await import("./media")
+      text = await transcribeMedia(row.storagePath, row.userId)
+    }
+  }
   if (!text) return
 
   await db

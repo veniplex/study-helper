@@ -5,7 +5,8 @@ import { aiUsageLog, notificationPrefs, passkey, userAiKey, userPrefs } from "@/
 import { requireSession } from "@/lib/auth/session"
 import { getSetting } from "@/lib/settings"
 import { listAvailableModels } from "@/lib/ai/registry"
-import { daysAgo } from "@/lib/utils"
+import { getUserStorage } from "@/lib/materials/usage"
+import { daysAgo, formatBytes } from "@/lib/utils"
 import { AiKeySettings } from "@/components/settings/ai-key-settings"
 import { AiModelCard } from "@/components/settings/ai-model-card"
 import { LearningSettings } from "@/components/settings/learning-settings"
@@ -20,7 +21,8 @@ export default async function SettingsPage() {
   const t = await getTranslations("settings")
   const thirtyDaysAgo = daysAgo(30)
 
-  const [passkeys, ai, userKeys, usage, nPrefs, prefs, availableModels] = await Promise.all([
+  const [passkeys, ai, userKeys, usage, nPrefs, prefs, availableModels, uploads, storage] =
+    await Promise.all([
     db
       .select({ id: passkey.id, name: passkey.name, createdAt: passkey.createdAt })
       .from(passkey)
@@ -41,6 +43,8 @@ export default async function SettingsPage() {
     }),
     db.query.userPrefs.findFirst({ where: eq(userPrefs.userId, session.user.id) }),
     listAvailableModels(),
+    getSetting("uploads"),
+    getUserStorage(session.user.id),
   ])
 
   const providers = (ai?.providers ?? []).map((p) => ({
@@ -50,6 +54,10 @@ export default async function SettingsPage() {
   }))
   const totals = usage[0] ?? { inputTokens: 0, outputTokens: 0 }
   const limit = ai?.monthlyTokenLimitPerUser ?? 0
+  const quotaMb = uploads?.storageQuotaMbPerUser ?? 0
+  const quotaBytes = quotaMb * 1024 * 1024
+  const storagePct =
+    quotaBytes > 0 ? Math.min(100, Math.round((storage.totalBytes / quotaBytes) * 100)) : 0
   const defaultModelLabel =
     availableModels.models.find((m) => m.ref === availableModels.defaultModel)?.label ?? null
 
@@ -84,6 +92,43 @@ export default async function SettingsPage() {
         }
       />
       <LearningSettings initialGoalMinutes={prefs?.weeklyGoalMinutes ?? null} />
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t("storage.title")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex gap-6">
+            <div>
+              <p className="text-muted-foreground text-xs">{t("storage.files")}</p>
+              <p className="font-semibold tabular-nums">{storage.fileCount.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">{t("storage.used")}</p>
+              <p className="font-semibold tabular-nums">{formatBytes(storage.totalBytes) || "0 B"}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">{t("storage.quota")}</p>
+              <p className="font-semibold tabular-nums">
+                {quotaMb === 0 ? t("storage.unlimited") : formatBytes(quotaBytes)}
+              </p>
+            </div>
+          </div>
+          {quotaMb > 0 && (
+            <div className="space-y-1">
+              <div className="text-muted-foreground flex justify-between text-xs">
+                <span>{t("storage.utilization")}</span>
+                <span className="tabular-nums">{storagePct}%</span>
+              </div>
+              <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
+                <div
+                  className={storagePct >= 100 ? "bg-destructive h-full" : "bg-primary h-full"}
+                  style={{ width: `${storagePct}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
       {providers.length === 0 && session.user.role === "admin" && (
         <Card>
           <CardHeader>

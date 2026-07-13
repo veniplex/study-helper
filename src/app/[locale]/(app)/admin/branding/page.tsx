@@ -8,7 +8,7 @@ export default async function AdminBrandingPage() {
   return (
     <BrandingForm
       initial={branding ?? { appName: "StudyHelper" }}
-      uploads={uploads ?? { maxUploadMb: 200 }}
+      uploads={uploads ?? { maxUploadMb: 200, storageQuotaMbPerUser: 0 }}
     />
   )
 }
