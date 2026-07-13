@@ -71,6 +71,7 @@ Everything else is configured in **Admin → Settings**:
 | AI | providers (Anthropic, OpenAI, Google, Mistral, Groq, Ollama, OpenAI-compatible), models, default + embedding model (enables RAG), monthly token limits |
 | Email | SMTP for password resets and reminders, test email |
 | Branding | app name, max upload size |
+| Updates | shows whether a newer release is available on GitHub (checked daily, or on demand) — installing it is a manual `docker compose pull && docker compose up -d` |
 
 ## Environment variables
 

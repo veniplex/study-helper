@@ -49,6 +49,16 @@ export const vapidSchema = z.object({
   privateKey: z.string().min(1),
 })
 
+export const updateCheckSchema = z.object({
+  /** Latest release version found on GitHub, e.g. "1.1.0" (no "v" prefix). */
+  latestVersion: z.string().min(1),
+  /** Link to the release on GitHub. */
+  htmlUrl: z.string().url(),
+  publishedAt: z.string(),
+  /** When this check ran. */
+  checkedAt: z.string(),
+})
+
 export const aiProviderTypeSchema = z.enum([
   "anthropic",
   "openai",
@@ -97,6 +107,7 @@ const settingsSchemas = {
   uploads: uploadsSchema,
   ai: aiSettingsSchema,
   "push.vapid": vapidSchema,
+  "system.updateCheck": updateCheckSchema,
 } as const
 
 export type SettingKey = keyof typeof settingsSchemas
@@ -120,6 +131,7 @@ const defaults: { [K in SettingKey]: SettingValue<K> } = {
   uploads: { maxUploadMb: 200 },
   ai: { providers: [], monthlyTokenLimitPerUser: 0 },
   "push.vapid": undefined as never, // generated on first use
+  "system.updateCheck": undefined as never, // set once the first check has run
 }
 
 // ---- Store -----------------------------------------------------------------

@@ -10,6 +10,7 @@ const items = [
   { key: "ai", href: "/admin/ai" },
   { key: "email", href: "/admin/email" },
   { key: "branding", href: "/admin/branding" },
+  { key: "updates", href: "/admin/updates" },
 ] as const
 
 export function AdminNav() {
@@ -19,7 +20,8 @@ export function AdminNav() {
   return (
     <nav className="flex gap-1 overflow-x-auto border-b pb-px">
       {items.map((item) => {
-        const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href)
+        const active =
+          item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href)
         return (
           <Link
             key={item.key}

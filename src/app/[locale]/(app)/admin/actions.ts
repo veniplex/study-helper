@@ -9,6 +9,7 @@ import { invite } from "@/db/schema"
 import { requireAdmin } from "@/lib/auth/session"
 import { bustAuthCache } from "@/lib/auth"
 import { sendEmail } from "@/lib/email"
+import { checkForUpdate } from "@/lib/update-check"
 import {
   aiSettingsSchema,
   brandingSchema,
@@ -113,4 +114,15 @@ export async function saveAiSettings(value: unknown) {
   await setSetting("ai", aiSettingsSchema.parse(value))
   revalidatePath("/", "layout")
   return { ok: true as const }
+}
+
+export async function checkForUpdatesNow() {
+  await requireAdmin()
+  try {
+    await checkForUpdate()
+    revalidatePath("/admin/updates")
+    return { ok: true as const }
+  } catch (error) {
+    return { ok: false as const, error: error instanceof Error ? error.message : "unknown" }
+  }
 }

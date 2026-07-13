@@ -94,7 +94,8 @@
       "auth": "Sign-in & SSO",
       "ai": "AI",
       "email": "Email",
-      "branding": "Branding"
+      "branding": "Branding",
+      "updates": "Updates"
     },
     "users": {
       "title": "Users",
@@ -198,6 +199,19 @@
       "appName": "App name",
       "maxUploadMb": "Max upload size (MB)",
       "saved": "Saved."
+    },
+    "updates": {
+      "title": "Updates",
+      "description": "Checks GitHub daily for new releases of this app",
+      "currentVersion": "Current version",
+      "updateAvailable": "Update available",
+      "newVersion": "Version {version} is available",
+      "publishedOn": "Published on {date}",
+      "viewOnGithub": "View release on GitHub",
+      "upToDate": "You're running the latest version.",
+      "neverChecked": "No check has run yet.",
+      "lastChecked": "Last checked: {date}",
+      "checkNow": "Check now"
     }
   },
   "assignments": {

@@ -7,6 +7,7 @@ const globalForBoss = globalThis as unknown as { boss?: Promise<PgBoss> }
 export const QUEUE_EMBED_MATERIAL = "embed-material"
 export const QUEUE_SEND_REMINDERS = "send-reminders"
 export const QUEUE_DAILY_PLAN = "daily-plan-reminder"
+export const QUEUE_CHECK_UPDATES = "check-updates"
 
 async function start(): Promise<PgBoss> {
   const boss = new PgBoss({ connectionString: env.DATABASE_URL })
@@ -34,6 +35,17 @@ async function start(): Promise<PgBoss> {
     await sendDailyPlanReminders()
   })
   await boss.schedule(QUEUE_DAILY_PLAN, "0 7 * * *")
+
+  await boss.createQueue(QUEUE_CHECK_UPDATES)
+  await boss.work(QUEUE_CHECK_UPDATES, async () => {
+    const { checkForUpdate } = await import("@/lib/update-check")
+    try {
+      await checkForUpdate()
+    } catch (error) {
+      console.error("[check-updates]", error)
+    }
+  })
+  await boss.schedule(QUEUE_CHECK_UPDATES, "0 6 * * *")
 
   return boss
 }
