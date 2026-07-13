@@ -3,15 +3,17 @@
 import { revalidatePath } from "next/cache"
 import { and, eq, isNull } from "drizzle-orm"
 import { generateObject } from "ai"
+import { getLocale } from "next-intl/server"
 import { z } from "zod"
 import { db } from "@/db"
 import { answerLog, question, quiz, quizAttempt } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
-import { searchChunks } from "@/lib/ai/rag"
+import { searchChunks, getModuleMaterialSample } from "@/lib/ai/rag"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
 import { logAudit } from "@/lib/audit"
 import { ownModule } from "@/lib/studies/access"
+import { languageNameForLocale } from "@/lib/ai/language"
 
 async function ownQuiz(quizId: string, userId: string) {
   const row = await db.query.quiz.findFirst({
@@ -220,29 +222,35 @@ export async function generateQuiz(input: unknown) {
   const session = await requireSession()
   await assertWithinLimit(session.user.id)
   const data = generateQuizInput.parse(input)
-  if (data.moduleId) await ownModule(data.moduleId, session.user.id)
+  const moduleRow = data.moduleId ? await ownModule(data.moduleId, session.user.id) : null
 
   const defaultModel = await resolveModelForUser(session.user.id)
   if (!defaultModel) throw new Error("No AI model configured")
   const model = await getLanguageModel(defaultModel, session.user.id)
 
-  const query = data.topics || "key concepts"
-  const hits = await searchChunks(session.user.id, query, {
+  const query = data.topics || moduleRow?.name || "key concepts"
+  let hits = await searchChunks(session.user.id, query, {
     moduleId: data.moduleId,
     limit: 6,
   })
+  if (hits.length === 0 && data.moduleId) {
+    hits = await getModuleMaterialSample(session.user.id, data.moduleId)
+  }
   const context =
     hits.length > 0
       ? "\n\nBase the questions on these excerpts from the user's study materials:\n" +
         hits.map((h) => `[${h.materialName}] ${h.content.slice(0, 1000)}`).join("\n---\n")
       : ""
 
+  const locale = await getLocale()
+  const language = languageNameForLocale(locale)
+
   const { object, usage } = await generateObject({
     model,
     schema: generatedQuizSchema,
     prompt: `Create a quiz with ${data.count} exam-style questions about: ${query}.
 ${data.mixed ? "Mix multiple_choice (with exactly 4 plausible options) and free_text questions (about 70/30)." : "Use only multiple_choice questions with exactly 4 plausible options."}
-Each question gets a short explanation of the correct answer. Write in the same language as the topic.${context}`,
+Each question gets a short explanation of the correct answer. Write all questions, options, and explanations in ${language}, regardless of the language of the topic text or source materials.${context}`,
   })
 
   await logUsage(session.user.id, defaultModel, "quiz", {

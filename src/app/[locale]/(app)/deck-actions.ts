@@ -3,16 +3,18 @@
 import { revalidatePath } from "next/cache"
 import { and, eq } from "drizzle-orm"
 import { generateObject } from "ai"
+import { getLocale } from "next-intl/server"
 import { z } from "zod"
 import { db } from "@/db"
 import { deck, flashcard, reviewLog } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
-import { searchChunks } from "@/lib/ai/rag"
+import { searchChunks, getModuleMaterialSample } from "@/lib/ai/rag"
 import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
 import { scheduleReview, type ReviewRating } from "@/lib/learning/fsrs"
 import { logAudit } from "@/lib/audit"
 import { ownModule } from "@/lib/studies/access"
+import { languageNameForLocale } from "@/lib/ai/language"
 
 const deckSchema = z.object({
   name: z.string().min(1).max(200),
@@ -294,23 +296,30 @@ export async function generateCards(input: unknown) {
   if (!defaultModel) throw new Error("No AI model configured")
   const model = await getLanguageModel(defaultModel, session.user.id)
 
-  const query = data.topics || deckRow.name
-  const hits = await searchChunks(session.user.id, query, {
+  const moduleRow = deckRow.moduleId ? await ownModule(deckRow.moduleId, session.user.id) : null
+  const query = data.topics || [deckRow.name, moduleRow?.name].filter(Boolean).join(" ")
+  let hits = await searchChunks(session.user.id, query, {
     moduleId: deckRow.moduleId,
     limit: 6,
   })
+  if (hits.length === 0 && deckRow.moduleId) {
+    hits = await getModuleMaterialSample(session.user.id, deckRow.moduleId)
+  }
   const context =
     hits.length > 0
       ? "\n\nBase the cards on these excerpts from the user's study materials:\n" +
         hits.map((h) => `[${h.materialName}] ${h.content.slice(0, 1000)}`).join("\n---\n")
       : ""
 
+  const locale = await getLocale()
+  const language = languageNameForLocale(locale)
+
   const { object, usage } = await generateObject({
     model,
     schema: generatedCardsSchema,
     prompt: `Create ${data.count} high-quality flashcards for spaced repetition about: ${query}.
 Each card has a concise question/term on the front and a precise answer/definition on the back.
-Write in the same language as the topic.${context}`,
+Write all cards in ${language}, regardless of the language of the topic text or source materials.${context}`,
   })
 
   await logUsage(session.user.id, defaultModel, "flashcards", {
