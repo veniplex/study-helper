@@ -1,8 +1,16 @@
 name: Release
 
-# Builds and publishes the Docker image to GitHub Container Registry.
+# Builds and publishes the multi-arch Docker image to GitHub Container Registry.
 # - push to main        -> ghcr.io/<owner>/study-helper:main + :edge
 # - push a v* git tag   -> :1.2.3, :1.2, :1, :latest (semver)
+#
+# Each architecture is built on its OWN native runner (amd64 on ubuntu-latest,
+# arm64 on ubuntu-24.04-arm) and pushed to GHCR by digest; the `merge` job then
+# assembles the per-arch digests into one multi-arch manifest. This replaces the
+# previous single-runner build that emulated arm64 under QEMU — emulation made
+# `npm ci` + `next build` for arm64 roughly 4x slower and was ~all of the ~14 min
+# build time. Native runners build both arches in parallel in a few minutes each.
+# GitHub-hosted arm64 runners are free for public repositories.
 #
 # workflow_dispatch exists so version-bump.yml can trigger this explicitly:
 # GITHUB_TOKEN-authored pushes (which is how version-bump.yml pushes its
@@ -19,16 +27,41 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
+# A newer build for the same ref supersedes an older one, so a stalled build
+# can't pile up or block. Keyed by ref so a release's main (:edge) build and
+# its tag (semver) build — which have different refs — never cancel each other.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  image:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
     steps:
+      - name: Prepare platform pair
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
-      - uses: docker/setup-qemu-action@v3
+      - name: Image labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
       - uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
@@ -37,6 +70,49 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Push the single-arch image by digest only (no tag yet); the merge job
+      # collects the digests and creates the tagged multi-arch manifest.
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ env.PLATFORM_PAIR }}
+          cache-to: type=gha,mode=max,scope=${{ env.PLATFORM_PAIR }}
+
+      - name: Export digest
+        run: |
+          mkdir -p "${{ runner.temp }}/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - uses: docker/setup-buildx-action@v3
 
       - name: Derive image tags
         id: meta
@@ -50,13 +126,21 @@ jobs:
             type=raw,value=edge,enable={{is_default_branch}}
             type=ref,event=branch
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect \
+            "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}"
