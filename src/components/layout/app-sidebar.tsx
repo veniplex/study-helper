@@ -132,7 +132,9 @@ function SidebarModule({
                 )}
               />
             </span>
-            <span className="truncate">{mod.name}</span>
+            <span className="truncate" title={mod.code ? mod.name : undefined}>
+              {mod.code || mod.name}
+            </span>
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger
