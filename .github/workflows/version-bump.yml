@@ -1,0 +1,85 @@
+name: Version Bump
+
+# Bumps the app version and tags the release the moment a PR is merged into
+# main, so release.yml (which listens for pushes to main and v* tags)
+# builds and publishes a new Docker image automatically. No manual release
+# step is needed for normal PRs — see docs/releasing.md.
+#
+# Bump type is derived from the PR title (Conventional Commits):
+#   - a "!" after the type, e.g. "feat!: ..." or "fix!: ..."  -> major
+#   - "feat: ..." / "feat(scope): ..."                        -> minor
+#   - anything else (fix, chore, docs, refactor, perf, ...)   -> patch
+#
+# Add the "skip-release" label to a PR to opt it out entirely (e.g. a
+# docs-only or CI-only change that shouldn't ship a new image).
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: version-bump
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    if: >
+      github.event.pull_request.merged == true &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-release') &&
+      !startsWith(github.event.pull_request.title, 'chore(release):')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Determine bump type
+        id: bump
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [[ "$TITLE" =~ ^[a-zA-Z]+(\([^)]*\))?!: ]]; then
+            echo "type=major" >> "$GITHUB_OUTPUT"
+          elif [[ "$TITLE" =~ ^feat(\([^)]*\))?: ]]; then
+            echo "type=minor" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=patch" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        id: version
+        run: |
+          npm version ${{ steps.bump.outputs.type }} --no-git-tag-version
+          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          git add package.json package-lock.json
+          git commit -m "chore(release): v${VERSION} (#${PR_NUMBER})"
+          git tag "v${VERSION}"
+          git push origin main
+          git push origin "v${VERSION}"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh release create "v${VERSION}" \
+            --title "v${VERSION}" \
+            --notes "${TITLE} (#${PR_NUMBER})"
