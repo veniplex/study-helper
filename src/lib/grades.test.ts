@@ -152,7 +152,7 @@ describe("effectiveBonus", () => {
 })
 
 describe("moduleFinalGrade", () => {
-  it("applies a percent-point bonus before mapping to a grade", () => {
+  it("derives the grade from the percentage only — a percent-point bonus does not raise it", () => {
     const r = moduleFinalGrade({
       module: {
         passFail: false,
@@ -165,13 +165,14 @@ describe("moduleFinalGrade", () => {
       assignments: [{ kind: "graded", status: "graded", percent: 100 }],
       scale: null,
     })
-    // 78 + 5 = 83 → 2.0 on the default scale (≥80)
-    expect(r.percent).toBe(83)
-    expect(r.grade).toBe(2.0)
+    // 78 % → 2.3 (≥75); the +5 bonus is reported but not applied to the grade.
+    expect(r.percent).toBe(78)
+    expect(r.grade).toBe(2.3)
     expect(r.source).toBe("assessment")
+    expect(r.bonus?.percentPoints).toBe(5)
   })
 
-  it("applies grade steps and clamps at 1.0", () => {
+  it("does not apply grade steps to the final grade", () => {
     const r = moduleFinalGrade({
       module: {
         passFail: false,
@@ -180,12 +181,31 @@ describe("moduleFinalGrade", () => {
         bonusMinAvgPercent: null,
         bonusMinCompletedShare: null,
       },
-      attempts: [{ attempt: 1, resultPercent: "96", passed: true }],
+      attempts: [{ attempt: 1, resultPercent: "82", passed: true }],
       assignments: [{ kind: "graded", status: "graded", percent: 100 }],
       scale: null,
     })
-    // 96 → 1.0, minus 0.3 step clamps back to 1.0
-    expect(r.grade).toBe(1.0)
+    // 82 % → 2.0; without decoupling the 0.3 step would have yielded 1.7.
+    expect(r.grade).toBe(2.0)
+    expect(r.bonus?.gradeSteps).toBe(0.3)
+  })
+
+  it("yields the same final grade with or without a configured bonus", () => {
+    const attempts = [{ attempt: 1, resultPercent: "78", passed: true }]
+    const withBonus = moduleFinalGrade({
+      module: {
+        passFail: false,
+        bonusType: "percent_points",
+        bonusValue: "5",
+        bonusMinAvgPercent: null,
+        bonusMinCompletedShare: null,
+      },
+      attempts,
+      assignments: [{ kind: "graded", status: "graded", percent: 100 }],
+      scale: null,
+    })
+    const withoutBonus = moduleFinalGrade({ module: noBonus, attempts, assignments: [], scale: null })
+    expect(withBonus.grade).toBe(withoutBonus.grade)
   })
 
   it("uses the latest attempt", () => {

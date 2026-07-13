@@ -24,7 +24,9 @@ const gradeScaleSchema = z
       grade: z.number().min(1).max(6),
     })
   )
-  .max(30)
+  // A percent→grade table can be fine-grained (e.g. one row per percentage
+  // point), so allow a generous number of rows.
+  .max(200)
 
 const programSchema = z.object({
   name: z.string().min(1).max(200),
