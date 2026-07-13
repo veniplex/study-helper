@@ -121,7 +121,7 @@ export async function SemesterOverviewCard({
       </CardHeader>
       <CardContent className="space-y-5">
         {gradingSystem === "german" && targetEcts != null && targetEcts > gradedEcts && (
-          <GradeGoal average={average} gradedEcts={gradedEcts} targetEcts={targetEcts} />
+          <GradeGoal programId={programId} average={average} gradedEcts={gradedEcts} targetEcts={targetEcts} />
         )}
         {semesters.length === 0 ? (
           <p className="text-muted-foreground text-sm">{t("noModules")}</p>
