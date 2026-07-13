@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Target } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { updateGradeGoal } from "@/app/[locale]/(app)/studies/actions"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -11,15 +12,12 @@ import { Label } from "@/components/ui/label"
  * remaining ECTS, shows the average grade required in the remaining modules to
  * hit a target final grade. German grading only (1.0 best … 4.0 pass).
  */
-function storageKey(programId: string) {
-  return `study-helper:grade-goal:${programId}`
-}
-
 export function GradeGoal({
   programId,
   average,
   gradedEcts,
   targetEcts,
+  initialGoal,
 }: {
   programId: string
   /** Current ECTS-weighted average over graded modules; null = nothing graded. */
@@ -27,20 +25,26 @@ export function GradeGoal({
   /** Sum of ECTS that already have a final grade. */
   gradedEcts: number
   targetEcts: number
+  /** Persisted target grade for this program, e.g. "2.0"; null = never set. */
+  initialGoal: string | null
 }) {
   const t = useTranslations("dashboard.gradeGoal")
-  const [target, setTarget] = React.useState("2.0")
-
-  // Load persisted target after mount (avoids SSR hydration mismatch).
-  React.useEffect(() => {
-    const stored = window.localStorage.getItem(storageKey(programId))
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (stored) setTarget(stored)
-  }, [programId])
+  const [target, setTarget] = React.useState(initialGoal ?? "2.0")
+  const saveTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   React.useEffect(() => {
-    window.localStorage.setItem(storageKey(programId), target)
-  }, [programId, target])
+    return () => {
+      if (saveTimeout.current) clearTimeout(saveTimeout.current)
+    }
+  }, [])
+
+  function onTargetChange(value: string) {
+    setTarget(value)
+    if (saveTimeout.current) clearTimeout(saveTimeout.current)
+    saveTimeout.current = setTimeout(() => {
+      updateGradeGoal(programId, value || null).catch(() => {})
+    }, 500)
+  }
 
   const remainingEcts = targetEcts - gradedEcts
   const parsed = Number(target.replace(",", "."))
@@ -67,7 +71,7 @@ export function GradeGoal({
       <Input
         id="grade-goal"
         value={target}
-        onChange={(e) => setTarget(e.target.value)}
+        onChange={(e) => onTargetChange(e.target.value)}
         inputMode="decimal"
         className="h-6 w-14 px-1.5 text-xs tabular-nums"
       />
