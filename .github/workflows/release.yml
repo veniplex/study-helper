@@ -3,10 +3,17 @@ name: Release
 # Builds and publishes the Docker image to GitHub Container Registry.
 # - push to main        -> ghcr.io/<owner>/study-helper:main + :edge
 # - push a v* git tag   -> :1.2.3, :1.2, :1, :latest (semver)
+#
+# workflow_dispatch exists so version-bump.yml can trigger this explicitly:
+# GITHUB_TOKEN-authored pushes (which is how version-bump.yml pushes its
+# release commit + tag) do not fire push-triggered workflow runs — GitHub
+# suppresses that to prevent recursion — but an explicit workflow_dispatch
+# call is exempt from that restriction.
 on:
   push:
     branches: [main]
     tags: ["v*"]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io

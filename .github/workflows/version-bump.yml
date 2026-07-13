@@ -1,9 +1,9 @@
 name: Version Bump
 
 # Bumps the app version and tags the release the moment a PR is merged into
-# main, so release.yml (which listens for pushes to main and v* tags)
-# builds and publishes a new Docker image automatically. No manual release
-# step is needed for normal PRs — see docs/releasing.md.
+# main, then explicitly triggers release.yml to build and publish the
+# Docker image. No manual release step is needed for normal PRs — see
+# docs/releasing.md.
 #
 # Bump type is derived from the PR title (Conventional Commits):
 #   - a "!" after the type, e.g. "feat!: ..." or "fix!: ..."  -> major
@@ -12,6 +12,12 @@ name: Version Bump
 #
 # Add the "skip-release" label to a PR to opt it out entirely (e.g. a
 # docs-only or CI-only change that shouldn't ship a new image).
+#
+# Note: the commit + tag below are pushed using the default GITHUB_TOKEN.
+# GitHub does not let GITHUB_TOKEN-authored pushes trigger other workflows'
+# push events (anti-recursion protection), so release.yml would otherwise
+# never run for these pushes — that's why the last step dispatches it
+# explicitly via `gh workflow run`, which IS allowed from a GITHUB_TOKEN.
 
 on:
   pull_request:
@@ -20,6 +26,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: version-bump
@@ -85,3 +92,9 @@ jobs:
           gh release create "v${VERSION}" \
             --title "v${VERSION}" \
             --notes "${TITLE} (#${PR_NUMBER})"
+
+      - name: Trigger Docker image build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: gh workflow run release.yml --ref "v${VERSION}"
