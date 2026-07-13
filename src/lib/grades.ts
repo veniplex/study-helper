@@ -255,3 +255,36 @@ export function programAverageFromFinals(
   }
   return totalEcts === 0 ? null : weightedSum / totalEcts
 }
+
+export type GradeGoalResult =
+  | { kind: "needed"; grade: number }
+  | { kind: "safe" }
+  | { kind: "unreachable" }
+  | null
+
+/**
+ * "What do I need?" simulator: the ECTS-weighted average grade required on the
+ * remaining (ungraded) modules to reach `target` as the final program grade.
+ *
+ * The required grade is rounded to one decimal to match how grades are shown
+ * everywhere else — otherwise a target whose best achievable final rounds to it
+ * (e.g. a best case of 1.504, displayed as "1.5") is wrongly flagged as
+ * unreachable. Returns null when there are no remaining ECTS or inputs are
+ * unusable. `safe` = even the worst pass (4.0) keeps the target; `unreachable`
+ * = would need better than the best grade (1.0).
+ */
+export function requiredGradeForGoal(
+  target: number,
+  average: number | null,
+  gradedEcts: number,
+  targetEcts: number
+): GradeGoalResult {
+  const remainingEcts = targetEcts - gradedEcts
+  if (!(remainingEcts > 0)) return null
+  const raw = (target * targetEcts - (average ?? 0) * gradedEcts) / remainingEcts
+  if (!Number.isFinite(raw)) return null
+  const required = Math.round(raw * 10) / 10
+  if (required < BEST_GRADE) return { kind: "unreachable" }
+  if (required >= PASS_THRESHOLD) return { kind: "safe" }
+  return { kind: "needed", grade: required }
+}
