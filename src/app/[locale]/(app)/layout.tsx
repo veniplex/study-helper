@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth/session"
 import { listAvailableModels, resolveModelForUser } from "@/lib/ai/registry"
 import { getAppName } from "@/lib/settings"
 import { getStudyContext } from "@/lib/studies/context"
+import { getUpdateStatus } from "@/lib/update-check"
 import { ChatDock } from "@/components/ai/chat-dock"
 import { Pomodoro } from "@/components/pomodoro"
 import { PageContextProvider } from "@/components/ai/page-context"
@@ -12,29 +13,27 @@ import { BottomNav } from "@/components/layout/bottom-nav"
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession()
-  const [context, { models }, initialModel, appName] = await Promise.all([
+  const isAdmin = session.user.role === "admin"
+  const [context, { models }, initialModel, appName, updateStatus] = await Promise.all([
     getStudyContext(session.user.id),
     listAvailableModels(),
     resolveModelForUser(session.user.id),
     getAppName(),
+    isAdmin ? getUpdateStatus() : null,
   ])
   const aiAvailable = models.length > 0
   const user = {
     name: session.user.name,
     email: session.user.email,
     image: session.user.image,
-    isAdmin: session.user.role === "admin",
+    isAdmin,
   }
   const cookieStore = await cookies()
   const rawWidth = Number(cookieStore.get("sidebar-width")?.value)
-  const sidebarWidth = Number.isFinite(rawWidth)
-    ? Math.min(400, Math.max(200, rawWidth))
-    : 240
+  const sidebarWidth = Number.isFinite(rawWidth) ? Math.min(400, Math.max(200, rawWidth)) : 240
   // All modules of the active program (incl. thesis modules), not just the
   // current semester — the chat can be assigned to any of them.
-  const allModules = context.tree.flatMap((s) =>
-    s.modules.map((m) => ({ id: m.id, name: m.name }))
-  )
+  const allModules = context.tree.flatMap((s) => s.modules.map((m) => ({ id: m.id, name: m.name })))
 
   return (
     <PageContextProvider>
@@ -49,6 +48,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           aiAvailable={aiAvailable}
           appName={appName}
           user={user}
+          newRelease={
+            updateStatus?.updateAvailable
+              ? { version: updateStatus.latest!.latestVersion, url: updateStatus.latest!.htmlUrl }
+              : null
+          }
         />
         <div className="flex flex-1 flex-col pb-16 md:pb-0 md:pl-[var(--sidebar-width,15rem)]">
           <AppHeader user={user} />

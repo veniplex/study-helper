@@ -106,92 +106,91 @@ function SidebarModule({
           },
         ]}
       >
-      <div
-        className={cn(
-          "group flex items-center rounded-md transition-colors",
-          pathname === href
-            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-            : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
-        )}
-      >
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={open}
-          className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-1.5 text-left text-sm font-medium"
+        <div
+          className={cn(
+            "group flex items-center rounded-md transition-colors",
+            pathname === href
+              ? "bg-sidebar-accent text-sidebar-accent-foreground"
+              : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+          )}
         >
-          <span className="relative shrink-0">
-            <ModuleGlyph
-              iconKey={mod.icon}
-              className={cn("size-4", getModuleColorClasses(mod.color).text)}
-            />
-            <span
-              className={cn(
-                "border-sidebar absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full border",
-                STATUS_DOT[mod.status]
-              )}
-            />
-          </span>
-          <span className="truncate">{mod.name}</span>
-        </button>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
-                aria-label={mod.name}
-              />
-            }
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={open}
+            className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-1.5 text-left text-sm font-medium"
           >
-            <MoreHorizontal className="size-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-44">
-            <DropdownMenuItem onClick={() => setEditOpen(true)}>
-              <Pencil className="size-4" />
-              {tCommon("edit")}
-            </DropdownMenuItem>
-            <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
-              <Trash2 className="size-4" />
-              {tCommon("delete")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <button
-          type="button"
-          onClick={onToggle}
-          className="text-muted-foreground hover:text-foreground mr-1 rounded p-1"
-          aria-label={mod.name}
-          aria-expanded={open}
-        >
-          <ChevronRight className={cn("size-4 transition-transform", open && "rotate-90")} />
-        </button>
-      </div>
+            <span className="relative shrink-0">
+              <ModuleGlyph
+                iconKey={mod.icon}
+                className={cn("size-4", getModuleColorClasses(mod.color).text)}
+              />
+              <span
+                className={cn(
+                  "border-sidebar absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full border",
+                  STATUS_DOT[mod.status]
+                )}
+              />
+            </span>
+            <span className="truncate">{mod.name}</span>
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
+                  aria-label={mod.name}
+                />
+              }
+            >
+              <MoreHorizontal className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                <Pencil className="size-4" />
+                {tCommon("edit")}
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+                <Trash2 className="size-4" />
+                {tCommon("delete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="text-muted-foreground hover:text-foreground mr-1 rounded p-1"
+            aria-label={mod.name}
+            aria-expanded={open}
+          >
+            <ChevronRight className={cn("size-4 transition-transform", open && "rotate-90")} />
+          </button>
+        </div>
       </EntityContextMenu>
       {open && (
         <div className="mt-0.5 mb-1 ml-4 space-y-0.5 border-l pl-2">
           {moduleTabs
             .filter((tab) => aiAvailable || tab.key !== "chat")
             .map((tab) => {
-            const tabHref = `${href}${tab.segment}`
-            const active =
-              tab.segment === "" ? pathname === href : pathname.startsWith(tabHref)
-            return (
-              <Link
-                key={tab.key}
-                href={tabHref}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
-                  active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
-                )}
-              >
-                <tab.icon className="size-3.5 shrink-0" />
-                {t(tab.key)}
-              </Link>
-            )
-          })}
+              const tabHref = `${href}${tab.segment}`
+              const active = tab.segment === "" ? pathname === href : pathname.startsWith(tabHref)
+              return (
+                <Link
+                  key={tab.key}
+                  href={tabHref}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+                    active
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                  )}
+                >
+                  <tab.icon className="size-3.5 shrink-0" />
+                  {t(tab.key)}
+                </Link>
+              )
+            })}
         </div>
       )}
       <ModuleDialog
@@ -254,7 +253,12 @@ function SidebarSemester({
         label={semester.name}
         items={[
           { label: tStudies("newModule"), icon: Plus, onSelect: () => setAddModuleOpen(true) },
-          { label: tCommon("edit"), icon: Pencil, onSelect: () => setEditOpen(true), separatorBefore: true },
+          {
+            label: tCommon("edit"),
+            icon: Pencil,
+            onSelect: () => setEditOpen(true),
+            separatorBefore: true,
+          },
           {
             label: tCommon("delete"),
             icon: Trash2,
@@ -263,75 +267,75 @@ function SidebarSemester({
           },
         ]}
       >
-      <div
-        className={cn(
-          "group flex items-center rounded-md transition-colors",
-          active
-            ? "text-foreground"
-            : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
-        )}
-      >
-        <button
-          type="button"
-          onClick={onOpen}
-          aria-expanded={open}
-          className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm font-medium"
+        <div
+          className={cn(
+            "group flex items-center rounded-md transition-colors",
+            active
+              ? "text-foreground"
+              : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+          )}
         >
-          <ChevronRight
-            className={cn("size-4 shrink-0 transition-transform", open && "rotate-90")}
-          />
-          <span className="truncate">{semester.name}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setAddModuleOpen(true)}
-          className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
-          title={tStudies("newModule")}
-        >
-          <Plus className="size-3.5" />
-          <span className="sr-only">{tStudies("newModule")}</span>
-        </button>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground mr-1 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
-                aria-label={semester.name}
-              />
-            }
+          <button
+            type="button"
+            onClick={onOpen}
+            aria-expanded={open}
+            className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm font-medium"
           >
-            <MoreHorizontal className="size-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
-            <DropdownMenuItem onClick={() => setEditOpen(true)}>
-              <Pencil className="size-4" />
-              {tCommon("edit")}
-            </DropdownMenuItem>
-            <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
-              <Trash2 className="size-4" />
-              {tCommon("delete")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+            <ChevronRight
+              className={cn("size-4 shrink-0 transition-transform", open && "rotate-90")}
+            />
+            <span className="truncate">{semester.name}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setAddModuleOpen(true)}
+            className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100"
+            title={tStudies("newModule")}
+          >
+            <Plus className="size-3.5" />
+            <span className="sr-only">{tStudies("newModule")}</span>
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground mr-1 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
+                  aria-label={semester.name}
+                />
+              }
+            >
+              <MoreHorizontal className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                <Pencil className="size-4" />
+                {tCommon("edit")}
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+                <Trash2 className="size-4" />
+                {tCommon("delete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </EntityContextMenu>
       {open && (
         <div className="mt-0.5 mb-1 ml-3 space-y-0.5">
           {/* A thesis-only semester has no study-plan to generate */}
           {!(semester.modules.length === 0 && semester.theses.length > 0) && (
-          <Link
-            href={`/plan/${semester.id}`}
-            className={cn(
-              "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
-              pathname.startsWith(`/plan/${semester.id}`)
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
-            )}
-          >
-            <CalendarClock className="size-4 shrink-0" />
-            {tPlan("title")}
-          </Link>
+            <Link
+              href={`/plan/${semester.id}`}
+              className={cn(
+                "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
+                pathname.startsWith(`/plan/${semester.id}`)
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+              )}
+            >
+              <CalendarClock className="size-4 shrink-0" />
+              {tPlan("title")}
+            </Link>
           )}
           {semester.modules.map((mod) => (
             <SidebarModule
@@ -395,12 +399,14 @@ export function AppSidebar({
   aiAvailable,
   appName,
   user,
+  newRelease = null,
 }: {
   context: StudyContext
   isAdmin: boolean
   aiAvailable: boolean
   appName: string
   user: { name: string; email: string; image?: string | null }
+  newRelease?: { version: string; url: string } | null
 }) {
   const t = useTranslations("nav")
   const tContext = useTranslations("context")
@@ -469,8 +475,7 @@ export function AppSidebar({
       <nav className="flex flex-1 flex-col overflow-y-auto p-3">
         <div className="mb-3 space-y-1">
           {topItems.map((item) => {
-            const active =
-              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
             return (
               <Link key={item.key} href={item.href} className={itemClass(active)}>
                 <item.icon className="size-4.5 shrink-0" />
@@ -508,9 +513,7 @@ export function AppSidebar({
               />
             ))}
             {context.tree.length === 0 && (
-              <p className="text-muted-foreground px-3 py-1 text-xs">
-                {tContext("noSemesters")}
-              </p>
+              <p className="text-muted-foreground px-3 py-1 text-xs">{tContext("noSemesters")}</p>
             )}
             <SemesterDialog
               programId={context.activeProgram.id}
@@ -553,14 +556,30 @@ export function AppSidebar({
           <div className="flex items-center gap-1 px-1">
             <LocaleSwitcher />
             <ThemeToggle />
-            <a
-              href={REPO_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="text-muted-foreground/70 hover:text-muted-foreground ml-auto px-2 text-[11px] transition-colors"
-            >
-              v{APP_VERSION}
-            </a>
+            <div className="ml-auto flex items-center gap-1 px-2">
+              <a
+                href={REPO_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted-foreground/70 hover:text-muted-foreground text-[11px] transition-colors"
+              >
+                v{APP_VERSION}
+              </a>
+              {newRelease && (
+                <a
+                  href={newRelease.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={t("updateAvailable", { version: newRelease.version })}
+                  className="flex items-center"
+                >
+                  <span className="bg-primary block size-1.5 rounded-full" aria-hidden />
+                  <span className="sr-only">
+                    {t("updateAvailable", { version: newRelease.version })}
+                  </span>
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </nav>

@@ -10,7 +10,8 @@
     "ai": "KI-Assistent",
     "thesis": "Abschlussarbeit",
     "settings": "Einstellungen",
-    "admin": "Admin"
+    "admin": "Admin",
+    "updateAvailable": "Version {version} ist auf GitHub verfügbar"
   },
   "theme": {
     "toggle": "Design wechseln",
@@ -94,8 +95,7 @@
       "auth": "Anmeldung & SSO",
       "ai": "KI",
       "email": "E-Mail",
-      "branding": "Branding",
-      "updates": "Updates"
+      "branding": "Branding"
     },
     "users": {
       "title": "Benutzer",
@@ -199,19 +199,6 @@
       "appName": "App-Name",
       "maxUploadMb": "Max. Upload-Größe (MB)",
       "saved": "Gespeichert."
-    },
-    "updates": {
-      "title": "Updates",
-      "description": "Prüft täglich auf GitHub, ob eine neue Version dieser App veröffentlicht wurde",
-      "currentVersion": "Aktuelle Version",
-      "updateAvailable": "Update verfügbar",
-      "newVersion": "Version {version} ist verfügbar",
-      "publishedOn": "Veröffentlicht am {date}",
-      "viewOnGithub": "Release auf GitHub ansehen",
-      "upToDate": "Diese Instanz ist auf dem neuesten Stand.",
-      "neverChecked": "Es wurde noch nicht geprüft.",
-      "lastChecked": "Zuletzt geprüft: {date}",
-      "checkNow": "Jetzt prüfen"
     }
   },
   "assignments": {

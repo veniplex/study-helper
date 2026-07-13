@@ -10,7 +10,6 @@ const items = [
   { key: "ai", href: "/admin/ai" },
   { key: "email", href: "/admin/email" },
   { key: "branding", href: "/admin/branding" },
-  { key: "updates", href: "/admin/updates" },
 ] as const
 
 export function AdminNav() {
