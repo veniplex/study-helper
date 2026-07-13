@@ -110,3 +110,30 @@ export async function searchChunks(
 
   return rows
 }
+
+/**
+ * Falls back to raw excerpts from the module's materials when semantic
+ * search finds nothing usable (no embedding model configured, or the query
+ * text — e.g. a generic deck/quiz name — doesn't match anything). Ensures
+ * generation always has something concrete to ground on instead of
+ * inventing unrelated content.
+ */
+export async function getModuleMaterialSample(
+  userId: string,
+  moduleId: string,
+  options: { maxMaterials?: number; maxCharsPerMaterial?: number } = {}
+): Promise<RagHit[]> {
+  const rows = await db.query.material.findMany({
+    where: and(eq(material.userId, userId), eq(material.moduleId, moduleId)),
+    columns: { id: true, name: true, textContent: true },
+    limit: options.maxMaterials ?? 4,
+  })
+  return rows
+    .filter((r) => r.textContent)
+    .map((r) => ({
+      content: r.textContent!.slice(0, options.maxCharsPerMaterial ?? 1500),
+      materialName: r.name,
+      materialId: r.id,
+      similarity: 0,
+    }))
+}
