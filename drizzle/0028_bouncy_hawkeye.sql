@@ -1,0 +1,1 @@
+ALTER TABLE "degree_program" ADD COLUMN "grade_goal" text;

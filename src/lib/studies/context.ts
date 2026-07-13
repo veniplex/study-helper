@@ -40,6 +40,7 @@ export type ProgramInfo = {
   institution: string | null
   targetEcts: number | null
   gradingSystem: "german" | "points" | "passfail"
+  gradeGoal: string | null
 }
 
 export type StudyContext = {
@@ -123,6 +124,7 @@ export async function getStudyContext(userId: string): Promise<StudyContext> {
       institution: p.institution,
       targetEcts: p.targetEcts,
       gradingSystem: p.gradingSystem,
+      gradeGoal: p.gradeGoal,
     })),
     activeProgram: activeProgram ? { id: activeProgram.id, name: activeProgram.name } : null,
     semesters: semesters.map((s) => ({ id: s.id, name: s.name })),

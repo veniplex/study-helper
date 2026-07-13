@@ -22,6 +22,7 @@ export async function SemesterOverviewCard({
   programId,
   gradingSystem,
   targetEcts,
+  gradeGoal,
   semesters,
   finalGrades,
   preparedness,
@@ -30,6 +31,7 @@ export async function SemesterOverviewCard({
   programId: string
   gradingSystem: GradingSystem
   targetEcts: number | null
+  gradeGoal: string | null
   semesters: SemesterRow[]
   finalGrades: Map<string, FinalGrade>
   preparedness: Map<string, number | null>
@@ -121,7 +123,13 @@ export async function SemesterOverviewCard({
       </CardHeader>
       <CardContent className="space-y-5">
         {gradingSystem === "german" && targetEcts != null && targetEcts > gradedEcts && (
-          <GradeGoal average={average} gradedEcts={gradedEcts} targetEcts={targetEcts} />
+          <GradeGoal
+            programId={programId}
+            average={average}
+            gradedEcts={gradedEcts}
+            targetEcts={targetEcts}
+            initialGoal={gradeGoal}
+          />
         )}
         {semesters.length === 0 ? (
           <p className="text-muted-foreground text-sm">{t("noModules")}</p>

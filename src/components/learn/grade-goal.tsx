@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Target } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { updateGradeGoal } from "@/app/[locale]/(app)/studies/actions"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -12,18 +13,38 @@ import { Label } from "@/components/ui/label"
  * hit a target final grade. German grading only (1.0 best … 4.0 pass).
  */
 export function GradeGoal({
+  programId,
   average,
   gradedEcts,
   targetEcts,
+  initialGoal,
 }: {
+  programId: string
   /** Current ECTS-weighted average over graded modules; null = nothing graded. */
   average: number | null
   /** Sum of ECTS that already have a final grade. */
   gradedEcts: number
   targetEcts: number
+  /** Persisted target grade for this program, e.g. "2.0"; null = never set. */
+  initialGoal: string | null
 }) {
   const t = useTranslations("dashboard.gradeGoal")
-  const [target, setTarget] = React.useState("2.0")
+  const [target, setTarget] = React.useState(initialGoal ?? "2.0")
+  const saveTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  React.useEffect(() => {
+    return () => {
+      if (saveTimeout.current) clearTimeout(saveTimeout.current)
+    }
+  }, [])
+
+  function onTargetChange(value: string) {
+    setTarget(value)
+    if (saveTimeout.current) clearTimeout(saveTimeout.current)
+    saveTimeout.current = setTimeout(() => {
+      updateGradeGoal(programId, value || null).catch(() => {})
+    }, 500)
+  }
 
   const remainingEcts = targetEcts - gradedEcts
   const parsed = Number(target.replace(",", "."))
@@ -42,21 +63,19 @@ export function GradeGoal({
   if (remainingEcts <= 0) return null
 
   return (
-    <div className="flex flex-wrap items-end gap-x-4 gap-y-2 rounded-md border border-dashed px-3 py-2">
-      <div className="space-y-1">
-        <Label htmlFor="grade-goal" className="text-muted-foreground flex items-center gap-1 text-xs font-normal">
-          <Target className="size-3" />
-          {t("label")}
-        </Label>
-        <Input
-          id="grade-goal"
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
-          inputMode="decimal"
-          className="h-7 w-20 text-sm tabular-nums"
-        />
-      </div>
-      <p className="text-sm leading-7">
+    <div className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+      <Target className="size-3 shrink-0" />
+      <Label htmlFor="grade-goal" className="font-normal">
+        {t("label")}
+      </Label>
+      <Input
+        id="grade-goal"
+        value={target}
+        onChange={(e) => onTargetChange(e.target.value)}
+        inputMode="decimal"
+        className="h-6 w-14 px-1.5 text-xs tabular-nums"
+      />
+      <span>
         {!valid
           ? t("invalid")
           : result?.kind === "needed"
@@ -72,7 +91,7 @@ export function GradeGoal({
               : result?.kind === "unreachable"
                 ? t("unreachable")
                 : null}
-      </p>
+      </span>
     </div>
   )
 }

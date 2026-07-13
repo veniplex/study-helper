@@ -47,6 +47,17 @@ export async function updateGradeScale(programId: string, input: unknown) {
   return { ok: true as const }
 }
 
+const gradeGoalSchema = z.string().max(10).nullable()
+
+export async function updateGradeGoal(programId: string, input: unknown) {
+  const session = await requireSession()
+  await ownProgram(programId, session.user.id)
+  const gradeGoal = gradeGoalSchema.parse(input)
+  await db.update(degreeProgram).set({ gradeGoal }).where(eq(degreeProgram.id, programId))
+  revalidatePath("/")
+  return { ok: true as const }
+}
+
 export async function createProgram(input: unknown) {
   const session = await requireSession()
   const data = programSchema.parse(input)

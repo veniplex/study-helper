@@ -55,6 +55,8 @@ export const degreeProgram = pgTable(
     institution: text("institution"),
     targetEcts: integer("target_ects"),
     gradingSystem: text("grading_system").$type<GradingSystem>().notNull().default("german"),
+    /** "What do I need?" target grade shown on the dashboard, e.g. "2.0". */
+    gradeGoal: text("grade_goal"),
     /** Percent→grade scale. null = DEFAULT_GERMAN_SCALE from lib/grades. */
     gradeScale: jsonb("grade_scale").$type<GradeScaleRow[]>(),
     /** How many thesis attempts this program allows. */

@@ -166,6 +166,7 @@ export default async function DashboardPage() {
           programId={activeProgram.id}
           gradingSystem={programInfo.gradingSystem}
           targetEcts={programInfo.targetEcts}
+          gradeGoal={programInfo.gradeGoal}
           currentSemesterId={context.currentSemesterId}
           semesters={context.tree.map((s) => ({
             id: s.id,
