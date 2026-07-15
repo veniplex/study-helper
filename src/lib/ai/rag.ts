@@ -8,6 +8,7 @@ import { deleteFile, readStoredText, saveText } from "@/lib/storage"
 import { getEmbeddingModel } from "./registry"
 import { recordAiAudit, runAi } from "./run"
 import { extractText } from "./extract"
+import { annDimensionFor, populateAnn } from "./ann"
 
 /** Bounded preview of extracted text kept in the DB for quick ILIKE search. */
 const PREVIEW_CHARS = 200_000
@@ -239,6 +240,9 @@ async function embedMaterialText(
       { inputTokens: totalInput, outputTokens: 0, totalTokens: totalInput }
     )
   }
+
+  // Keep the ANN index column current (no-op unless an admin built it).
+  await populateAnn(materialId, embeddingRef)
 }
 
 export type RagHit = {
@@ -329,7 +333,9 @@ async function hybridSearch(
     .orderBy(sql`ts_rank(${materialChunk.contentTsv}, ${tsq}) DESC`)
     .limit(pool)
 
-  // Vector (cosine) ranking.
+  // Vector (cosine) ranking — uses the HNSW ANN column when an admin has built
+  // it for the active model, otherwise the dimensionless sequential scan.
+  const annDim = await annDimensionFor(embeddingRef)
   const model = await getEmbeddingModel(embeddingRef, userId)
   const { embedding } = await runAi(
     {
@@ -342,18 +348,23 @@ async function hybridSearch(
     () => embed({ model, value: query })
   )
   const vectorLiteral = `[${embedding.join(",")}]`
+  const embCol = annDim ? sql.raw("material_chunk.embedding_hnsw") : sql`${materialChunk.embedding}`
+  const distExpr = sql`${embCol} <=> ${vectorLiteral}::vector`
+  const vectorWhere = annDim
+    ? and(base, eq(materialChunk.embeddingModel, embeddingRef), sql`${embCol} IS NOT NULL`)
+    : and(base, eq(materialChunk.embeddingModel, embeddingRef))
   const vector = await db
     .select({
       id: materialChunk.id,
       content: materialChunk.content,
       materialName: material.name,
       materialId: material.id,
-      similarity: sql<number>`1 - (${materialChunk.embedding} <=> ${vectorLiteral}::vector)`,
+      similarity: sql<number>`1 - (${distExpr})`,
     })
     .from(materialChunk)
     .innerJoin(material, eq(materialChunk.materialId, material.id))
-    .where(and(base, eq(materialChunk.embeddingModel, embeddingRef)))
-    .orderBy(sql`${materialChunk.embedding} <=> ${vectorLiteral}::vector`)
+    .where(vectorWhere)
+    .orderBy(distExpr)
     .limit(pool)
 
   return rrfFuse(vector, lexical, limit)

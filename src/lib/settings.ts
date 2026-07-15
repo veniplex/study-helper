@@ -100,6 +100,20 @@ export const aiSettingsSchema = z.object({
 export type AiSettings = z.infer<typeof aiSettingsSchema>
 export type AiProvider = z.infer<typeof aiProviderSchema>
 
+/**
+ * State of the optional pgvector HNSW ANN index (fast vector search). Kept
+ * separate from the (encrypted) `ai` settings because it's operational state,
+ * not a credential, and is written from a background reindex job.
+ */
+export const annSettingsSchema = z.object({
+  status: z.enum(["idle", "building", "ready", "failed"]).default("idle"),
+  /** "providerId:modelId" the index was built for. */
+  embeddingModel: z.string().optional(),
+  /** Embedding dimension the typed ANN column was created with. */
+  dimensions: z.number().int().positive().optional(),
+  error: z.string().optional(),
+})
+
 const settingsSchemas = {
   "auth.registrationMode": registrationModeSchema,
   "auth.socialProviders": socialProvidersSchema,
@@ -108,6 +122,7 @@ const settingsSchemas = {
   branding: brandingSchema,
   uploads: uploadsSchema,
   ai: aiSettingsSchema,
+  "ai.ann": annSettingsSchema,
   "push.vapid": vapidSchema,
   "system.updateCheck": updateCheckSchema,
 } as const
@@ -132,6 +147,7 @@ const defaults: { [K in SettingKey]: SettingValue<K> } = {
   branding: { appName: "StudyHelper" },
   uploads: { maxUploadMb: 200, storageQuotaMbPerUser: 0 },
   ai: { providers: [], monthlyTokenLimitPerUser: 0 },
+  "ai.ann": { status: "idle" },
   "push.vapid": undefined as never, // generated on first use
   "system.updateCheck": undefined as never, // set once the first check has run
 }

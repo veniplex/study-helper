@@ -8,6 +8,7 @@ import { readStoredText } from "@/lib/storage"
 import { getEmbeddingModel, getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { recordAiAudit, runAi, type AiUsage } from "@/lib/ai/run"
 import { chunkText } from "@/lib/ai/rag"
+import { populateAnn } from "@/lib/ai/ann"
 
 /** Leaf chunks grouped per section-summary call. */
 const SECTION_UNITS = 20
@@ -162,6 +163,7 @@ export async function summarizeMaterial(materialId: string): Promise<void> {
   const ai = await getSetting("ai")
   const embeddingRef = ai?.defaultEmbeddingModel
   await storeSummaryChunks(row, sectionSummaries, embeddingRef, acc)
+  if (embeddingRef) await populateAnn(row.id, embeddingRef)
 
   // REDUCE: roll section summaries up into a single document summary.
   let docSummary = sectionSummaries[0]

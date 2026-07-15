@@ -6,17 +6,14 @@ import { requireAdmin } from "@/lib/auth/session"
 import { getSetting } from "@/lib/settings"
 import { daysAgo } from "@/lib/utils"
 import { AiSettingsForm } from "@/components/admin/ai-settings-form"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { AnnIndexCard } from "@/components/admin/ann-index-card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default async function AdminAiPage() {
   await requireAdmin()
   const t = await getTranslations("admin.ai")
   const ai = await getSetting("ai")
+  const ann = await getSetting("ai.ann")
 
   const thirtyDaysAgo = daysAgo(30)
   const usage = await db
@@ -33,8 +30,10 @@ export default async function AdminAiPage() {
 
   return (
     <div className="space-y-6">
-      <AiSettingsForm
-        initial={ai ?? { providers: [], monthlyTokenLimitPerUser: 0 }}
+      <AiSettingsForm initial={ai ?? { providers: [], monthlyTokenLimitPerUser: 0 }} />
+      <AnnIndexCard
+        initial={ann ?? { status: "idle" }}
+        embeddingConfigured={Boolean(ai?.defaultEmbeddingModel)}
       />
       <Card>
         <CardHeader>

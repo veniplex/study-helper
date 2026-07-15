@@ -7,6 +7,7 @@ const globalForBoss = globalThis as unknown as { boss?: Promise<PgBoss> }
 export const QUEUE_EMBED_MATERIAL = "embed-material"
 export const QUEUE_SUMMARIZE_MATERIAL = "summarize-material"
 export const QUEUE_GENERATE_COVERAGE = "generate-coverage"
+export const QUEUE_REINDEX_VECTORS = "reindex-vectors"
 export const QUEUE_UNPACK_ZIP = "unpack-zip"
 export const QUEUE_SEND_REMINDERS = "send-reminders"
 export const QUEUE_DAILY_PLAN = "daily-plan-reminder"
@@ -16,6 +17,7 @@ const ALL_QUEUES = [
   QUEUE_EMBED_MATERIAL,
   QUEUE_SUMMARIZE_MATERIAL,
   QUEUE_GENERATE_COVERAGE,
+  QUEUE_REINDEX_VECTORS,
   QUEUE_UNPACK_ZIP,
   QUEUE_SEND_REMINDERS,
   QUEUE_DAILY_PLAN,
@@ -70,6 +72,11 @@ export async function registerWorkers(boss: PgBoss): Promise<void> {
     for (const job of jobs) {
       await runCoverageGeneration(job.data.jobId)
     }
+  })
+
+  await boss.work(QUEUE_REINDEX_VECTORS, async () => {
+    const { reindexVectors } = await import("@/lib/ai/ann")
+    await reindexVectors()
   })
 
   await boss.work<import("./unpack-zip").UnpackZipPayload>(QUEUE_UNPACK_ZIP, async (jobs) => {
@@ -162,6 +169,16 @@ export async function enqueueGeneration(jobId: string): Promise<void> {
     QUEUE_GENERATE_COVERAGE,
     { jobId },
     { retryLimit: 2, retryDelay: 60, singletonKey: jobId, expireInSeconds: 3600 }
+  )
+}
+
+export async function enqueueReindexVectors(): Promise<void> {
+  const boss = await getBoss()
+  // Long-running maintenance; only one at a time.
+  await boss.send(
+    QUEUE_REINDEX_VECTORS,
+    {},
+    { retryLimit: 0, singletonKey: "reindex", expireInSeconds: 7200 }
   )
 }
 
