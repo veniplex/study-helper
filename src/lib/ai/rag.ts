@@ -1,6 +1,6 @@
 import "server-only"
 import { embed, embedMany } from "ai"
-import { and, eq, inArray, sql } from "drizzle-orm"
+import { and, eq, inArray, sql, type SQL } from "drizzle-orm"
 import { db } from "@/db"
 import { material, materialChunk, type ExtractionStatus } from "@/db/schema"
 import { getSetting } from "@/lib/settings"
@@ -72,7 +72,10 @@ export async function processMaterial(materialId: string): Promise<void> {
       return
     }
 
-    await embedMaterialText(row.userId, materialId, text, embeddingRef)
+    // Contextual retrieval: situate each chunk in its document (title + summary
+    // when available) so ambiguous chunks retrieve better.
+    const contextHeader = [row.name, row.summary].filter(Boolean).join(" — ").slice(0, 500)
+    await embedMaterialText(row.userId, materialId, text, embeddingRef, contextHeader)
     await setStatus(materialId, "ready")
   } catch (error) {
     console.error("[rag] processMaterial failed", materialId, error)
@@ -130,7 +133,8 @@ async function embedMaterialText(
   userId: string,
   materialId: string,
   text: string,
-  embeddingRef: string
+  embeddingRef: string,
+  contextHeader = ""
 ): Promise<void> {
   const chunks = chunkText(text)
   await db
@@ -180,6 +184,8 @@ async function embedMaterialText(
     }
     if (values.length === 0) continue
 
+    // Embed the contextualized text (header + chunk); store the raw chunk.
+    const embedInputs = contextHeader ? values.map((v) => `${contextHeader}\n\n${v}`) : values
     const { embeddings, aiUsage } = await runAi(
       {
         userId,
@@ -190,7 +196,7 @@ async function embedMaterialText(
         entityId: materialId,
         audit: false, // one aggregated audit entry per material (below)
       },
-      () => embedMany({ model, values })
+      () => embedMany({ model, values: embedInputs })
     )
     totalInput += aiUsage.inputTokens
     newlyEmbedded += values.length
@@ -203,6 +209,7 @@ async function embedMaterialText(
         embedding: embeddings[k],
         embeddingModel: embeddingRef,
         level: 0,
+        contextualHeader: contextHeader || null,
       }))
     )
     embeddedCount += values.length
@@ -232,16 +239,78 @@ export type RagHit = {
   similarity: number
 }
 
-/** Cosine-similarity search over the user's material chunks. */
-export async function searchChunks(
+type ScoredRow = {
+  id: string
+  content: string
+  materialName: string
+  materialId: string
+  similarity: number
+}
+
+/**
+ * Reciprocal Rank Fusion of a vector ranking and a lexical ranking. Each list
+ * contributes 1/(K+rank); items appearing in both rise to the top. This makes
+ * retrieval robust to the vector model missing exact terms/acronyms/formulae
+ * (which lexical catches) and vice-versa.
+ */
+function rrfFuse(
+  vector: ScoredRow[],
+  lexical: Omit<ScoredRow, "similarity">[],
+  limit: number
+): RagHit[] {
+  const K = 60
+  const acc = new Map<string, { hit: RagHit; score: number }>()
+  vector.forEach((r, i) => {
+    acc.set(r.id, {
+      hit: { content: r.content, materialName: r.materialName, materialId: r.materialId, similarity: r.similarity },
+      score: 1 / (K + i + 1),
+    })
+  })
+  lexical.forEach((r, i) => {
+    const s = 1 / (K + i + 1)
+    const existing = acc.get(r.id)
+    if (existing) existing.score += s
+    else
+      acc.set(r.id, {
+        hit: { content: r.content, materialName: r.materialName, materialId: r.materialId, similarity: 0 },
+        score: s,
+      })
+  })
+  return [...acc.values()]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((x) => x.hit)
+}
+
+/** Hybrid (vector + full-text) retrieval fused with RRF. */
+async function hybridSearch(
   userId: string,
   query: string,
-  options: { moduleId?: string | null; limit?: number } = {}
+  extraWhere: SQL[],
+  limit: number
 ): Promise<RagHit[]> {
   const ai = await getSetting("ai")
   const embeddingRef = ai?.defaultEmbeddingModel
   if (!embeddingRef) return []
+  const pool = Math.max(limit * 4, 24)
+  const base = and(eq(material.userId, userId), ...extraWhere)
 
+  // Lexical ranking via Postgres full-text search over the generated tsvector.
+  const tsq = sql`plainto_tsquery('simple', ${query})`
+  const lexical = await db
+    .select({
+      id: materialChunk.id,
+      content: materialChunk.content,
+      materialName: material.name,
+      materialId: material.id,
+    })
+    .from(materialChunk)
+    .innerJoin(material, eq(materialChunk.materialId, material.id))
+    .where(and(base, sql`${materialChunk.contentTsv} @@ ${tsq}`))
+    .orderBy(sql`ts_rank(${materialChunk.contentTsv}, ${tsq}) DESC`)
+    .limit(pool)
+
+  // Vector (cosine) ranking.
   const model = await getEmbeddingModel(embeddingRef, userId)
   const { embedding } = await runAi(
     {
@@ -254,9 +323,9 @@ export async function searchChunks(
     () => embed({ model, value: query })
   )
   const vectorLiteral = `[${embedding.join(",")}]`
-
-  const rows = await db
+  const vector = await db
     .select({
+      id: materialChunk.id,
       content: materialChunk.content,
       materialName: material.name,
       materialId: material.id,
@@ -264,24 +333,28 @@ export async function searchChunks(
     })
     .from(materialChunk)
     .innerJoin(material, eq(materialChunk.materialId, material.id))
-    .where(
-      and(
-        eq(material.userId, userId),
-        eq(materialChunk.embeddingModel, embeddingRef),
-        ...(options.moduleId ? [eq(material.moduleId, options.moduleId)] : [])
-      )
-    )
+    .where(and(base, eq(materialChunk.embeddingModel, embeddingRef)))
     .orderBy(sql`${materialChunk.embedding} <=> ${vectorLiteral}::vector`)
-    .limit(options.limit ?? 6)
+    .limit(pool)
 
-  return rows
+  return rrfFuse(vector, lexical, limit)
+}
+
+/** Hybrid (vector + lexical, RRF-fused) search over the user's material chunks. */
+export async function searchChunks(
+  userId: string,
+  query: string,
+  options: { moduleId?: string | null; limit?: number } = {}
+): Promise<RagHit[]> {
+  const extra = options.moduleId ? [eq(material.moduleId, options.moduleId)] : []
+  return hybridSearch(userId, query, extra, options.limit ?? 6)
 }
 
 /**
- * Cosine-similarity search scoped to specific materials (topic grounding). Used
- * by coverage-driven generation to pull substantial, focused context for one
- * topic across exactly the materials that back it — far more than the global
- * top-k the interactive path uses. Searches leaf chunks (level 0) only.
+ * Hybrid search scoped to specific materials (topic grounding). Used by
+ * coverage-driven generation to pull substantial, focused context for one topic
+ * across exactly the materials that back it — far more than the global top-k the
+ * interactive path uses. Searches leaf chunks (level 0) only.
  */
 export async function searchChunksInMaterials(
   userId: string,
@@ -290,36 +363,12 @@ export async function searchChunksInMaterials(
   options: { limit?: number } = {}
 ): Promise<RagHit[]> {
   if (materialIds.length === 0) return []
-  const ai = await getSetting("ai")
-  const embeddingRef = ai?.defaultEmbeddingModel
-  if (!embeddingRef) return []
-
-  const model = await getEmbeddingModel(embeddingRef, userId)
-  const { embedding } = await runAi(
-    { userId, model: embeddingRef, feature: "embedding-query", operation: "ai_embed", audit: false },
-    () => embed({ model, value: query })
+  return hybridSearch(
+    userId,
+    query,
+    [inArray(materialChunk.materialId, materialIds), eq(materialChunk.level, 0)],
+    options.limit ?? 16
   )
-  const vectorLiteral = `[${embedding.join(",")}]`
-
-  return db
-    .select({
-      content: materialChunk.content,
-      materialName: material.name,
-      materialId: material.id,
-      similarity: sql<number>`1 - (${materialChunk.embedding} <=> ${vectorLiteral}::vector)`,
-    })
-    .from(materialChunk)
-    .innerJoin(material, eq(materialChunk.materialId, material.id))
-    .where(
-      and(
-        eq(material.userId, userId),
-        eq(materialChunk.embeddingModel, embeddingRef),
-        eq(materialChunk.level, 0),
-        inArray(materialChunk.materialId, materialIds)
-      )
-    )
-    .orderBy(sql`${materialChunk.embedding} <=> ${vectorLiteral}::vector`)
-    .limit(options.limit ?? 16)
 }
 
 /**

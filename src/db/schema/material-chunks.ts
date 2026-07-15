@@ -1,5 +1,5 @@
 import { type AnyPgColumn, customType, index, integer, pgTable, text } from "drizzle-orm/pg-core"
-import { relations } from "drizzle-orm"
+import { relations, sql, type SQL } from "drizzle-orm"
 import { material } from "./materials"
 
 /**
@@ -10,6 +10,11 @@ const vector = customType<{ data: number[]; driverData: string }>({
   dataType: () => "vector",
   toDriver: (value) => `[${value.join(",")}]`,
   fromDriver: (value) => JSON.parse(value as string) as number[],
+})
+
+/** Postgres full-text search vector (generated from `content`). */
+const tsvector = customType<{ data: string }>({
+  dataType: () => "tsvector",
 })
 
 export const materialChunk = pgTable(
@@ -36,10 +41,21 @@ export const materialChunk = pgTable(
     parentChunkId: text("parent_chunk_id").references((): AnyPgColumn => materialChunk.id, {
       onDelete: "set null",
     }),
+    /**
+     * Short context prefix (e.g. document title / section) prepended to the text
+     * before embedding, to situate the chunk in its document (contextual
+     * retrieval). Improves retrieval precision on ambiguous chunks.
+     */
+    contextualHeader: text("contextual_header"),
+    /** Full-text search vector over `content`, for hybrid (lexical + vector) search. */
+    contentTsv: tsvector("content_tsv").generatedAlwaysAs(
+      (): SQL => sql`to_tsvector('simple', ${materialChunk.content})`
+    ),
   },
   (t) => [
     index("material_chunk_materialId_idx").on(t.materialId),
     index("material_chunk_material_level_idx").on(t.materialId, t.level),
+    index("material_chunk_tsv_idx").using("gin", t.contentTsv),
   ]
 )
 
