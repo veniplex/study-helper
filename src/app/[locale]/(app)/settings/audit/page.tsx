@@ -20,16 +20,25 @@ export default async function AuditPage() {
 
   return (
     <AuditLogView
-      entries={entries.map((e) => ({
-        id: e.id,
-        actor: e.actor,
-        operation: e.operation,
-        entityType: e.entityType,
-        entityLabel: e.entityLabel,
-        undone: e.undone,
-        createdAt: e.createdAt.toISOString(),
-        undoable: UNDOABLE_OPS.has(e.operation),
-      }))}
+      entries={entries.map((e) => {
+        const meta =
+          e.after && typeof e.after === "object" && (e.after as { kind?: string }).kind === "ai_usage"
+            ? (e.after as { totalTokens?: number; model?: string; feature?: string })
+            : null
+        return {
+          id: e.id,
+          actor: e.actor,
+          operation: e.operation,
+          entityType: e.entityType,
+          entityLabel: e.entityLabel,
+          undone: e.undone,
+          createdAt: e.createdAt.toISOString(),
+          undoable: UNDOABLE_OPS.has(e.operation),
+          tokens: typeof meta?.totalTokens === "number" ? meta.totalTokens : null,
+          model: meta?.model ?? null,
+          feature: meta?.feature ?? null,
+        }
+      })}
     />
   )
 }

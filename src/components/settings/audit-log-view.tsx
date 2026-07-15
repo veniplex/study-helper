@@ -31,9 +31,24 @@ export type AuditEntry = {
   undone: boolean
   createdAt: string
   undoable: boolean
+  /** Token count for AI operations (null for non-AI CRUD). */
+  tokens: number | null
+  model: string | null
+  feature: string | null
 }
 
-const OPERATIONS = ["create", "update", "delete", "undo", "ai_read"] as const
+const OPERATIONS = [
+  "create",
+  "update",
+  "delete",
+  "undo",
+  "ai_read",
+  "ai_generate",
+  "ai_embed",
+  "ai_summarize",
+  "ai_transcribe",
+  "ai_extract",
+] as const
 const KNOWN_ENTITIES = [
   "deck",
   "flashcard",
@@ -128,6 +143,15 @@ export function AuditLogView({ entries }: { entries: AuditEntry[] }) {
                   : entry.entityType}
               </span>
               <span className="min-w-0 flex-1 truncate font-medium">{entry.entityLabel}</span>
+              {entry.tokens != null && (
+                <Badge
+                  variant="outline"
+                  className="text-muted-foreground gap-1"
+                  title={[entry.feature, entry.model].filter(Boolean).join(" · ") || undefined}
+                >
+                  {format.number(entry.tokens)} {t("tokens")}
+                </Badge>
+              )}
               <span className="text-muted-foreground text-xs">
                 {format.dateTime(new Date(entry.createdAt), {
                   dateStyle: "short",

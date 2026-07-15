@@ -260,8 +260,14 @@
       "update": "Updated",
       "delete": "Deleted",
       "undo": "Undone",
-      "ai_read": "AI read access"
+      "ai_read": "AI read access",
+      "ai_generate": "AI generation",
+      "ai_embed": "AI embedding",
+      "ai_summarize": "AI summary",
+      "ai_transcribe": "AI transcription",
+      "ai_extract": "AI extraction"
     },
+    "tokens": "tokens",
     "entity": {
       "deck": "Flashcard deck",
       "flashcard": "Flashcard",
