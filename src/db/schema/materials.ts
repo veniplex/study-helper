@@ -15,6 +15,19 @@ import { studyModule } from "./studies"
 export type MaterialKind = "file" | "link"
 
 /**
+ * Lifecycle of a material's text extraction + embedding pipeline. Lets the UI
+ * show progress and lets the pipeline resume/skip already-processed materials.
+ */
+export type ExtractionStatus =
+  | "pending"
+  | "extracting"
+  | "embedding"
+  | "summarizing"
+  | "ready"
+  | "failed"
+  | "skipped"
+
+/**
  * A folder in a module's material tree. Self-referencing: `parentId` null means
  * a root-level folder. Sibling names are kept unique via a COALESCE expression
  * index added in the migration (Drizzle's `.unique()` treats NULL parents as
@@ -78,8 +91,31 @@ export const material = pgTable(
     folder: text("folder"),
     /** The folder this material lives in, or null for the module root. */
     folderId: text("folder_id").references(() => materialFolder.id, { onDelete: "set null" }),
-    /** Extracted plain text (any supported type) — basis for search and RAG. */
+    /**
+     * Bounded preview of the extracted plain text (kept small for quick ILIKE
+     * search). The full extracted text lives on disk at `textStoragePath` so
+     * multi-GB documents are not capped by a single DB column.
+     */
     textContent: text("text_content"),
+    /** Relative path (inside the upload dir) to the full extracted plain text. */
+    textStoragePath: text("text_storage_path"),
+    /** Length in characters of the full extracted text. */
+    charCount: integer("char_count"),
+    /** sha256 of the file bytes — used to skip re-processing unchanged content. */
+    contentHash: text("content_hash"),
+    /** AI-generated document-level summary (basis for the module outline). */
+    summary: text("summary"),
+    /** Text extraction + embedding lifecycle state. */
+    extractionStatus: text("extraction_status")
+      .$type<ExtractionStatus>()
+      .notNull()
+      .default("pending"),
+    /** Last extraction/embedding error message, if any. */
+    extractionError: text("extraction_error"),
+    /** Total number of leaf chunks for this material (null until chunked). */
+    chunksTotal: integer("chunks_total"),
+    /** Number of leaf chunks already embedded (for resumable/progress display). */
+    chunksEmbedded: integer("chunks_embedded"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -90,6 +126,7 @@ export const material = pgTable(
     index("material_userId_idx").on(t.userId),
     index("material_moduleId_idx").on(t.moduleId),
     index("material_folderId_idx").on(t.folderId),
+    index("material_contentHash_idx").on(t.userId, t.contentHash),
   ]
 )
 

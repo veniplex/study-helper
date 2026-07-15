@@ -66,7 +66,13 @@ export function getBoss(): Promise<PgBoss> {
 
 export async function enqueueEmbedMaterial(materialId: string): Promise<void> {
   const boss = await getBoss()
-  await boss.send(QUEUE_EMBED_MATERIAL, { materialId }, { retryLimit: 2, retryDelay: 30 })
+  // singletonKey coalesces duplicate enqueues for the same material; processing
+  // is idempotent/resumable so retries pick up where a crash left off.
+  await boss.send(
+    QUEUE_EMBED_MATERIAL,
+    { materialId },
+    { retryLimit: 5, retryDelay: 30, singletonKey: materialId }
+  )
 }
 
 export async function enqueueUnpackZip(

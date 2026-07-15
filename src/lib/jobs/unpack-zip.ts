@@ -1,4 +1,6 @@
 import "server-only"
+import { createHash } from "node:crypto"
+import { and, eq } from "drizzle-orm"
 import { unzipSync } from "fflate"
 import { db } from "@/db"
 import { material } from "@/db/schema"
@@ -53,6 +55,18 @@ export async function unpackZip(payload: UnpackZipPayload): Promise<void> {
         console.warn(`[unpack-zip] storage quota reached; stopping unpack of ${zipName}`)
         break
       }
+      const contentHash = createHash("sha256").update(entry.data).digest("hex")
+      // Skip an identical file already present in this module (incremental reuse).
+      const duplicate = await db.query.material.findFirst({
+        where: and(
+          eq(material.userId, userId),
+          eq(material.moduleId, moduleId),
+          eq(material.contentHash, contentHash)
+        ),
+        columns: { id: true },
+      })
+      if (duplicate) continue
+
       const folderId = await findOrCreateFolderPath(
         userId,
         moduleId,
@@ -70,7 +84,9 @@ export async function unpackZip(payload: UnpackZipPayload): Promise<void> {
           storagePath,
           mimeType: safeInlineMime(mimeFromName(entry.name)),
           sizeBytes: entry.data.byteLength,
+          contentHash,
           folderId,
+          extractionStatus: "pending",
         })
         .returning({ id: material.id })
       try {

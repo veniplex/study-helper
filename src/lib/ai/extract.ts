@@ -6,8 +6,13 @@ import { extractPptxText, extractXlsxText } from "./office"
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? path.join(process.cwd(), "data", "uploads")
 
-/** Cap on plain-text/code files read verbatim, to avoid loading huge blobs. */
-const MAX_TEXT_BYTES = 2 * 1024 * 1024
+/**
+ * Cap on plain-text/code files read verbatim. Raised well above the old 2 MB so
+ * large lecture transcripts / CSV exports are covered; still bounded so a single
+ * pathological file can't exhaust memory (binary formats go through their own
+ * parsers). Configurable via MAX_TEXT_EXTRACT_MB.
+ */
+const MAX_TEXT_BYTES = (Number(process.env.MAX_TEXT_EXTRACT_MB) || 25) * 1024 * 1024
 
 function absolute(storagePath: string): string {
   const abs = path.resolve(UPLOAD_DIR, storagePath)

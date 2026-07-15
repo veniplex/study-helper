@@ -2,10 +2,17 @@ import "server-only"
 import { embed, embedMany } from "ai"
 import { and, eq, sql } from "drizzle-orm"
 import { db } from "@/db"
-import { material, materialChunk } from "@/db/schema"
+import { material, materialChunk, type ExtractionStatus } from "@/db/schema"
 import { getSetting } from "@/lib/settings"
+import { deleteFile, readStoredText, saveText } from "@/lib/storage"
 import { getEmbeddingModel } from "./registry"
+import { recordAiAudit, runAi } from "./run"
 import { extractText } from "./extract"
+
+/** Bounded preview of extracted text kept in the DB for quick ILIKE search. */
+const PREVIEW_CHARS = 200_000
+/** How many chunks to embed per provider call. */
+const EMBED_BATCH = 96
 
 const CHUNK_SIZE = 1200
 const CHUNK_OVERLAP = 200
@@ -30,55 +37,192 @@ export function chunkText(text: string): string[] {
   return chunks.filter((c) => c.length > 20)
 }
 
+async function setStatus(
+  materialId: string,
+  status: ExtractionStatus,
+  extra: { extractionError?: string | null } = {}
+): Promise<void> {
+  await db.update(material).set({ extractionStatus: status, ...extra }).where(eq(material.id, materialId))
+}
+
 /**
- * Extracts text, chunks and embeds a material. Extraction always runs (feeds
- * full-text search); embedding only when a default embedding model is set.
+ * Extracts text, chunks and embeds a material. Idempotent and resumable:
+ * - text is extracted once and stored on disk (`textStoragePath`); re-runs reuse
+ *   it instead of re-OCR-ing / re-transcribing (which cost tokens),
+ * - embedding runs in bounded batches, skipping chunks already embedded for the
+ *   active model, so a retried job resumes where it left off.
+ * Extraction always runs (feeds search); embedding only when a default embedding
+ * model is configured.
  */
 export async function processMaterial(materialId: string): Promise<void> {
   const row = await db.query.material.findFirst({ where: eq(material.id, materialId) })
   if (!row || row.kind !== "file" || !row.storagePath) return
 
-  let text = await extractText(row.storagePath, row.mimeType)
-  // For media without extractable text (images, audio, video), fall back to the
-  // AI pipeline: OCR/describe images, transcribe audio/video. Best-effort.
-  if (!text) {
-    const { classifyFile } = await import("./filetypes")
-    const strategy = classifyFile(row.storagePath, row.mimeType)
-    if (strategy === "image") {
-      const { extractImageText } = await import("./media")
-      text = await extractImageText(row.storagePath, row.mimeType, row.userId)
-    } else if (strategy === "audio") {
-      const { transcribeMedia } = await import("./media")
-      text = await transcribeMedia(row.storagePath, row.userId)
+  try {
+    const text = await ensureExtractedText(row)
+    if (text == null) {
+      await setStatus(materialId, "skipped")
+      return
+    }
+
+    const ai = await getSetting("ai")
+    const embeddingRef = ai?.defaultEmbeddingModel
+    if (!embeddingRef) {
+      await setStatus(materialId, "ready")
+      return
+    }
+
+    await embedMaterialText(row.userId, materialId, text, embeddingRef)
+    await setStatus(materialId, "ready")
+  } catch (error) {
+    console.error("[rag] processMaterial failed", materialId, error)
+    await setStatus(materialId, "failed", {
+      extractionError:
+        error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500),
+    })
+    throw error
+  }
+}
+
+/**
+ * Returns the material's full extracted text, reusing the on-disk copy when the
+ * content is unchanged. On first extraction the full text is written to disk and
+ * a bounded preview + char count are stored on the row (so multi-GB documents
+ * are not capped by a single DB column, and re-runs don't re-extract).
+ */
+async function ensureExtractedText(row: typeof material.$inferSelect): Promise<string | null> {
+  if (row.textStoragePath && row.charCount != null) {
+    try {
+      return await readStoredText(row.textStoragePath)
+    } catch {
+      // stored text missing — fall through and re-extract
     }
   }
-  if (!text) return
 
+  await setStatus(row.id, "extracting")
+  let text = await extractText(row.storagePath!, row.mimeType)
+  if (!text) {
+    // Media without extractable text: OCR images, transcribe audio/video.
+    const { classifyFile } = await import("./filetypes")
+    const strategy = classifyFile(row.storagePath!, row.mimeType)
+    if (strategy === "image") {
+      const { extractImageText } = await import("./media")
+      text = await extractImageText(row.storagePath!, row.mimeType, row.userId)
+    } else if (strategy === "audio") {
+      const { transcribeMedia } = await import("./media")
+      text = await transcribeMedia(row.storagePath!, row.userId)
+    }
+  }
+  if (!text) return null
+
+  const textStoragePath = await saveText(row.userId, `${row.id}.txt`, text)
+  const previous = row.textStoragePath
   await db
     .update(material)
-    .set({ textContent: text.slice(0, 500_000) })
-    .where(eq(material.id, materialId))
+    .set({ textStoragePath, charCount: text.length, textContent: text.slice(0, PREVIEW_CHARS) })
+    .where(eq(material.id, row.id))
+  if (previous && previous !== textStoragePath) await deleteFile(previous)
+  return text
+}
 
-  const ai = await getSetting("ai")
-  const embeddingRef = ai?.defaultEmbeddingModel
-  if (!embeddingRef) return
-
+/** Chunks and embeds a material's text incrementally (batched, resumable). */
+async function embedMaterialText(
+  userId: string,
+  materialId: string,
+  text: string,
+  embeddingRef: string
+): Promise<void> {
   const chunks = chunkText(text)
+  await db
+    .update(material)
+    .set({ extractionStatus: "embedding", chunksTotal: chunks.length, chunksEmbedded: 0 })
+    .where(eq(material.id, materialId))
   if (chunks.length === 0) return
 
-  const model = await getEmbeddingModel(embeddingRef, row.userId)
-  const { embeddings } = await embedMany({ model, values: chunks })
+  // Which leaf chunks are already embedded for the active model? (resumability)
+  const existing = await db
+    .select({ chunkIndex: materialChunk.chunkIndex })
+    .from(materialChunk)
+    .where(
+      and(
+        eq(materialChunk.materialId, materialId),
+        eq(materialChunk.embeddingModel, embeddingRef),
+        eq(materialChunk.level, 0)
+      )
+    )
+  const done = new Set(existing.map((e) => e.chunkIndex))
+  // If the chunk layout changed (e.g. chunker tuning), redo this model's chunks.
+  if (done.size > 0 && done.size !== chunks.length) {
+    await db
+      .delete(materialChunk)
+      .where(
+        and(
+          eq(materialChunk.materialId, materialId),
+          eq(materialChunk.embeddingModel, embeddingRef),
+          eq(materialChunk.level, 0)
+        )
+      )
+    done.clear()
+  }
 
-  await db.delete(materialChunk).where(eq(materialChunk.materialId, materialId))
-  await db.insert(materialChunk).values(
-    chunks.map((content, i) => ({
-      materialId,
-      chunkIndex: i,
-      content,
-      embedding: embeddings[i],
-      embeddingModel: embeddingRef,
-    }))
-  )
+  const model = await getEmbeddingModel(embeddingRef, userId)
+  let embeddedCount = done.size
+  let totalInput = 0
+  let newlyEmbedded = 0
+
+  for (let start = 0; start < chunks.length; start += EMBED_BATCH) {
+    const idxs: number[] = []
+    const values: string[] = []
+    for (let i = start; i < Math.min(start + EMBED_BATCH, chunks.length); i++) {
+      if (done.has(i)) continue
+      idxs.push(i)
+      values.push(chunks[i])
+    }
+    if (values.length === 0) continue
+
+    const { embeddings, aiUsage } = await runAi(
+      {
+        userId,
+        model: embeddingRef,
+        feature: "embedding",
+        operation: "ai_embed",
+        entityType: "material",
+        entityId: materialId,
+        audit: false, // one aggregated audit entry per material (below)
+      },
+      () => embedMany({ model, values })
+    )
+    totalInput += aiUsage.inputTokens
+    newlyEmbedded += values.length
+
+    await db.insert(materialChunk).values(
+      idxs.map((idx, k) => ({
+        materialId,
+        chunkIndex: idx,
+        content: chunks[idx],
+        embedding: embeddings[k],
+        embeddingModel: embeddingRef,
+        level: 0,
+      }))
+    )
+    embeddedCount += values.length
+    await db.update(material).set({ chunksEmbedded: embeddedCount }).where(eq(material.id, materialId))
+  }
+
+  if (newlyEmbedded > 0) {
+    await recordAiAudit(
+      {
+        userId,
+        model: embeddingRef,
+        feature: "embedding",
+        operation: "ai_embed",
+        entityType: "material",
+        entityId: materialId,
+        itemCount: newlyEmbedded,
+      },
+      { inputTokens: totalInput, outputTokens: 0, totalTokens: totalInput }
+    )
+  }
 }
 
 export type RagHit = {
@@ -99,7 +243,16 @@ export async function searchChunks(
   if (!embeddingRef) return []
 
   const model = await getEmbeddingModel(embeddingRef, userId)
-  const { embedding } = await embed({ model, value: query })
+  const { embedding } = await runAi(
+    {
+      userId,
+      model: embeddingRef,
+      feature: "embedding-query",
+      operation: "ai_embed",
+      audit: false, // retrieval happens constantly — ledger only, no audit spam
+    },
+    () => embed({ model, value: query })
+  )
   const vectorLiteral = `[${embedding.join(",")}]`
 
   const rows = await db
