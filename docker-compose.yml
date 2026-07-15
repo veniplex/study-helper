@@ -26,6 +26,30 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    # To move background jobs (embedding, summarization, coverage generation) off
+    # the web tier, set WORKERS_IN_PROCESS: "false" here and run the worker
+    # service below. By default (unset) the app runs workers in-process — no
+    # extra service needed.
+    # environment:
+    #   WORKERS_IN_PROCESS: "false"
+
+  # Optional dedicated job worker. Runs `npm run worker`, which uses tsx — so it
+  # needs an image that includes the TS sources + devDependencies (a source
+  # checkout, or a custom image built from the repo). The default prebuilt
+  # standalone image runs jobs in-process instead, so this service is opt-in.
+  # worker:
+  #   image: ghcr.io/veniplex/study-helper:${STUDYHELPER_VERSION:-latest}
+  #   command: ["npm", "run", "worker"]
+  #   environment:
+  #     DATABASE_URL: postgres://study:${POSTGRES_PASSWORD:-study}@db:5432/study
+  #     UPLOAD_DIR: /data/uploads
+  #     TZ: ${TZ:-Europe/Berlin}
+  #   volumes:
+  #     - ${DATA_DIR:-./data}/uploads:/data/uploads
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   restart: unless-stopped
 
   db:
     image: pgvector/pgvector:pg17

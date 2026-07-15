@@ -12,13 +12,43 @@ export const QUEUE_SEND_REMINDERS = "send-reminders"
 export const QUEUE_DAILY_PLAN = "daily-plan-reminder"
 export const QUEUE_CHECK_UPDATES = "check-updates"
 
-async function start(): Promise<PgBoss> {
+const ALL_QUEUES = [
+  QUEUE_EMBED_MATERIAL,
+  QUEUE_SUMMARIZE_MATERIAL,
+  QUEUE_GENERATE_COVERAGE,
+  QUEUE_UNPACK_ZIP,
+  QUEUE_SEND_REMINDERS,
+  QUEUE_DAILY_PLAN,
+  QUEUE_CHECK_UPDATES,
+]
+
+/** Whether this process should run job handlers in-process (default true). Set
+ *  WORKERS_IN_PROCESS=false on the web tier when a dedicated worker runs. */
+function workersInProcess(): boolean {
+  return (process.env.WORKERS_IN_PROCESS ?? "true").toLowerCase() !== "false"
+}
+
+/**
+ * Connects pg-boss, ensures every queue exists and installs the cron schedules.
+ * Runs in every process that needs to enqueue jobs (web tier and worker alike).
+ */
+export async function startClient(): Promise<PgBoss> {
   const boss = new PgBoss({ connectionString: env.DATABASE_URL })
   boss.on("error", (error: Error) => console.error("[pg-boss]", error))
   await boss.start()
-  await boss.createQueue(QUEUE_EMBED_MATERIAL)
-  await boss.createQueue(QUEUE_SEND_REMINDERS)
+  for (const queue of ALL_QUEUES) await boss.createQueue(queue)
+  await boss.schedule(QUEUE_SEND_REMINDERS, "*/5 * * * *")
+  await boss.schedule(QUEUE_DAILY_PLAN, "0 7 * * *")
+  await boss.schedule(QUEUE_CHECK_UPDATES, "0 6 * * *")
+  return boss
+}
 
+/**
+ * Registers all job handlers. Runs in whichever process should do the work —
+ * the web server by default, or a standalone worker (see startDedicatedWorker)
+ * when the web tier sets WORKERS_IN_PROCESS=false.
+ */
+export async function registerWorkers(boss: PgBoss): Promise<void> {
   await boss.work<{ materialId: string }>(QUEUE_EMBED_MATERIAL, async (jobs) => {
     const { processMaterial } = await import("@/lib/ai/rag")
     for (const job of jobs) {
@@ -28,7 +58,6 @@ async function start(): Promise<PgBoss> {
     }
   })
 
-  await boss.createQueue(QUEUE_SUMMARIZE_MATERIAL)
   await boss.work<{ materialId: string }>(QUEUE_SUMMARIZE_MATERIAL, async (jobs) => {
     const { summarizeMaterial } = await import("@/lib/ai/generation/summarize")
     for (const job of jobs) {
@@ -36,7 +65,6 @@ async function start(): Promise<PgBoss> {
     }
   })
 
-  await boss.createQueue(QUEUE_GENERATE_COVERAGE)
   await boss.work<{ jobId: string }>(QUEUE_GENERATE_COVERAGE, async (jobs) => {
     const { runCoverageGeneration } = await import("@/lib/ai/generation/generate")
     for (const job of jobs) {
@@ -44,7 +72,6 @@ async function start(): Promise<PgBoss> {
     }
   })
 
-  await boss.createQueue(QUEUE_UNPACK_ZIP)
   await boss.work<import("./unpack-zip").UnpackZipPayload>(QUEUE_UNPACK_ZIP, async (jobs) => {
     const { unpackZip } = await import("./unpack-zip")
     for (const job of jobs) {
@@ -56,16 +83,12 @@ async function start(): Promise<PgBoss> {
     const { sendDueReminders } = await import("./reminders")
     await sendDueReminders()
   })
-  await boss.schedule(QUEUE_SEND_REMINDERS, "*/5 * * * *")
 
-  await boss.createQueue(QUEUE_DAILY_PLAN)
   await boss.work(QUEUE_DAILY_PLAN, async () => {
     const { sendDailyPlanReminders } = await import("./reminders")
     await sendDailyPlanReminders()
   })
-  await boss.schedule(QUEUE_DAILY_PLAN, "0 7 * * *")
 
-  await boss.createQueue(QUEUE_CHECK_UPDATES)
   await boss.work(QUEUE_CHECK_UPDATES, async () => {
     const { checkForUpdate } = await import("@/lib/update-check")
     try {
@@ -74,13 +97,40 @@ async function start(): Promise<PgBoss> {
       console.error("[check-updates]", error)
     }
   })
-  await boss.schedule(QUEUE_CHECK_UPDATES, "0 6 * * *")
+}
 
+async function start(): Promise<PgBoss> {
+  const boss = await startClient()
+  if (workersInProcess()) {
+    await registerWorkers(boss)
+    console.log("[pg-boss] job workers running in-process")
+  } else {
+    console.log(
+      "[pg-boss] in-process workers disabled (WORKERS_IN_PROCESS=false) — expecting a dedicated worker"
+    )
+  }
   return boss
 }
 
 export function getBoss(): Promise<PgBoss> {
   if (!globalForBoss.boss) globalForBoss.boss = start()
+  return globalForBoss.boss
+}
+
+/**
+ * Entry point for a standalone worker process (see src/worker.ts). Registers
+ * handlers unconditionally and caches the instance so the module's enqueue
+ * helpers reuse the same connection instead of spinning up a second one.
+ */
+export function startDedicatedWorker(): Promise<PgBoss> {
+  if (!globalForBoss.boss) {
+    globalForBoss.boss = (async () => {
+      const boss = await startClient()
+      await registerWorkers(boss)
+      console.log("[worker] pg-boss dedicated worker started")
+      return boss
+    })()
+  }
   return globalForBoss.boss
 }
 
