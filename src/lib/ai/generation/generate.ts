@@ -16,6 +16,7 @@ import {
 import { getSetting } from "@/lib/settings"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { runAi } from "@/lib/ai/run"
+import { assertWithinLimit } from "@/lib/ai/usage"
 import { getModuleMaterialSample, searchChunks, searchChunksInMaterials } from "@/lib/ai/rag"
 import { buildModuleOutline, type OutlineTopic } from "./outline"
 import { Deduper, embedTexts } from "./dedup"
@@ -310,6 +311,14 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
   let producedTotal = 0
 
   for (const topic of topics) {
+    // Token-budget guard: stop cleanly at the monthly limit. Uncovered topics
+    // stay pending, so a later run resumes exactly where this one stopped.
+    try {
+      await assertWithinLimit(job.userId)
+    } catch {
+      break
+    }
+
     const existing = covByTopic.get(topic.id)
     if (existing?.status === "done") {
       topicsDone++
