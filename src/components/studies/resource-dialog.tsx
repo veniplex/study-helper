@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Plus } from "lucide-react"
+import { Loader2, Pencil, Plus } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
@@ -101,7 +101,13 @@ export function ResourceDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {!controlled && (
+      {!controlled && isEdit && (
+        <DialogTrigger render={<Button variant="ghost" size="icon" className="size-7" />}>
+          <Pencil className="size-3.5" />
+          <span className="sr-only">{t("edit")}</span>
+        </DialogTrigger>
+      )}
+      {!controlled && !isEdit && (
         <DialogTrigger render={<Button variant="outline" size="sm" />}>
           <Plus className="size-4" />
           {t("add")}
