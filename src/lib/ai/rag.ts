@@ -1,6 +1,6 @@
 import "server-only"
 import { embed, embedMany } from "ai"
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { material, materialChunk, type ExtractionStatus } from "@/db/schema"
 import { getSetting } from "@/lib/settings"
@@ -275,6 +275,51 @@ export async function searchChunks(
     .limit(options.limit ?? 6)
 
   return rows
+}
+
+/**
+ * Cosine-similarity search scoped to specific materials (topic grounding). Used
+ * by coverage-driven generation to pull substantial, focused context for one
+ * topic across exactly the materials that back it — far more than the global
+ * top-k the interactive path uses. Searches leaf chunks (level 0) only.
+ */
+export async function searchChunksInMaterials(
+  userId: string,
+  query: string,
+  materialIds: string[],
+  options: { limit?: number } = {}
+): Promise<RagHit[]> {
+  if (materialIds.length === 0) return []
+  const ai = await getSetting("ai")
+  const embeddingRef = ai?.defaultEmbeddingModel
+  if (!embeddingRef) return []
+
+  const model = await getEmbeddingModel(embeddingRef, userId)
+  const { embedding } = await runAi(
+    { userId, model: embeddingRef, feature: "embedding-query", operation: "ai_embed", audit: false },
+    () => embed({ model, value: query })
+  )
+  const vectorLiteral = `[${embedding.join(",")}]`
+
+  return db
+    .select({
+      content: materialChunk.content,
+      materialName: material.name,
+      materialId: material.id,
+      similarity: sql<number>`1 - (${materialChunk.embedding} <=> ${vectorLiteral}::vector)`,
+    })
+    .from(materialChunk)
+    .innerJoin(material, eq(materialChunk.materialId, material.id))
+    .where(
+      and(
+        eq(material.userId, userId),
+        eq(materialChunk.embeddingModel, embeddingRef),
+        eq(materialChunk.level, 0),
+        inArray(materialChunk.materialId, materialIds)
+      )
+    )
+    .orderBy(sql`${materialChunk.embedding} <=> ${vectorLiteral}::vector`)
+    .limit(options.limit ?? 16)
 }
 
 /**
