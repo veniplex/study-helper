@@ -8,12 +8,7 @@ import { useRouter } from "@/i18n/navigation"
 import { undoAuditEntry } from "@/app/[locale]/(app)/settings/audit-actions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
@@ -96,9 +91,7 @@ export function AuditLogView({ entries }: { entries: AuditEntry[] }) {
       <div className="flex flex-wrap gap-2">
         <Select value={actorFilter} onValueChange={(v) => setActorFilter(v ?? "")}>
           <SelectTrigger className="h-8 w-40 text-xs">
-            <SelectValue>
-              {actorFilter ? t(`actor.${actorFilter}`) : t("filterActor")}
-            </SelectValue>
+            <SelectValue>{actorFilter ? t(`actor.${actorFilter}`) : t("filterActor")}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">{t("filterActor")}</SelectItem>
@@ -194,10 +187,7 @@ export function AuditLogView({ entries }: { entries: AuditEntry[] }) {
             <Button variant="outline" onClick={() => setConfirmEntry(null)}>
               {t("cancel")}
             </Button>
-            <Button
-              disabled={pending}
-              onClick={() => confirmEntry && void onUndo(confirmEntry)}
-            >
+            <Button disabled={pending} onClick={() => confirmEntry && void onUndo(confirmEntry)}>
               {pending && <Loader2 className="size-4 animate-spin" />}
               {t("undo")}
             </Button>

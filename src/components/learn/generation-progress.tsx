@@ -83,7 +83,8 @@ export function GenerationProgress({ jobId, onDone }: { jobId: string; onDone?: 
             />
           </div>
           <div className="text-xs text-muted-foreground">
-            {t("coverage", { done, total })} · {t("produced", { count: status?.producedCount ?? 0 })}
+            {t("coverage", { done, total })} ·{" "}
+            {t("produced", { count: status?.producedCount ?? 0 })}
           </div>
         </>
       )}

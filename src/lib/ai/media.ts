@@ -1,11 +1,7 @@
 import "server-only"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
-import {
-  experimental_transcribe as transcribe,
-  generateText,
-  type TranscriptionModel,
-} from "ai"
+import { experimental_transcribe as transcribe, generateText, type TranscriptionModel } from "ai"
 import { getLanguageModel, getTranscriptionModel, resolveModelForUser } from "./registry"
 import { runAi } from "./run"
 
@@ -75,10 +71,7 @@ export async function extractImageText(
  * Transcribes audio/video via a configured speech-to-text model (OpenAI/Groq
  * Whisper). Best-effort: returns null when unavailable or on failure.
  */
-export async function transcribeMedia(
-  storagePath: string,
-  userId: string
-): Promise<string | null> {
+export async function transcribeMedia(storagePath: string, userId: string): Promise<string | null> {
   try {
     const transcription = await getTranscriptionModel(userId)
     if (!transcription) return null

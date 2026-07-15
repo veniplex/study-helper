@@ -204,7 +204,9 @@ export async function POST(request: Request) {
                   columns: { title: true, type: true, startsAt: true, moduleId: true },
                 })
               : [],
-            ctx.activeProgram ? getModuleFinalGrades(ctx.activeProgram.id) : Promise.resolve(new Map()),
+            ctx.activeProgram
+              ? getModuleFinalGrades(ctx.activeProgram.id)
+              : Promise.resolve(new Map()),
           ])
           return {
             activeProgram: ctx.activeProgram?.name ?? null,

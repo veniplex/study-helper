@@ -67,12 +67,7 @@ export async function unpackZip(payload: UnpackZipPayload): Promise<void> {
       })
       if (duplicate) continue
 
-      const folderId = await findOrCreateFolderPath(
-        userId,
-        moduleId,
-        entry.segments,
-        rootFolderId
-      )
+      const folderId = await findOrCreateFolderPath(userId, moduleId, entry.segments, rootFolderId)
       const storagePath = await saveFile(userId, entry.name, Buffer.from(entry.data))
       const [created] = await db
         .insert(material)

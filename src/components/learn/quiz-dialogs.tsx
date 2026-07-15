@@ -78,7 +78,12 @@ export function EditQuizDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="eq-desc">{t("description")}</Label>
-            <Textarea id="eq-desc" name="description" rows={2} defaultValue={initialDescription ?? ""} />
+            <Textarea
+              id="eq-desc"
+              name="description"
+              rows={2}
+              defaultValue={initialDescription ?? ""}
+            />
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
@@ -296,7 +301,9 @@ export function GenerateQuizDialog({
             )}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="gq-count">{complete ? tGen("perTopicQuestions") : t("count")}</Label>
+                <Label htmlFor="gq-count">
+                  {complete ? tGen("perTopicQuestions") : t("count")}
+                </Label>
                 {complete ? (
                   <Input
                     id="gq-count"
@@ -321,7 +328,10 @@ export function GenerateQuizDialog({
               </div>
               <div className="space-y-1.5">
                 <Label>{t("kind")}</Label>
-                <Select value={mixed ? "mixed" : "mc"} onValueChange={(v) => setMixed(v === "mixed")}>
+                <Select
+                  value={mixed ? "mixed" : "mc"}
+                  onValueChange={(v) => setMixed(v === "mixed")}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue>{mixed ? t("kindMixed") : t("kindMc")}</SelectValue>
                   </SelectTrigger>

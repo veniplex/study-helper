@@ -138,7 +138,6 @@ export async function addQuestion(quizId: string, input: unknown) {
   return { ok: true as const }
 }
 
-
 export async function updateQuestion(questionId: string, input: unknown) {
   const session = await requireSession()
   const row = await db.query.question.findFirst({
@@ -284,8 +283,7 @@ Each question gets a short explanation of the correct answer. Write all question
         kind: q.kind,
         prompt: q.prompt,
         options: q.kind === "multiple_choice" ? q.options : null,
-        correctIndex:
-          q.kind === "multiple_choice" && q.correctIndex >= 0 ? q.correctIndex : null,
+        correctIndex: q.kind === "multiple_choice" && q.correctIndex >= 0 ? q.correctIndex : null,
         referenceAnswer: q.kind === "free_text" ? q.referenceAnswer : null,
         explanation: q.explanation || null,
         sortOrder: i,
@@ -303,7 +301,12 @@ const submitSchema = z.object({
   quizId: z.string(),
   answers: z.array(z.object({ questionId: z.string(), answer: z.string() })),
   /** Actual time spent in the runner; falls back to an estimate when absent. */
-  durationSeconds: z.number().int().min(0).max(6 * 60 * 60).optional(),
+  durationSeconds: z
+    .number()
+    .int()
+    .min(0)
+    .max(6 * 60 * 60)
+    .optional(),
 })
 
 export type AttemptResult = {
@@ -336,7 +339,11 @@ export async function submitAttempt(input: unknown): Promise<AttemptResult> {
 
   // Optional AI grading for free-text questions
   let gradeFreeText:
-    | ((prompt: string, reference: string, answer: string) => Promise<{ correct: boolean; feedback: string }>)
+    | ((
+        prompt: string,
+        reference: string,
+        answer: string
+      ) => Promise<{ correct: boolean; feedback: string }>)
     | null = null
   const defaultModel = await resolveModelForUser(session.user.id)
   if (defaultModel && data.answers.some((a) => byId.get(a.questionId)?.kind === "free_text")) {
@@ -498,4 +505,3 @@ async function addToMistakesDeck(
     )
   }
 }
-

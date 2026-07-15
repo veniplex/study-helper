@@ -28,7 +28,10 @@ export async function POST(request: Request) {
   const mimeType = request.headers.get("content-type")
 
   if (!request.body || !fileName || !moduleId) {
-    return NextResponse.json({ error: "file body, x-file-name and moduleId required" }, { status: 400 })
+    return NextResponse.json(
+      { error: "file body, x-file-name and moduleId required" },
+      { status: 400 }
+    )
   }
 
   try {

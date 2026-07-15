@@ -68,7 +68,9 @@ async function storeSummaryChunks(
   accUsage: (u: AiUsage) => void
 ): Promise<void> {
   // Replace any previous summary nodes for this material.
-  await db.delete(materialChunk).where(and(eq(materialChunk.materialId, row.id), gt(materialChunk.level, 0)))
+  await db
+    .delete(materialChunk)
+    .where(and(eq(materialChunk.materialId, row.id), gt(materialChunk.level, 0)))
   if (summaries.length === 0) return
 
   let embeddings: number[][] | null = null
@@ -121,7 +123,10 @@ export async function summarizeMaterial(materialId: string): Promise<void> {
   const sections = await getSectionTexts(row)
   if (sections.length === 0) return
 
-  await db.update(material).set({ extractionStatus: "summarizing" }).where(eq(material.id, materialId))
+  await db
+    .update(material)
+    .set({ extractionStatus: "summarizing" })
+    .where(eq(material.id, materialId))
 
   const model = await getLanguageModel(modelRef, row.userId)
   let usage: AiUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }

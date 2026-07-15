@@ -261,7 +261,10 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
   const job = await db.query.generationJob.findFirst({ where: eq(generationJob.id, jobId) })
   if (!job || job.status === "completed" || job.status === "canceled") return
 
-  await db.update(generationJob).set({ status: "running", error: null }).where(eq(generationJob.id, jobId))
+  await db
+    .update(generationJob)
+    .set({ status: "running", error: null })
+    .where(eq(generationJob.id, jobId))
 
   let topics: OutlineTopic[]
   try {
@@ -346,15 +349,18 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
           language
         )
         const keys = cards.map((c) => c.front)
-        const vecs = embeddingRef && keys.length > 0 ? await embedTexts(job.userId, embeddingRef, keys) : undefined
+        const vecs =
+          embeddingRef && keys.length > 0
+            ? await embedTexts(job.userId, embeddingRef, keys)
+            : undefined
         const fresh = deduper.filter(
           cards.map((c) => ({ key: c.front, item: c })),
           vecs
         )
         if (fresh.length > 0) {
-          await db.insert(flashcard).values(
-            fresh.map((c) => ({ deckId: job.targetId, front: c.front, back: c.back }))
-          )
+          await db
+            .insert(flashcard)
+            .values(fresh.map((c) => ({ deckId: job.targetId, front: c.front, back: c.back })))
         }
         produced = fresh.length
       } else {
@@ -370,7 +376,10 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
           language
         )
         const keys = questions.map((q) => q.prompt)
-        const vecs = embeddingRef && keys.length > 0 ? await embedTexts(job.userId, embeddingRef, keys) : undefined
+        const vecs =
+          embeddingRef && keys.length > 0
+            ? await embedTexts(job.userId, embeddingRef, keys)
+            : undefined
         const fresh = deduper.filter(
           questions.map((q) => ({ key: q.prompt, item: q })),
           vecs

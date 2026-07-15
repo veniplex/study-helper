@@ -48,7 +48,14 @@ const topicSchema = z.object({
 async function loadMaterials(userId: string, moduleId: string): Promise<MaterialMap[]> {
   const rows = await db.query.material.findMany({
     where: and(eq(material.userId, userId), eq(material.moduleId, moduleId)),
-    columns: { id: true, name: true, summary: true, textContent: true, contentHash: true, kind: true },
+    columns: {
+      id: true,
+      name: true,
+      summary: true,
+      textContent: true,
+      contentHash: true,
+      kind: true,
+    },
   })
   return rows
     .filter((r) => r.kind === "file" && (r.summary || r.textContent))
@@ -161,7 +168,10 @@ export async function buildModuleOutline(
   } catch (error) {
     await db
       .update(moduleOutline)
-      .set({ status: "failed", error: error instanceof Error ? error.message.slice(0, 500) : "failed" })
+      .set({
+        status: "failed",
+        error: error instanceof Error ? error.message.slice(0, 500) : "failed",
+      })
       .where(eq(moduleOutline.moduleId, moduleId))
     throw error
   }
@@ -192,12 +202,31 @@ export async function buildModuleOutline(
         usedPrevIds.add(carried.id)
         await tx
           .update(outlineTopic)
-          .set({ version: nextVersion, title, titleKey, summary, sourceMaterialIds, weight: t.weight, sortOrder: i })
+          .set({
+            version: nextVersion,
+            title,
+            titleKey,
+            summary,
+            sourceMaterialIds,
+            weight: t.weight,
+            sortOrder: i,
+          })
           .where(eq(outlineTopic.id, carried.id))
         result.push({ id: carried.id, title, summary, sourceMaterialIds, weight: t.weight })
       } else {
         const id = crypto.randomUUID()
-        toInsert.push({ id, moduleId, userId, version: nextVersion, title, titleKey, summary, sourceMaterialIds, weight: t.weight, sortOrder: i })
+        toInsert.push({
+          id,
+          moduleId,
+          userId,
+          version: nextVersion,
+          title,
+          titleKey,
+          summary,
+          sourceMaterialIds,
+          weight: t.weight,
+          sortOrder: i,
+        })
         result.push({ id, title, summary, sourceMaterialIds, weight: t.weight })
       }
     }
@@ -211,7 +240,13 @@ export async function buildModuleOutline(
     }
     await tx
       .update(moduleOutline)
-      .set({ version: nextVersion, fingerprint, status: "ready", topicCount: result.length, error: null })
+      .set({
+        version: nextVersion,
+        fingerprint,
+        status: "ready",
+        topicCount: result.length,
+        error: null,
+      })
       .where(eq(moduleOutline.moduleId, moduleId))
   })
 

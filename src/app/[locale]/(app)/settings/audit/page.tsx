@@ -22,7 +22,9 @@ export default async function AuditPage() {
     <AuditLogView
       entries={entries.map((e) => {
         const meta =
-          e.after && typeof e.after === "object" && (e.after as { kind?: string }).kind === "ai_usage"
+          e.after &&
+          typeof e.after === "object" &&
+          (e.after as { kind?: string }).kind === "ai_usage"
             ? (e.after as { totalTokens?: number; model?: string; feature?: string })
             : null
         return {

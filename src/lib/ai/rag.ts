@@ -18,7 +18,10 @@ const CHUNK_SIZE = 1200
 const CHUNK_OVERLAP = 200
 
 export function chunkText(text: string): string[] {
-  const normalized = text.replace(/\r\n/g, "\n").replace(/[ \t]+/g, " ").trim()
+  const normalized = text
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .trim()
   if (!normalized) return []
   const chunks: string[] = []
   let start = 0
@@ -42,7 +45,10 @@ async function setStatus(
   status: ExtractionStatus,
   extra: { extractionError?: string | null } = {}
 ): Promise<void> {
-  await db.update(material).set({ extractionStatus: status, ...extra }).where(eq(material.id, materialId))
+  await db
+    .update(material)
+    .set({ extractionStatus: status, ...extra })
+    .where(eq(material.id, materialId))
 }
 
 /**
@@ -213,7 +219,10 @@ async function embedMaterialText(
       }))
     )
     embeddedCount += values.length
-    await db.update(material).set({ chunksEmbedded: embeddedCount }).where(eq(material.id, materialId))
+    await db
+      .update(material)
+      .set({ chunksEmbedded: embeddedCount })
+      .where(eq(material.id, materialId))
   }
 
   if (newlyEmbedded > 0) {
@@ -262,7 +271,12 @@ function rrfFuse(
   const acc = new Map<string, { hit: RagHit; score: number }>()
   vector.forEach((r, i) => {
     acc.set(r.id, {
-      hit: { content: r.content, materialName: r.materialName, materialId: r.materialId, similarity: r.similarity },
+      hit: {
+        content: r.content,
+        materialName: r.materialName,
+        materialId: r.materialId,
+        similarity: r.similarity,
+      },
       score: 1 / (K + i + 1),
     })
   })
@@ -272,7 +286,12 @@ function rrfFuse(
     if (existing) existing.score += s
     else
       acc.set(r.id, {
-        hit: { content: r.content, materialName: r.materialName, materialId: r.materialId, similarity: 0 },
+        hit: {
+          content: r.content,
+          materialName: r.materialName,
+          materialId: r.materialId,
+          similarity: 0,
+        },
         score: s,
       })
   })

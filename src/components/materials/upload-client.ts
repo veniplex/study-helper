@@ -72,7 +72,9 @@ export async function uploadFiles(
 
 // --- Directory drag & drop (FileSystem Entry API) ---------------------------
 
-type FsReader = { readEntries: (cb: (entries: FsEntry[]) => void, err: (e: unknown) => void) => void }
+type FsReader = {
+  readEntries: (cb: (entries: FsEntry[]) => void, err: (e: unknown) => void) => void
+}
 type FsEntry = {
   isFile: boolean
   isDirectory: boolean

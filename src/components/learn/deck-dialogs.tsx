@@ -144,7 +144,12 @@ export function EditDeckDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="ed-desc">{t("description")}</Label>
-            <Textarea id="ed-desc" name="description" rows={2} defaultValue={initialDescription ?? ""} />
+            <Textarea
+              id="ed-desc"
+              name="description"
+              rows={2}
+              defaultValue={initialDescription ?? ""}
+            />
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

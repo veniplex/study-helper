@@ -56,7 +56,12 @@ const availabilitySchema = z.object({
           .refine((v) => v == null || v === "" || validateCron(v) == null, {
             message: "Invalid cron expression",
           }),
-        durationMinutes: z.number().int().min(5).max(24 * 60).optional(),
+        durationMinutes: z
+          .number()
+          .int()
+          .min(5)
+          .max(24 * 60)
+          .optional(),
       })
     )
     .max(20)
@@ -118,10 +123,7 @@ export async function generateSemesterPlan(semesterId: string) {
       columns: { title: true, startsAt: true, moduleId: true },
     }),
     db.query.assignment.findMany({
-      where: and(
-        eq(assignment.userId, session.user.id),
-        inArray(assignment.moduleId, moduleIds)
-      ),
+      where: and(eq(assignment.userId, session.user.id), inArray(assignment.moduleId, moduleIds)),
       columns: { title: true, dueDate: true, moduleId: true, status: true },
     }),
   ])
@@ -207,10 +209,7 @@ Data (JSON): ${JSON.stringify(promptData).slice(0, 15000)}`,
     }))
   if (items.length > 0) await db.insert(semesterPlanItem).values(items)
 
-  await db
-    .update(semesterPlan)
-    .set({ generatedAt: new Date() })
-    .where(eq(semesterPlan.id, plan.id))
+  await db.update(semesterPlan).set({ generatedAt: new Date() }).where(eq(semesterPlan.id, plan.id))
 
   await logAudit({
     userId: session.user.id,

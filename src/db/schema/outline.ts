@@ -1,4 +1,12 @@
-import { type AnyPgColumn, index, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import {
+  type AnyPgColumn,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { user } from "./auth"
 import { studyModule } from "./studies"

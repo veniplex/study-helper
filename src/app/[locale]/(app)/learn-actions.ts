@@ -264,9 +264,7 @@ Create study sessions distributed between today and the exam date (include buffe
         planId: created.id,
         title: item.title,
         description: item.description,
-        scheduledDate: /^\d{4}-\d{2}-\d{2}$/.test(item.scheduledDate)
-          ? item.scheduledDate
-          : null,
+        scheduledDate: /^\d{4}-\d{2}-\d{2}$/.test(item.scheduledDate) ? item.scheduledDate : null,
         durationMinutes: item.durationMinutes,
         sortOrder: i,
       }))

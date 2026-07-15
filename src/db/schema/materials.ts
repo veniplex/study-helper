@@ -19,13 +19,7 @@ export type MaterialKind = "file" | "link"
  * show progress and lets the pipeline resume/skip already-processed materials.
  */
 export type ExtractionStatus =
-  | "pending"
-  | "extracting"
-  | "embedding"
-  | "summarizing"
-  | "ready"
-  | "failed"
-  | "skipped"
+  "pending" | "extracting" | "embedding" | "summarizing" | "ready" | "failed" | "skipped"
 
 /**
  * A folder in a module's material tree. Self-referencing: `parentId` null means
