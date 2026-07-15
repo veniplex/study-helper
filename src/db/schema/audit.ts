@@ -2,7 +2,17 @@ import { boolean, index, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-
 import { user } from "./auth"
 
 export type AuditActor = "user" | "ai"
-export type AuditOperation = "create" | "update" | "delete" | "undo" | "ai_read"
+export type AuditOperation =
+  | "create"
+  | "update"
+  | "delete"
+  | "undo"
+  | "ai_read"
+  | "ai_generate"
+  | "ai_embed"
+  | "ai_summarize"
+  | "ai_transcribe"
+  | "ai_extract"
 
 /**
  * Per-user activity log of all CRUD operations (by the user or the AI agent)

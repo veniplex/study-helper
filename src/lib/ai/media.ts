@@ -6,7 +6,8 @@ import {
   generateText,
   type TranscriptionModel,
 } from "ai"
-import { getTranscriptionModel, getVisionModel } from "./registry"
+import { getLanguageModel, getTranscriptionModel, resolveModelForUser } from "./registry"
+import { runAi } from "./run"
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? path.join(process.cwd(), "data", "uploads")
 
@@ -32,25 +33,37 @@ export async function extractImageText(
   userId: string
 ): Promise<string | null> {
   try {
-    const model = await getVisionModel(userId)
-    if (!model) return null
+    const ref = await resolveModelForUser(userId)
+    if (!ref) return null
+    const model = await getLanguageModel(ref, userId)
     const buffer = await readFile(absolute(storagePath))
-    const { text } = await generateText({
-      model,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: IMAGE_PROMPT },
+    const { text } = await runAi(
+      {
+        userId,
+        model: ref,
+        feature: "ocr",
+        operation: "ai_extract",
+        entityType: "material",
+        entityLabel: path.basename(storagePath),
+      },
+      () =>
+        generateText({
+          model,
+          messages: [
             {
-              type: "image",
-              image: new Uint8Array(buffer),
-              mediaType: mimeType ?? "image/png",
+              role: "user",
+              content: [
+                { type: "text", text: IMAGE_PROMPT },
+                {
+                  type: "image",
+                  image: new Uint8Array(buffer),
+                  mediaType: mimeType ?? "image/png",
+                },
+              ],
             },
           ],
-        },
-      ],
-    })
+        })
+    )
     return text.trim() || null
   } catch (error) {
     console.warn("[media] image extraction failed", error)
@@ -67,13 +80,24 @@ export async function transcribeMedia(
   userId: string
 ): Promise<string | null> {
   try {
-    const model = await getTranscriptionModel(userId)
-    if (!model) return null
+    const transcription = await getTranscriptionModel(userId)
+    if (!transcription) return null
     const buffer = await readFile(absolute(storagePath))
-    const { text } = await transcribe({
-      model: model as TranscriptionModel,
-      audio: new Uint8Array(buffer),
-    })
+    const { text } = await runAi(
+      {
+        userId,
+        model: transcription.ref,
+        feature: "transcription",
+        operation: "ai_transcribe",
+        entityType: "material",
+        entityLabel: path.basename(storagePath),
+      },
+      () =>
+        transcribe({
+          model: transcription.model as TranscriptionModel,
+          audio: new Uint8Array(buffer),
+        })
+    )
     return text.trim() || null
   } catch (error) {
     console.warn("[media] transcription failed", error)

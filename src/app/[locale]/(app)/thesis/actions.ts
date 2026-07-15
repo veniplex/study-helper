@@ -9,7 +9,8 @@ import { studyEvent, thesisMilestone, thesisProject } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { ownProgram } from "@/lib/studies/access"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
-import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
+import { assertWithinLimit } from "@/lib/ai/usage"
+import { runAi } from "@/lib/ai/run"
 
 async function ownThesis(thesisId: string, userId: string) {
   const row = await db.query.thesisProject.findFirst({
@@ -206,26 +207,26 @@ export async function brainstormTopics(interests: string) {
   const session = await requireSession()
   await assertWithinLimit(session.user.id)
   const { ref, model } = await getModel(session.user.id)
-  const { object, usage } = await generateObject({
-    model,
-    schema: z.object({
-      topics: z
-        .array(
-          z.object({
-            title: z.string(),
-            description: z.string(),
-            researchQuestion: z.string(),
-          })
-        )
-        .max(8),
-    }),
-    prompt: `Suggest 5-8 concrete, feasible thesis topics based on these interests and constraints: ${interests}.
+  const { object } = await runAi(
+    { userId: session.user.id, model: ref, feature: "thesis-topics", entityType: "thesis" },
+    () =>
+      generateObject({
+        model,
+        schema: z.object({
+          topics: z
+            .array(
+              z.object({
+                title: z.string(),
+                description: z.string(),
+                researchQuestion: z.string(),
+              })
+            )
+            .max(8),
+        }),
+        prompt: `Suggest 5-8 concrete, feasible thesis topics based on these interests and constraints: ${interests}.
 For each: a specific title, a 2-3 sentence description of scope and approach, and one possible research question. Write in the language of the input.`,
-  })
-  await logUsage(session.user.id, ref, "thesis-topics", {
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens,
-  })
+      })
+  )
   return object.topics
 }
 
@@ -234,19 +235,26 @@ export async function generateOutline(thesisId: string) {
   await assertWithinLimit(session.user.id)
   const thesis = await ownThesis(thesisId, session.user.id)
   const { ref, model } = await getModel(session.user.id)
-  const { text, usage } = await generateText({
-    model,
-    prompt: `Create a detailed chapter outline (as a Markdown nested list with short notes per section) for this thesis:
+  const { text } = await runAi(
+    {
+      userId: session.user.id,
+      model: ref,
+      feature: "thesis-outline",
+      entityType: "thesis",
+      entityId: thesisId,
+      entityLabel: thesis.title,
+    },
+    () =>
+      generateText({
+        model,
+        prompt: `Create a detailed chapter outline (as a Markdown nested list with short notes per section) for this thesis:
 Title: ${thesis.title}
 Type: ${thesis.thesisType ?? "thesis"}
 Research question: ${thesis.researchQuestion ?? "not defined yet"}
 Notes: ${thesis.notes ?? "-"}
 Write in the language of the title.`,
-  })
-  await logUsage(session.user.id, ref, "thesis-outline", {
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens,
-  })
+      })
+  )
   await db.update(thesisProject).set({ outline: text }).where(eq(thesisProject.id, thesisId))
   revalidatePath("/thesis")
   return { ok: true as const }
@@ -259,28 +267,35 @@ export async function generateMilestones(thesisId: string, addToCalendar: boolea
   if (!thesis.dueDate) throw new Error("Set a due date first")
   const { ref, model } = await getModel(session.user.id)
   const today = new Date().toISOString().slice(0, 10)
-  const { object, usage } = await generateObject({
-    model,
-    schema: z.object({
-      milestones: z
-        .array(
-          z.object({
-            title: z.string(),
-            description: z.string(),
-            dueDate: z.string().describe("ISO date YYYY-MM-DD"),
-          })
-        )
-        .max(15),
-    }),
-    prompt: `Create a realistic milestone plan for this thesis. Today is ${today}, submission deadline is ${thesis.dueDate}.
+  const { object } = await runAi(
+    {
+      userId: session.user.id,
+      model: ref,
+      feature: "thesis-milestones",
+      entityType: "thesis",
+      entityId: thesisId,
+      entityLabel: thesis.title,
+    },
+    () =>
+      generateObject({
+        model,
+        schema: z.object({
+          milestones: z
+            .array(
+              z.object({
+                title: z.string(),
+                description: z.string(),
+                dueDate: z.string().describe("ISO date YYYY-MM-DD"),
+              })
+            )
+            .max(15),
+        }),
+        prompt: `Create a realistic milestone plan for this thesis. Today is ${today}, submission deadline is ${thesis.dueDate}.
 Title: ${thesis.title} (${thesis.thesisType ?? "thesis"})
 Research question: ${thesis.researchQuestion ?? "tbd"}
 Cover: literature research, exposé, methodology, data/implementation (if applicable), writing per major chapter, revision, buffer before submission. 8-12 milestones with dates between today and the deadline. Write in the language of the title.`,
-  })
-  await logUsage(session.user.id, ref, "thesis-milestones", {
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens,
-  })
+      })
+  )
 
   const valid = object.milestones.filter((m) => /^\d{4}-\d{2}-\d{2}$/.test(m.dueDate))
   if (valid.length > 0) {

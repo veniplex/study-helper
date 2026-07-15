@@ -14,7 +14,8 @@ import {
 } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
-import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
+import { assertWithinLimit } from "@/lib/ai/usage"
+import { runAi } from "@/lib/ai/run"
 import { logAudit } from "@/lib/audit"
 import { expandAbsences, validateCron } from "@/lib/plan/absences"
 import { ownSemester } from "@/lib/studies/access"
@@ -159,10 +160,20 @@ export async function generateSemesterPlan(semesterId: string) {
     availability: plan.availability,
   }
 
-  const { object, usage } = await generateObject({
-    model,
-    schema: generatedItemsSchema,
-    prompt: `Create a semester study plan as concrete calendar sessions.
+  const { object } = await runAi(
+    {
+      userId: session.user.id,
+      model: defaultModel,
+      feature: "semester-plan",
+      entityType: "semester",
+      entityId: semesterId,
+      entityLabel: sem.name,
+    },
+    () =>
+      generateObject({
+        model,
+        schema: generatedItemsSchema,
+        prompt: `Create a semester study plan as concrete calendar sessions.
 
 Rules:
 - Only schedule sessions on weekdays/times inside "availability.weekly" windows, never before today (${today}).
@@ -174,12 +185,8 @@ Rules:
 - Plan until the last exam or assignment deadline; if none exist, plan the next 6 weeks.
 
 Data (JSON): ${JSON.stringify(promptData).slice(0, 15000)}`,
-  })
-
-  await logUsage(session.user.id, defaultModel, "semester-plan", {
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens,
-  })
+      })
+  )
 
   // Replace only items that aren't done yet
   await db

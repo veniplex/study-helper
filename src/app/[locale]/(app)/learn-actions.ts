@@ -9,7 +9,8 @@ import { studyPlan, studyPlanItem } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { searchChunks } from "@/lib/ai/rag"
-import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
+import { assertWithinLimit } from "@/lib/ai/usage"
+import { runAi } from "@/lib/ai/run"
 import { ownModule } from "@/lib/studies/access"
 
 async function ownModuleOrNull(moduleId: string | null | undefined, userId: string) {
@@ -225,21 +226,26 @@ export async function generateStudyPlan(input: unknown) {
   }
 
   const today = new Date().toISOString().slice(0, 10)
-  const { object, usage } = await generateObject({
-    model,
-    schema: generatedPlanSchema,
-    prompt: `Create a realistic study plan for a university student.
+  const { object } = await runAi(
+    {
+      userId: session.user.id,
+      model: defaultModel,
+      feature: "study-plan",
+      moduleId: data.moduleId ?? null,
+      entityType: "plan",
+    },
+    () =>
+      generateObject({
+        model,
+        schema: generatedPlanSchema,
+        prompt: `Create a realistic study plan for a university student.
 Today is ${today}. The exam is on ${data.examDate}.
 Available study time: ${data.hoursPerWeek} hours per week.
 Topics to cover: ${data.topics}${materialContext}
 
 Create study sessions distributed between today and the exam date (include buffer and revision sessions near the end). Each session gets a concrete topic, a short description of what to do, a scheduledDate (YYYY-MM-DD, between today and the exam) and a realistic durationMinutes. Write in the same language as the topics description.`,
-  })
-
-  await logUsage(session.user.id, defaultModel, "study-plan", {
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens,
-  })
+      })
+  )
 
   const [created] = await db
     .insert(studyPlan)
@@ -350,9 +356,19 @@ export async function analyzeProgress(moduleId: string) {
   if (!defaultModel) throw new Error("No AI model configured")
   const model = await getLanguageModel(defaultModel, session.user.id)
 
-  const { text, usage } = await generateText({
-    model,
-    prompt: `You are a study coach. Analyze this learning history for one university module and tell the student what to deepen next.
+  const { text } = await runAi(
+    {
+      userId: session.user.id,
+      model: defaultModel,
+      feature: "analysis",
+      moduleId,
+      entityType: "module",
+      entityId: moduleId,
+    },
+    () =>
+      generateText({
+        model,
+        prompt: `You are a study coach. Analyze this learning history for one university module and tell the student what to deepen next.
 Requirements:
 - Answer in the language of the quiz/flashcard content (German if mixed).
 - Look at trends ACROSS attempts over time: explicitly mention topics where the student has already improved, and topics that keep going wrong.
@@ -360,12 +376,8 @@ Requirements:
 - Keep it under 250 words, use Markdown with a short bullet list.
 
 Data (JSON): ${JSON.stringify(data).slice(0, 20000)}`,
-  })
-
-  await logUsage(session.user.id, defaultModel, "analysis", {
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens,
-  })
+      })
+  )
 
   return { ok: true as const, analysis: text }
 }

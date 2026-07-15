@@ -5,7 +5,8 @@ import { db } from "@/db"
 import { aiConversation, aiMessage, studyEvent } from "@/db/schema"
 import { getSession } from "@/lib/auth/session"
 import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
-import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
+import { assertWithinLimit } from "@/lib/ai/usage"
+import { normalizeUsage, recordAiAudit, recordAiUsage } from "@/lib/ai/run"
 import { searchChunks } from "@/lib/ai/rag"
 import { MODE_PROMPTS, type ChatMode } from "@/lib/ai/modes"
 import { writeToolDescriptions, writeToolSchemas, WRITE_TOOL_NAMES } from "@/lib/ai/tools"
@@ -257,10 +258,19 @@ export async function POST(request: Request) {
       }),
     },
     onFinish: async ({ totalUsage }) => {
-      await logUsage(userId, body.model, "chat", {
-        inputTokens: totalUsage.inputTokens,
-        outputTokens: totalUsage.outputTokens,
-      })
+      const usage = normalizeUsage(totalUsage)
+      const ctx = {
+        userId,
+        model: body.model,
+        feature: "chat",
+        moduleId,
+        conversationId: conversation.id,
+        entityType: "conversation",
+        entityId: conversation.id,
+        entityLabel: conversation.title,
+      }
+      await recordAiUsage(ctx, usage)
+      await recordAiAudit(ctx, usage)
     },
   })
 
