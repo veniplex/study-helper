@@ -95,9 +95,12 @@ const TRANSCRIPTION_MODELS: Partial<Record<AiProvider["type"], string>> = {
 
 /**
  * A speech-to-text model from the first configured provider that supports
- * transcription (OpenAI or Groq), honoring BYOK keys. Returns null otherwise.
+ * transcription (OpenAI or Groq), honoring BYOK keys. Returns the model plus
+ * its "providerId:modelId" ref (for usage logging), or null otherwise.
  */
-export async function getTranscriptionModel(userId: string) {
+export async function getTranscriptionModel(
+  userId: string
+): Promise<{ model: unknown; ref: string } | null> {
   const ai = await getSetting("ai")
   for (const provider of ai?.providers ?? []) {
     const modelId = TRANSCRIPTION_MODELS[provider.type]
@@ -107,7 +110,7 @@ export async function getTranscriptionModel(userId: string) {
     const sdk = instantiate(provider, apiKey)
     const withTranscription = sdk as { transcription?: (id: string) => unknown }
     if (typeof withTranscription.transcription === "function") {
-      return withTranscription.transcription(modelId)
+      return { model: withTranscription.transcription(modelId), ref: `${provider.id}:${modelId}` }
     }
   }
   return null

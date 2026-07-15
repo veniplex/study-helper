@@ -260,8 +260,14 @@
       "update": "Geändert",
       "delete": "Gelöscht",
       "undo": "Rückgängig",
-      "ai_read": "KI-Lesezugriff"
+      "ai_read": "KI-Lesezugriff",
+      "ai_generate": "KI-Generierung",
+      "ai_embed": "KI-Einbettung",
+      "ai_summarize": "KI-Zusammenfassung",
+      "ai_transcribe": "KI-Transkription",
+      "ai_extract": "KI-Extraktion"
     },
+    "tokens": "Tokens",
     "entity": {
       "deck": "Karteikarten-Deck",
       "flashcard": "Karteikarte",
@@ -1001,6 +1007,21 @@
       "editTitle": "Frage bearbeiten",
       "options": "Antwortoptionen (richtige markieren)",
       "correct": "Richtige Antwort"
+    },
+    "generation": {
+      "complete": "Vollständig (ganzes Material abdecken)",
+      "completeHint": "Erzeugt Inhalte zu ALLEN Themen deiner hochgeladenen Materialien statt nur zu einem Ausschnitt. Läuft im Hintergrund; du kannst die Seite verlassen.",
+      "perTopicCards": "Karten pro Thema",
+      "perTopicQuestions": "Fragen pro Thema",
+      "quizTitle": "Titel des Quiz",
+      "startComplete": "Vollständig generieren",
+      "pending": "Wird vorbereitet …",
+      "running": "Erzeuge vollständige Inhalte …",
+      "coverage": "{done}/{total} Themen abgedeckt",
+      "produced": "{count} erzeugt",
+      "completed": "Fertig — {count} Elemente, {total} Themen abgedeckt.",
+      "failed": "Fehlgeschlagen: {error}",
+      "close": "Schließen"
     }
   },
   "thesis": {

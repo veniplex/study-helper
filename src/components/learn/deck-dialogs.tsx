@@ -23,7 +23,9 @@ import {
   updateCard,
   updateDeck,
 } from "@/app/[locale]/(app)/deck-actions"
+import { startCompleteDeck } from "@/app/[locale]/(app)/generation-actions"
 import { ModuleSelect, type ModuleOption } from "./module-select"
+import { GenerationProgress } from "./generation-progress"
 
 /** Controlled edit dialog for a flashcard's front/back (used by row menus). */
 export function EditCardDialog({
@@ -142,7 +144,12 @@ export function EditDeckDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="ed-desc">{t("description")}</Label>
-            <Textarea id="ed-desc" name="description" rows={2} defaultValue={initialDescription ?? ""} />
+            <Textarea
+              id="ed-desc"
+              name="description"
+              rows={2}
+              defaultValue={initialDescription ?? ""}
+            />
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
@@ -287,26 +294,43 @@ export function GenerateCardsDialog({
   aiAvailable: boolean
 }) {
   const t = useTranslations("learn.decks.generateDialog")
+  const tGen = useTranslations("learn.generation")
   const tDecks = useTranslations("learn.decks")
   const tCommon = useTranslations("common")
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
+  const [complete, setComplete] = React.useState(false)
+  const [jobId, setJobId] = React.useState<string | null>(null)
 
   if (!aiAvailable) return null
+
+  function reset() {
+    setJobId(null)
+    setPending(false)
+    setComplete(false)
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const form = new FormData(e.currentTarget)
     setPending(true)
     try {
-      await generateCards({
-        deckId,
-        count: Number(form.get("count")),
-        topics: String(form.get("topics") || "") || undefined,
-      })
-      setOpen(false)
-      router.refresh()
+      if (complete) {
+        const res = await startCompleteDeck({
+          deckId,
+          perTopic: Number(form.get("perTopic")) || undefined,
+        })
+        setJobId(res.jobId)
+      } else {
+        await generateCards({
+          deckId,
+          count: Number(form.get("count")),
+          topics: String(form.get("topics") || "") || undefined,
+        })
+        setOpen(false)
+        router.refresh()
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
     } finally {
@@ -315,7 +339,13 @@ export function GenerateCardsDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o)
+        if (!o) reset()
+      }}
+    >
       <DialogTrigger render={<Button variant="outline" />}>
         <Sparkles className="size-4" />
         {tDecks("generateCards")}
@@ -324,33 +354,79 @@ export function GenerateCardsDialog({
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="gen-count">{t("count")}</Label>
-            <Input
-              id="gen-count"
-              name="count"
-              type="number"
-              min={1}
-              max={50}
-              defaultValue={10}
-              required
-            />
+        {jobId ? (
+          <div className="space-y-4">
+            <GenerationProgress jobId={jobId} onDone={() => router.refresh()} />
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                onClick={() => {
+                  setOpen(false)
+                  reset()
+                }}
+              >
+                {tGen("close")}
+              </Button>
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="gen-topics">{t("topics")}</Label>
-            <Textarea id="gen-topics" name="topics" rows={3} />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              {tCommon("cancel")}
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending && <Loader2 className="size-4 animate-spin" />}
-              {pending ? t("generating") : t("submit")}
-            </Button>
-          </div>
-        </form>
+        ) : (
+          <form onSubmit={onSubmit} className="space-y-4">
+            <label className="flex items-start gap-2 rounded-md border p-3">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={complete}
+                onChange={(e) => setComplete(e.target.checked)}
+              />
+              <span className="space-y-0.5">
+                <span className="block text-sm font-medium">{tGen("complete")}</span>
+                <span className="block text-xs text-muted-foreground">{tGen("completeHint")}</span>
+              </span>
+            </label>
+            {complete ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="gen-perTopic">{tGen("perTopicCards")}</Label>
+                <Input
+                  id="gen-perTopic"
+                  name="perTopic"
+                  type="number"
+                  min={1}
+                  max={30}
+                  defaultValue={6}
+                  required
+                />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="gen-count">{t("count")}</Label>
+                  <Input
+                    id="gen-count"
+                    name="count"
+                    type="number"
+                    min={1}
+                    max={50}
+                    defaultValue={10}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="gen-topics">{t("topics")}</Label>
+                  <Textarea id="gen-topics" name="topics" rows={3} />
+                </div>
+              </>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                {tCommon("cancel")}
+              </Button>
+              <Button type="submit" disabled={pending}>
+                {pending && <Loader2 className="size-4 animate-spin" />}
+                {complete ? tGen("startComplete") : pending ? t("generating") : t("submit")}
+              </Button>
+            </div>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -4,14 +4,25 @@ export type UploadItem = { file: File; relativePath?: string }
 
 export type UploadProgress = { done: number; total: number; percent: number }
 
-/** POSTs one file (with optional relative path) to the upload endpoint. */
+/**
+ * POSTs one file (with optional relative path) to the upload endpoint. The file
+ * is sent as the raw request body (not multipart) so the server can stream it
+ * to disk without buffering multi-GB files in memory; metadata travels in query
+ * params and the x-file-name header.
+ */
 function xhrUpload(
-  body: FormData,
+  file: File,
+  params: { moduleId: string; folderId: string | null; relativePath?: string },
   onPercent: (percent: number) => void
 ): Promise<{ queued?: boolean }> {
   return new Promise((resolve, reject) => {
+    const qs = new URLSearchParams({ moduleId: params.moduleId })
+    if (params.folderId) qs.set("folderId", params.folderId)
+    if (params.relativePath) qs.set("relativePath", params.relativePath)
     const xhr = new XMLHttpRequest()
-    xhr.open("POST", "/api/materials/upload")
+    xhr.open("POST", `/api/materials/upload?${qs.toString()}`)
+    xhr.setRequestHeader("x-file-name", encodeURIComponent(file.name))
+    if (file.type) xhr.setRequestHeader("content-type", file.type)
     xhr.upload.onprogress = (ev) => {
       if (ev.lengthComputable) onPercent(Math.round((ev.loaded / ev.total) * 100))
     }
@@ -31,7 +42,7 @@ function xhrUpload(
       }
     }
     xhr.onerror = () => reject(new Error("network error"))
-    xhr.send(body)
+    xhr.send(file)
   })
 }
 
@@ -48,13 +59,10 @@ export async function uploadFiles(
   let queued = 0
   for (let i = 0; i < items.length; i++) {
     const { file, relativePath } = items[i]
-    const body = new FormData()
-    body.set("file", file)
-    body.set("moduleId", opts.moduleId)
-    if (opts.folderId) body.set("folderId", opts.folderId)
-    if (relativePath) body.set("relativePath", relativePath)
-    const res = await xhrUpload(body, (percent) =>
-      opts.onProgress?.({ done: i, total: items.length, percent })
+    const res = await xhrUpload(
+      file,
+      { moduleId: opts.moduleId, folderId: opts.folderId, relativePath },
+      (percent) => opts.onProgress?.({ done: i, total: items.length, percent })
     )
     if (res.queued) queued++
   }
@@ -64,7 +72,9 @@ export async function uploadFiles(
 
 // --- Directory drag & drop (FileSystem Entry API) ---------------------------
 
-type FsReader = { readEntries: (cb: (entries: FsEntry[]) => void, err: (e: unknown) => void) => void }
+type FsReader = {
+  readEntries: (cb: (entries: FsEntry[]) => void, err: (e: unknown) => void) => void
+}
 type FsEntry = {
   isFile: boolean
   isDirectory: boolean

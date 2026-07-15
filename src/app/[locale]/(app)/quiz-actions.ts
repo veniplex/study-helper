@@ -10,7 +10,8 @@ import { answerLog, question, quiz, quizAttempt } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { searchChunks, getModuleMaterialSample } from "@/lib/ai/rag"
-import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
+import { assertWithinLimit } from "@/lib/ai/usage"
+import { runAi } from "@/lib/ai/run"
 import { logAudit } from "@/lib/audit"
 import { ownModule } from "@/lib/studies/access"
 import { languageNameForLocale } from "@/lib/ai/language"
@@ -137,7 +138,6 @@ export async function addQuestion(quizId: string, input: unknown) {
   return { ok: true as const }
 }
 
-
 export async function updateQuestion(questionId: string, input: unknown) {
   const session = await requireSession()
   const row = await db.query.question.findFirst({
@@ -245,18 +245,24 @@ export async function generateQuiz(input: unknown) {
   const locale = await getLocale()
   const language = languageNameForLocale(locale)
 
-  const { object, usage } = await generateObject({
-    model,
-    schema: generatedQuizSchema,
-    prompt: `Create a quiz with ${data.count} exam-style questions about: ${query}.
+  const { object } = await runAi(
+    {
+      userId: session.user.id,
+      model: defaultModel,
+      feature: "quiz",
+      moduleId: data.moduleId ?? null,
+      entityType: "quiz",
+      entityLabel: moduleRow?.name ?? query.slice(0, 80),
+    },
+    () =>
+      generateObject({
+        model,
+        schema: generatedQuizSchema,
+        prompt: `Create a quiz with ${data.count} exam-style questions about: ${query}.
 ${data.mixed ? "Mix multiple_choice (with exactly 4 plausible options) and free_text questions (about 70/30)." : "Use only multiple_choice questions with exactly 4 plausible options."}
 Each question gets a short explanation of the correct answer. Write all questions, options, and explanations in ${language}, regardless of the language of the topic text or source materials.${context}`,
-  })
-
-  await logUsage(session.user.id, defaultModel, "quiz", {
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens,
-  })
+      })
+  )
 
   const [created] = await db
     .insert(quiz)
@@ -277,8 +283,7 @@ Each question gets a short explanation of the correct answer. Write all question
         kind: q.kind,
         prompt: q.prompt,
         options: q.kind === "multiple_choice" ? q.options : null,
-        correctIndex:
-          q.kind === "multiple_choice" && q.correctIndex >= 0 ? q.correctIndex : null,
+        correctIndex: q.kind === "multiple_choice" && q.correctIndex >= 0 ? q.correctIndex : null,
         referenceAnswer: q.kind === "free_text" ? q.referenceAnswer : null,
         explanation: q.explanation || null,
         sortOrder: i,
@@ -296,7 +301,12 @@ const submitSchema = z.object({
   quizId: z.string(),
   answers: z.array(z.object({ questionId: z.string(), answer: z.string() })),
   /** Actual time spent in the runner; falls back to an estimate when absent. */
-  durationSeconds: z.number().int().min(0).max(6 * 60 * 60).optional(),
+  durationSeconds: z
+    .number()
+    .int()
+    .min(0)
+    .max(6 * 60 * 60)
+    .optional(),
 })
 
 export type AttemptResult = {
@@ -329,25 +339,36 @@ export async function submitAttempt(input: unknown): Promise<AttemptResult> {
 
   // Optional AI grading for free-text questions
   let gradeFreeText:
-    | ((prompt: string, reference: string, answer: string) => Promise<{ correct: boolean; feedback: string }>)
+    | ((
+        prompt: string,
+        reference: string,
+        answer: string
+      ) => Promise<{ correct: boolean; feedback: string }>)
     | null = null
   const defaultModel = await resolveModelForUser(session.user.id)
   if (defaultModel && data.answers.some((a) => byId.get(a.questionId)?.kind === "free_text")) {
     await assertWithinLimit(session.user.id)
     const model = await getLanguageModel(defaultModel, session.user.id)
     gradeFreeText = async (prompt, reference, answer) => {
-      const { object, usage } = await generateObject({
-        model,
-        schema: z.object({ correct: z.boolean(), feedback: z.string() }),
-        prompt: `Grade this student answer. Question: "${prompt}"
+      const { object } = await runAi(
+        {
+          userId: session.user.id,
+          model: defaultModel,
+          feature: "quiz-grading",
+          entityType: "quiz",
+          entityId: data.quizId,
+          entityLabel: prompt.slice(0, 80),
+        },
+        () =>
+          generateObject({
+            model,
+            schema: z.object({ correct: z.boolean(), feedback: z.string() }),
+            prompt: `Grade this student answer. Question: "${prompt}"
 Reference answer: "${reference}"
 Student answer: "${answer}"
 Judge leniently on wording but strictly on content. Reply with correct=true/false and one sentence of feedback in the language of the question.`,
-      })
-      await logUsage(session.user.id, defaultModel, "quiz-grading", {
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-      })
+          })
+      )
       return object
     }
   }
@@ -484,4 +505,3 @@ async function addToMistakesDeck(
     )
   }
 }
-

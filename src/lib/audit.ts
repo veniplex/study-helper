@@ -96,7 +96,8 @@ export async function undoAudit(entryId: string, userId: string) {
   })
   if (!entry) throw new Error("Not found")
   if (entry.undone) throw new Error("Already undone")
-  if (entry.operation === "ai_read" || entry.operation === "undo") {
+  if (entry.operation === "undo" || entry.operation.startsWith("ai_")) {
+    // AI usage/read events and undo markers are not themselves undoable.
     throw new Error("Not undoable")
   }
   const table = ENTITY_TABLES[entry.entityType]

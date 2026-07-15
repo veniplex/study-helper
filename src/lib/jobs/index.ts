@@ -5,6 +5,8 @@ import { env } from "@/lib/env"
 const globalForBoss = globalThis as unknown as { boss?: Promise<PgBoss> }
 
 export const QUEUE_EMBED_MATERIAL = "embed-material"
+export const QUEUE_SUMMARIZE_MATERIAL = "summarize-material"
+export const QUEUE_GENERATE_COVERAGE = "generate-coverage"
 export const QUEUE_UNPACK_ZIP = "unpack-zip"
 export const QUEUE_SEND_REMINDERS = "send-reminders"
 export const QUEUE_DAILY_PLAN = "daily-plan-reminder"
@@ -21,6 +23,24 @@ async function start(): Promise<PgBoss> {
     const { processMaterial } = await import("@/lib/ai/rag")
     for (const job of jobs) {
       await processMaterial(job.data.materialId)
+      // Summaries feed the module outline; run them after embedding.
+      await enqueueSummarizeMaterial(job.data.materialId)
+    }
+  })
+
+  await boss.createQueue(QUEUE_SUMMARIZE_MATERIAL)
+  await boss.work<{ materialId: string }>(QUEUE_SUMMARIZE_MATERIAL, async (jobs) => {
+    const { summarizeMaterial } = await import("@/lib/ai/generation/summarize")
+    for (const job of jobs) {
+      await summarizeMaterial(job.data.materialId)
+    }
+  })
+
+  await boss.createQueue(QUEUE_GENERATE_COVERAGE)
+  await boss.work<{ jobId: string }>(QUEUE_GENERATE_COVERAGE, async (jobs) => {
+    const { runCoverageGeneration } = await import("@/lib/ai/generation/generate")
+    for (const job of jobs) {
+      await runCoverageGeneration(job.data.jobId)
     }
   })
 
@@ -66,7 +86,33 @@ export function getBoss(): Promise<PgBoss> {
 
 export async function enqueueEmbedMaterial(materialId: string): Promise<void> {
   const boss = await getBoss()
-  await boss.send(QUEUE_EMBED_MATERIAL, { materialId }, { retryLimit: 2, retryDelay: 30 })
+  // singletonKey coalesces duplicate enqueues for the same material; processing
+  // is idempotent/resumable so retries pick up where a crash left off.
+  await boss.send(
+    QUEUE_EMBED_MATERIAL,
+    { materialId },
+    { retryLimit: 5, retryDelay: 30, singletonKey: materialId }
+  )
+}
+
+export async function enqueueSummarizeMaterial(materialId: string): Promise<void> {
+  const boss = await getBoss()
+  await boss.send(
+    QUEUE_SUMMARIZE_MATERIAL,
+    { materialId },
+    { retryLimit: 3, retryDelay: 30, singletonKey: materialId }
+  )
+}
+
+export async function enqueueGeneration(jobId: string): Promise<void> {
+  const boss = await getBoss()
+  // Coverage generation can run for minutes over a large corpus — allow a long
+  // lease. Processing is resumable (done topics are skipped) so a retry is safe.
+  await boss.send(
+    QUEUE_GENERATE_COVERAGE,
+    { jobId },
+    { retryLimit: 2, retryDelay: 60, singletonKey: jobId, expireInSeconds: 3600 }
+  )
 }
 
 export async function enqueueUnpackZip(

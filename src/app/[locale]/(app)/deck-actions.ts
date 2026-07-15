@@ -10,7 +10,8 @@ import { deck, flashcard, reviewLog } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { searchChunks, getModuleMaterialSample } from "@/lib/ai/rag"
-import { assertWithinLimit, logUsage } from "@/lib/ai/usage"
+import { assertWithinLimit } from "@/lib/ai/usage"
+import { runAi } from "@/lib/ai/run"
 import { scheduleReview, type ReviewRating } from "@/lib/learning/fsrs"
 import { logAudit } from "@/lib/audit"
 import { ownModule } from "@/lib/studies/access"
@@ -117,8 +118,6 @@ export async function addCard(deckId: string, input: unknown) {
   return { ok: true as const }
 }
 
-
-
 /**
  * Imports cards from TSV/CSV text (one card per line, front<TAB>back or
  * front;back). Anki users: export as "Notes in Plain Text (.txt)". Duplicate
@@ -127,7 +126,10 @@ export async function addCard(deckId: string, input: unknown) {
 export async function importCards(deckId: string, text: unknown) {
   const session = await requireSession()
   await ownDeck(deckId, session.user.id)
-  const raw = z.string().max(2 * 1024 * 1024).parse(text)
+  const raw = z
+    .string()
+    .max(2 * 1024 * 1024)
+    .parse(text)
 
   const existing = await db.query.flashcard.findMany({
     where: eq(flashcard.deckId, deckId),
@@ -144,7 +146,10 @@ export async function importCards(deckId: string, text: unknown) {
     const idx = trimmed.indexOf(sep)
     if (idx < 1) continue
     const front = trimmed.slice(0, idx).trim().slice(0, 4000)
-    const back = trimmed.slice(idx + 1).trim().slice(0, 4000)
+    const back = trimmed
+      .slice(idx + 1)
+      .trim()
+      .slice(0, 4000)
     if (!front || !back || seen.has(front)) continue
     seen.add(front)
     rows.push({ front, back })
@@ -314,24 +319,31 @@ export async function generateCards(input: unknown) {
   const locale = await getLocale()
   const language = languageNameForLocale(locale)
 
-  const { object, usage } = await generateObject({
-    model,
-    schema: generatedCardsSchema,
-    prompt: `Create ${data.count} high-quality flashcards for spaced repetition about: ${query}.
+  const { object } = await runAi(
+    {
+      userId: session.user.id,
+      model: defaultModel,
+      feature: "flashcards",
+      moduleId: deckRow.moduleId,
+      entityType: "deck",
+      entityId: data.deckId,
+      entityLabel: deckRow.name,
+    },
+    () =>
+      generateObject({
+        model,
+        schema: generatedCardsSchema,
+        prompt: `Create ${data.count} high-quality flashcards for spaced repetition about: ${query}.
 Each card has a concise question/term on the front and a precise answer/definition on the back.
 Write all cards in ${language}, regardless of the language of the topic text or source materials.${context}`,
-  })
-
-  await logUsage(session.user.id, defaultModel, "flashcards", {
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens,
-  })
+      })
+  )
 
   const cards = object.cards.slice(0, data.count)
   if (cards.length > 0) {
-    await db.insert(flashcard).values(
-      cards.map((c) => ({ deckId: data.deckId, front: c.front, back: c.back }))
-    )
+    await db
+      .insert(flashcard)
+      .values(cards.map((c) => ({ deckId: data.deckId, front: c.front, back: c.back })))
   }
   revalidatePath("/")
   return { ok: true as const, count: cards.length }

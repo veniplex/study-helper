@@ -8,12 +8,7 @@ import { useRouter } from "@/i18n/navigation"
 import { undoAuditEntry } from "@/app/[locale]/(app)/settings/audit-actions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
@@ -31,9 +26,24 @@ export type AuditEntry = {
   undone: boolean
   createdAt: string
   undoable: boolean
+  /** Token count for AI operations (null for non-AI CRUD). */
+  tokens: number | null
+  model: string | null
+  feature: string | null
 }
 
-const OPERATIONS = ["create", "update", "delete", "undo", "ai_read"] as const
+const OPERATIONS = [
+  "create",
+  "update",
+  "delete",
+  "undo",
+  "ai_read",
+  "ai_generate",
+  "ai_embed",
+  "ai_summarize",
+  "ai_transcribe",
+  "ai_extract",
+] as const
 const KNOWN_ENTITIES = [
   "deck",
   "flashcard",
@@ -81,9 +91,7 @@ export function AuditLogView({ entries }: { entries: AuditEntry[] }) {
       <div className="flex flex-wrap gap-2">
         <Select value={actorFilter} onValueChange={(v) => setActorFilter(v ?? "")}>
           <SelectTrigger className="h-8 w-40 text-xs">
-            <SelectValue>
-              {actorFilter ? t(`actor.${actorFilter}`) : t("filterActor")}
-            </SelectValue>
+            <SelectValue>{actorFilter ? t(`actor.${actorFilter}`) : t("filterActor")}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">{t("filterActor")}</SelectItem>
@@ -128,6 +136,15 @@ export function AuditLogView({ entries }: { entries: AuditEntry[] }) {
                   : entry.entityType}
               </span>
               <span className="min-w-0 flex-1 truncate font-medium">{entry.entityLabel}</span>
+              {entry.tokens != null && (
+                <Badge
+                  variant="outline"
+                  className="text-muted-foreground gap-1"
+                  title={[entry.feature, entry.model].filter(Boolean).join(" · ") || undefined}
+                >
+                  {format.number(entry.tokens)} {t("tokens")}
+                </Badge>
+              )}
               <span className="text-muted-foreground text-xs">
                 {format.dateTime(new Date(entry.createdAt), {
                   dateStyle: "short",
@@ -170,10 +187,7 @@ export function AuditLogView({ entries }: { entries: AuditEntry[] }) {
             <Button variant="outline" onClick={() => setConfirmEntry(null)}>
               {t("cancel")}
             </Button>
-            <Button
-              disabled={pending}
-              onClick={() => confirmEntry && void onUndo(confirmEntry)}
-            >
+            <Button disabled={pending} onClick={() => confirmEntry && void onUndo(confirmEntry)}>
               {pending && <Loader2 className="size-4 animate-spin" />}
               {t("undo")}
             </Button>

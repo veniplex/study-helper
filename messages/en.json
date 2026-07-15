@@ -260,8 +260,14 @@
       "update": "Updated",
       "delete": "Deleted",
       "undo": "Undone",
-      "ai_read": "AI read access"
+      "ai_read": "AI read access",
+      "ai_generate": "AI generation",
+      "ai_embed": "AI embedding",
+      "ai_summarize": "AI summary",
+      "ai_transcribe": "AI transcription",
+      "ai_extract": "AI extraction"
     },
+    "tokens": "tokens",
     "entity": {
       "deck": "Flashcard deck",
       "flashcard": "Flashcard",
@@ -1001,6 +1007,21 @@
       "editTitle": "Edit question",
       "options": "Answer options (mark the correct one)",
       "correct": "Correct answer"
+    },
+    "generation": {
+      "complete": "Complete (cover the whole material)",
+      "completeHint": "Generates content for ALL topics in your uploaded materials instead of just a sample. Runs in the background; you can leave the page.",
+      "perTopicCards": "Cards per topic",
+      "perTopicQuestions": "Questions per topic",
+      "quizTitle": "Quiz title",
+      "startComplete": "Generate complete",
+      "pending": "Preparing …",
+      "running": "Generating complete content …",
+      "coverage": "{done}/{total} topics covered",
+      "produced": "{count} created",
+      "completed": "Done — {count} items, {total} topics covered.",
+      "failed": "Failed: {error}",
+      "close": "Close"
     }
   },
   "thesis": {
