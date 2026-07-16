@@ -166,35 +166,47 @@ export default async function ModuleOverviewPage({
             <p className="text-muted-foreground text-sm">{t("resources.empty")}</p>
           ) : (
             <ul className="space-y-2">
-              {resources.map((r) => (
-                <li
-                  key={r.id}
-                  className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm"
-                >
-                  <Badge variant="secondary">{t(`resources.types.${r.type}`)}</Badge>
-                  <a
-                    href={r.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1 font-medium underline-offset-4 hover:underline"
+              {resources.map((r) => {
+                const note = r.encryptedNote ? decrypt(r.encryptedNote) : null
+                return (
+                  <li
+                    key={r.id}
+                    className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm"
                   >
-                    {r.name}
-                    <ExternalLink className="size-3" />
-                  </a>
-                  {r.username && (
-                    <span className="text-muted-foreground flex items-center gap-1 text-xs">
-                      <KeyRound className="size-3" />
-                      {r.username}
+                    <Badge variant="secondary">{t(`resources.types.${r.type}`)}</Badge>
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 font-medium underline-offset-4 hover:underline"
+                    >
+                      {r.name}
+                      <ExternalLink className="size-3" />
+                    </a>
+                    {r.username && (
+                      <span className="text-muted-foreground flex items-center gap-1 text-xs">
+                        <KeyRound className="size-3" />
+                        {r.username}
+                      </span>
+                    )}
+                    {note && <span className="text-muted-foreground text-xs">{note}</span>}
+                    <span className="ml-auto flex items-center gap-1">
+                      <ResourceDialog
+                        moduleId={mod.id}
+                        resource={{
+                          id: r.id,
+                          type: r.type,
+                          name: r.name,
+                          url: r.url,
+                          username: r.username,
+                          note,
+                        }}
+                      />
+                      <DeleteButton action={deleteResource.bind(null, r.id)} />
                     </span>
-                  )}
-                  {r.encryptedNote && (
-                    <span className="text-muted-foreground text-xs">{decrypt(r.encryptedNote)}</span>
-                  )}
-                  <span className="ml-auto">
-                    <DeleteButton action={deleteResource.bind(null, r.id)} />
-                  </span>
-                </li>
-              ))}
+                  </li>
+                )
+              })}
             </ul>
           )}
         </CardContent>

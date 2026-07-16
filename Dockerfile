@@ -34,5 +34,9 @@ USER app
 
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0
+# Must match the volume mount in docker-compose.yml. Without this, uploads
+# default to `$cwd/data/uploads` (i.e. /app/data/uploads here) — not the
+# persisted volume — so files vanish on every container restart/redeploy.
+ENV UPLOAD_DIR=/data/uploads
 
 ENTRYPOINT ["sh", "./docker-entrypoint.sh"]

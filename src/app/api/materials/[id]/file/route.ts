@@ -19,7 +19,16 @@ export async function GET(
     return new Response("Not found", { status: 404 })
   }
 
-  const size = row.sizeBytes ?? (await fileSize(row.storagePath))
+  // Confirm the file actually exists on disk before streaming: if it's
+  // missing (e.g. storage misconfiguration), fail fast with a clean 404
+  // instead of erroring mid-stream, which surfaces to clients as a broken
+  // connection / 502 through the reverse proxy.
+  let size: number
+  try {
+    size = await fileSize(row.storagePath)
+  } catch {
+    return new Response("Not found", { status: 404 })
+  }
   // Re-sanitize at serve time so rows created before the upload-side
   // sanitization can't serve active content either.
   const mime = safeInlineMime(row.mimeType)
