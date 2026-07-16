@@ -30,8 +30,20 @@ services:
     # the web tier, set WORKERS_IN_PROCESS: "false" here and run the worker
     # service below. By default (unset) the app runs workers in-process — no
     # extra service needed.
+    #
+    # To store uploaded files in S3 / S3-compatible object storage instead of the
+    # local uploads volume (recommended for large multi-GB modules or multi-node
+    # deployments), set STORAGE_DRIVER: "s3" and the S3_* / AWS_* vars below.
+    # See docs/self-hosting.md → "Object storage (S3)".
     # environment:
     #   WORKERS_IN_PROCESS: "false"
+    #   STORAGE_DRIVER: "s3"
+    #   S3_BUCKET: "study-helper"
+    #   S3_REGION: "eu-central-1"
+    #   S3_ENDPOINT: "https://s3.example.com"   # only for S3-compatible services
+    #   S3_FORCE_PATH_STYLE: "true"             # required by MinIO / some endpoints
+    #   AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+    #   AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
 
   # Optional dedicated job worker. Runs `npm run worker`, which uses tsx — so it
   # needs an image that includes the TS sources + devDependencies (a source

@@ -20,7 +20,7 @@ export type UnpackZipPayload = {
 /** Reads a stored file fully into a Buffer. */
 async function readStored(storagePath: string): Promise<Buffer> {
   const chunks: Uint8Array[] = []
-  const reader = fileStream(storagePath).getReader()
+  const reader = (await fileStream(storagePath)).getReader()
   for (;;) {
     const { done, value } = await reader.read()
     if (done) break
