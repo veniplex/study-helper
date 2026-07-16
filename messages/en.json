@@ -176,7 +176,16 @@
       "usageUser": "User",
       "usageInput": "Input tokens",
       "usageOutput": "Output tokens",
-      "usageEmpty": "No usage yet."
+      "usageEmpty": "No usage yet.",
+      "annTitle": "Vector index (ANN, fast search)",
+      "annDescription": "Optional HNSW index for fast vector search over very large material sets. Builds a typed index for the current embedding model. Off by default; without it, search runs as a (slower) sequential scan.",
+      "annStatusIdle": "Not built",
+      "annStatusBuilding": "Building …",
+      "annStatusReady": "Active",
+      "annStatusFailed": "Failed",
+      "annRebuild": "Build / rebuild index",
+      "annRebuilding": "Index build started — running in the background.",
+      "annNeedEmbedding": "Configure a default embedding model first."
     },
     "email": {
       "title": "Email (SMTP)",

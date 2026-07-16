@@ -176,7 +176,16 @@
       "usageUser": "Benutzer",
       "usageInput": "Input-Tokens",
       "usageOutput": "Output-Tokens",
-      "usageEmpty": "Noch kein Verbrauch."
+      "usageEmpty": "Noch kein Verbrauch.",
+      "annTitle": "Vektor-Index (ANN, schnelle Suche)",
+      "annDescription": "Optionaler HNSW-Index für schnelle Vektorsuche bei sehr großen Materialmengen. Baut einen typisierten Index für das aktuelle Embedding-Modell auf. Standardmäßig aus; ohne Index läuft die Suche als (langsamerer) sequentieller Scan.",
+      "annStatusIdle": "Nicht aufgebaut",
+      "annStatusBuilding": "Wird aufgebaut …",
+      "annStatusReady": "Aktiv",
+      "annStatusFailed": "Fehlgeschlagen",
+      "annRebuild": "Index (neu) aufbauen",
+      "annRebuilding": "Index-Aufbau gestartet – läuft im Hintergrund.",
+      "annNeedEmbedding": "Zuerst ein Standard-Embedding-Modell konfigurieren."
     },
     "email": {
       "title": "E-Mail (SMTP)",

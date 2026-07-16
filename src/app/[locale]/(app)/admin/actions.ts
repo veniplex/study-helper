@@ -114,3 +114,18 @@ export async function saveAiSettings(value: unknown) {
   revalidatePath("/", "layout")
   return { ok: true as const }
 }
+
+/** Kicks off a background rebuild of the pgvector HNSW ANN index. */
+export async function startVectorReindex() {
+  await requireAdmin()
+  const { enqueueReindexVectors } = await import("@/lib/jobs")
+  await enqueueReindexVectors()
+  return { ok: true as const }
+}
+
+/** Current ANN index state (status/model/dimensions), for the admin UI. */
+export async function getAnnStatus() {
+  await requireAdmin()
+  const { getSetting } = await import("@/lib/settings")
+  return (await getSetting("ai.ann")) ?? { status: "idle" as const }
+}
