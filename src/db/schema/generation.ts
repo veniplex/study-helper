@@ -34,6 +34,12 @@ export const generationJob = pgTable(
     topicsDone: integer("topics_done").notNull().default(0),
     producedCount: integer("produced_count").notNull().default(0),
     params: jsonb("params"),
+    /** When the MAP step ran via a provider Batch API: the vendor batch id
+     *  (while awaiting results) and the "providerId:modelId" it was submitted
+     *  with (so a poller can resolve credentials and record usage). Both null
+     *  for the default synchronous live path. */
+    batchRef: text("batch_ref"),
+    batchModel: text("batch_model"),
     error: text("error"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })

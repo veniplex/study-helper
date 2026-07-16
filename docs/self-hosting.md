@@ -65,12 +65,12 @@ first (see Backup below), or set it correctly before the first
 
 Everything else is configured in **Admin → Settings**:
 
-| Area          | What                                                                                                                                                   |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Sign-in & SSO | open/closed registration, GitHub/Google login, generic OIDC (Keycloak, Authentik, Zitadel, Authelia, …)                                                |
-| AI            | providers (Anthropic, OpenAI, Google, Mistral, Groq, Ollama, OpenAI-compatible), models, default + embedding model (enables RAG), monthly token limits |
-| Email         | SMTP for password resets and reminders, test email                                                                                                     |
-| Branding      | app name, max upload size                                                                                                                              |
+| Area          | What                                                                                                                                                                                                                                |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sign-in & SSO | open/closed registration, GitHub/Google login, generic OIDC (Keycloak, Authentik, Zitadel, Authelia, …)                                                                                                                             |
+| AI            | providers (Anthropic, OpenAI, Google, Mistral, Groq, Ollama, OpenAI-compatible), models, default + embedding model (enables RAG), monthly token limits, optional Batch API for cheaper async complete-generation (Anthropic/OpenAI) |
+| Email         | SMTP for password resets and reminders, test email                                                                                                                                                                                  |
+| Branding      | app name, max upload size                                                                                                                                                                                                           |
 
 A small dot next to the version number in the sidebar (visible to admins)
 shows when a newer release is available on GitHub — checked once a day —

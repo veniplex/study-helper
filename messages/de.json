@@ -171,6 +171,8 @@
       "defaultEmbeddingModel": "Standard-Embedding-Modell (RAG)",
       "noModels": "Noch keine Modelle konfiguriert",
       "monthlyLimit": "Monatliches Token-Limit pro User (0 = unbegrenzt)",
+      "useBatchApi": "Batch-API für vollständige Generierung nutzen",
+      "useBatchApiHint": "Führt die „Complete\"-Generierung über die Batch-API von Anthropic/OpenAI aus (~50 % günstiger). Ergebnisse treffen asynchron ein; nur für Anthropic-/OpenAI-Provider, sonst weiter live.",
       "saved": "KI-Einstellungen gespeichert.",
       "usage": "Token-Verbrauch (30 Tage)",
       "usageUser": "Benutzer",

@@ -7,6 +7,7 @@ const globalForBoss = globalThis as unknown as { boss?: Promise<PgBoss> }
 export const QUEUE_EMBED_MATERIAL = "embed-material"
 export const QUEUE_SUMMARIZE_MATERIAL = "summarize-material"
 export const QUEUE_GENERATE_COVERAGE = "generate-coverage"
+export const QUEUE_POLL_BATCHES = "poll-batches"
 export const QUEUE_REINDEX_VECTORS = "reindex-vectors"
 export const QUEUE_UNPACK_ZIP = "unpack-zip"
 export const QUEUE_SEND_REMINDERS = "send-reminders"
@@ -17,6 +18,7 @@ const ALL_QUEUES = [
   QUEUE_EMBED_MATERIAL,
   QUEUE_SUMMARIZE_MATERIAL,
   QUEUE_GENERATE_COVERAGE,
+  QUEUE_POLL_BATCHES,
   QUEUE_REINDEX_VECTORS,
   QUEUE_UNPACK_ZIP,
   QUEUE_SEND_REMINDERS,
@@ -40,6 +42,7 @@ export async function startClient(): Promise<PgBoss> {
   await boss.start()
   for (const queue of ALL_QUEUES) await boss.createQueue(queue)
   await boss.schedule(QUEUE_SEND_REMINDERS, "*/5 * * * *")
+  await boss.schedule(QUEUE_POLL_BATCHES, "*/5 * * * *")
   await boss.schedule(QUEUE_DAILY_PLAN, "0 7 * * *")
   await boss.schedule(QUEUE_CHECK_UPDATES, "0 6 * * *")
   return boss
@@ -72,6 +75,11 @@ export async function registerWorkers(boss: PgBoss): Promise<void> {
     for (const job of jobs) {
       await runCoverageGeneration(job.data.jobId)
     }
+  })
+
+  await boss.work(QUEUE_POLL_BATCHES, async () => {
+    const { pollPendingBatches } = await import("@/lib/ai/generation/batch-poll")
+    await pollPendingBatches()
   })
 
   await boss.work(QUEUE_REINDEX_VECTORS, async () => {
