@@ -30,7 +30,9 @@ export default async function AdminAiPage() {
 
   return (
     <div className="space-y-6">
-      <AiSettingsForm initial={ai ?? { providers: [], monthlyTokenLimitPerUser: 0 }} />
+      <AiSettingsForm
+        initial={ai ?? { providers: [], monthlyTokenLimitPerUser: 0, useBatchApi: false }}
+      />
       <AnnIndexCard
         initial={ann ?? { status: "idle" }}
         embeddingConfigured={Boolean(ai?.defaultEmbeddingModel)}

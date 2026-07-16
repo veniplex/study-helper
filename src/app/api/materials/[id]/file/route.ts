@@ -4,10 +4,7 @@ import { material } from "@/db/schema"
 import { getSession } from "@/lib/auth/session"
 import { fileSize, fileStream, safeInlineMime } from "@/lib/storage"
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession()
   if (!session) return new Response("Unauthorized", { status: 401 })
 
@@ -38,12 +35,10 @@ export async function GET(
     const match = /bytes=(\d*)-(\d*)/.exec(range)
     if (match && (match[1] || match[2])) {
       // "bytes=-N" is a suffix range: the last N bytes of the file
-      const start = match[1]
-        ? parseInt(match[1], 10)
-        : Math.max(size - parseInt(match[2], 10), 0)
+      const start = match[1] ? parseInt(match[1], 10) : Math.max(size - parseInt(match[2], 10), 0)
       const end = match[1] && match[2] ? Math.min(parseInt(match[2], 10), size - 1) : size - 1
       if (start <= end && start < size) {
-        return new Response(fileStream(row.storagePath, start, end), {
+        return new Response(await fileStream(row.storagePath, start, end), {
           status: 206,
           headers: {
             "Content-Type": mime,
@@ -56,7 +51,7 @@ export async function GET(
     }
   }
 
-  return new Response(fileStream(row.storagePath), {
+  return new Response(await fileStream(row.storagePath), {
     headers: {
       "Content-Type": mime,
       "Content-Length": String(size),

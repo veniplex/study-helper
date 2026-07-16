@@ -95,6 +95,13 @@ export const aiSettingsSchema = z.object({
   defaultEmbeddingModel: z.string().optional(),
   /** Monthly token limit per user (input+output). 0 = unlimited */
   monthlyTokenLimitPerUser: z.number().int().min(0).default(0),
+  /**
+   * Run the coverage-generation MAP step through the provider's async Batch API
+   * (Anthropic Message Batches / OpenAI Batch) — ~50% cheaper, but results
+   * arrive asynchronously. Only applies when the active model is an Anthropic or
+   * OpenAI provider; otherwise the synchronous live path is used. Default off.
+   */
+  useBatchApi: z.boolean().default(false),
 })
 
 export type AiSettings = z.infer<typeof aiSettingsSchema>
@@ -146,7 +153,7 @@ const defaults: { [K in SettingKey]: SettingValue<K> } = {
   smtp: undefined as never, // no default — unset means email disabled
   branding: { appName: "StudyHelper" },
   uploads: { maxUploadMb: 200, storageQuotaMbPerUser: 0 },
-  ai: { providers: [], monthlyTokenLimitPerUser: 0 },
+  ai: { providers: [], monthlyTokenLimitPerUser: 0, useBatchApi: false },
   "ai.ann": { status: "idle" },
   "push.vapid": undefined as never, // generated on first use
   "system.updateCheck": undefined as never, // set once the first check has run

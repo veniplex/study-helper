@@ -20,6 +20,7 @@ import { assertWithinLimit } from "@/lib/ai/usage"
 import { getModuleMaterialSample, searchChunks, searchChunksInMaterials } from "@/lib/ai/rag"
 import { buildModuleOutline, type OutlineTopic } from "./outline"
 import { Deduper, embedTexts } from "./dedup"
+import { resolveBatchProvider, submitBatch, toJsonSchema, type BatchItem } from "./batch-adapter"
 
 const MAX_GROUNDING_CHARS = 12000
 const DEFAULT_CARDS_PER_TOPIC = 6
@@ -31,11 +32,11 @@ export type GenParams = {
   mixed?: boolean
 }
 
-const cardSchema = z.object({
+export const cardSchema = z.object({
   cards: z.array(z.object({ front: z.string(), back: z.string() })).max(60),
 })
 
-const questionSchema = z.object({
+export const questionSchema = z.object({
   questions: z
     .array(
       z.object({
@@ -49,6 +50,41 @@ const questionSchema = z.object({
     )
     .max(30),
 })
+
+/** The flashcard MAP prompt. Shared by the live path and the batch adapter so
+ *  both produce identical output. */
+export function buildCardPrompt(
+  topic: OutlineTopic,
+  grounding: string,
+  count: number,
+  language: string
+): string {
+  return `Create up to ${count} high-quality spaced-repetition flashcards about the topic "${topic.title}".${
+    topic.summary ? ` Topic scope: ${topic.summary}` : ""
+  }
+Base the cards strictly on the excerpts below — do not invent facts not present. Each card: a concise question/term on the front, a precise answer/definition on the back. Write all cards in ${language}.
+
+Excerpts:
+${grounding || "(no excerpts available — use the topic title/scope)"}`
+}
+
+/** The quiz MAP prompt. Shared by the live path and the batch adapter. */
+export function buildQuestionPrompt(
+  topic: OutlineTopic,
+  grounding: string,
+  count: number,
+  mixed: boolean,
+  language: string
+): string {
+  return `Create up to ${count} exam-style quiz questions about the topic "${topic.title}".${
+    topic.summary ? ` Topic scope: ${topic.summary}` : ""
+  }
+${mixed ? "Mix multiple_choice (exactly 4 plausible options, correctIndex set) and free_text (referenceAnswer set), about 70/30." : "Use only multiple_choice questions with exactly 4 plausible options and correctIndex set."}
+Give each question a short explanation of the correct answer. Base questions strictly on the excerpts. Write everything in ${language}.
+
+Excerpts:
+${grounding || "(no excerpts available — use the topic title/scope)"}`
+}
 
 // ---- Job creation ---------------------------------------------------------------
 
@@ -149,13 +185,7 @@ async function generateTopicCards(
       generateObject({
         model,
         schema: cardSchema,
-        prompt: `Create up to ${count} high-quality spaced-repetition flashcards about the topic "${topic.title}".${
-          topic.summary ? ` Topic scope: ${topic.summary}` : ""
-        }
-Base the cards strictly on the excerpts below — do not invent facts not present. Each card: a concise question/term on the front, a precise answer/definition on the back. Write all cards in ${language}.
-
-Excerpts:
-${grounding || "(no excerpts available — use the topic title/scope)"}`,
+        prompt: buildCardPrompt(topic, grounding, count, language),
       })
   )
   return object.cards.slice(0, count)
@@ -187,14 +217,7 @@ async function generateTopicQuestions(
       generateObject({
         model,
         schema: questionSchema,
-        prompt: `Create up to ${count} exam-style quiz questions about the topic "${topic.title}".${
-          topic.summary ? ` Topic scope: ${topic.summary}` : ""
-        }
-${mixed ? "Mix multiple_choice (exactly 4 plausible options, correctIndex set) and free_text (referenceAnswer set), about 70/30." : "Use only multiple_choice questions with exactly 4 plausible options and correctIndex set."}
-Give each question a short explanation of the correct answer. Base questions strictly on the excerpts. Write everything in ${language}.
-
-Excerpts:
-${grounding || "(no excerpts available — use the topic title/scope)"}`,
+        prompt: buildQuestionPrompt(topic, grounding, count, mixed, language),
       })
   )
   return object.questions.slice(0, count)
@@ -202,7 +225,7 @@ ${grounding || "(no excerpts available — use the topic title/scope)"}`,
 
 // ---- Coverage orchestration -----------------------------------------------------
 
-async function upsertCoverage(
+export async function upsertCoverage(
   targetId: string,
   topicId: string,
   jobId: string,
@@ -218,7 +241,7 @@ async function upsertCoverage(
     })
 }
 
-async function loadExistingKeys(kind: GenerationKind, targetId: string): Promise<string[]> {
+export async function loadExistingKeys(kind: GenerationKind, targetId: string): Promise<string[]> {
   if (kind === "deck") {
     const rows = await db
       .select({ front: flashcard.front })
@@ -243,11 +266,152 @@ async function nextQuizSortOrder(quizId: string): Promise<number> {
   return (row?.sortOrder ?? -1) + 1
 }
 
+type Card = z.infer<typeof cardSchema>["cards"][number]
+type Question = z.infer<typeof questionSchema>["questions"][number]
+
+/** De-duplicates generated cards against `deduper` and inserts the fresh ones.
+ *  Shared by the live loop and the batch-result path. Returns items inserted. */
+export async function persistCards(
+  userId: string,
+  targetId: string,
+  deduper: Deduper,
+  embeddingRef: string | null,
+  cards: Card[]
+): Promise<number> {
+  const keys = cards.map((c) => c.front)
+  const vecs =
+    embeddingRef && keys.length > 0 ? await embedTexts(userId, embeddingRef, keys) : undefined
+  const fresh = deduper.filter(
+    cards.map((c) => ({ key: c.front, item: c })),
+    vecs
+  )
+  if (fresh.length > 0) {
+    await db
+      .insert(flashcard)
+      .values(fresh.map((c) => ({ deckId: targetId, front: c.front, back: c.back })))
+  }
+  return fresh.length
+}
+
+/** De-duplicates generated questions against `deduper` and inserts the fresh
+ *  ones. Shared by the live loop and the batch-result path. Returns items
+ *  inserted. */
+export async function persistQuestions(
+  userId: string,
+  targetId: string,
+  deduper: Deduper,
+  embeddingRef: string | null,
+  questions: Question[]
+): Promise<number> {
+  const keys = questions.map((q) => q.prompt)
+  const vecs =
+    embeddingRef && keys.length > 0 ? await embedTexts(userId, embeddingRef, keys) : undefined
+  const fresh = deduper.filter(
+    questions.map((q) => ({ key: q.prompt, item: q })),
+    vecs
+  )
+  if (fresh.length > 0) {
+    const base = await nextQuizSortOrder(targetId)
+    await db.insert(question).values(
+      fresh.map((q, i) => ({
+        quizId: targetId,
+        kind: q.kind,
+        prompt: q.prompt,
+        options: q.kind === "multiple_choice" ? q.options : null,
+        correctIndex: q.kind === "multiple_choice" && q.correctIndex >= 0 ? q.correctIndex : null,
+        referenceAnswer: q.kind === "free_text" ? q.referenceAnswer : null,
+        explanation: q.explanation || null,
+        sortOrder: base + i,
+      }))
+    )
+  }
+  return fresh.length
+}
+
 async function fail(jobId: string, message: string): Promise<void> {
   await db
     .update(generationJob)
     .set({ status: "failed", error: message.slice(0, 500) })
     .where(eq(generationJob.id, jobId))
+}
+
+/** Batch-request token budget per topic (Anthropic requires max_tokens). */
+function batchMaxTokens(count: number): number {
+  return Math.min(8000, Math.max(1500, count * 400))
+}
+
+/**
+ * Submits all uncovered topics as ONE provider batch for the MAP step and marks
+ * the job as awaiting the batch (status stays `running`, `batchRef` set). Returns
+ * true when a batch was submitted (or there was nothing left to do) — the caller
+ * then returns and the batch poller finishes the job once results arrive. Returns
+ * false to fall back to the live path (provider not batch-capable, or submit
+ * failed). Grounding/retrieval still runs live here; only the LLM calls batch.
+ */
+async function trySubmitBatchGeneration(
+  job: typeof generationJob.$inferSelect,
+  topics: OutlineTopic[],
+  modelRef: string,
+  covByTopic: Map<string, typeof generationCoverage.$inferSelect>,
+  opts: { perTopic: number; language: string; mixed: boolean }
+): Promise<boolean> {
+  const provider = await resolveBatchProvider(modelRef, job.userId)
+  if (!provider) return false
+
+  const pending = topics.filter((t) => covByTopic.get(t.id)?.status !== "done")
+  const doneRows = topics.filter((t) => covByTopic.get(t.id)?.status === "done")
+  const alreadyProduced = doneRows.reduce(
+    (sum, t) => sum + (covByTopic.get(t.id)?.producedCount ?? 0),
+    0
+  )
+
+  if (pending.length === 0) {
+    await db
+      .update(generationJob)
+      .set({ status: "completed", topicsDone: doneRows.length, producedCount: alreadyProduced })
+      .where(eq(generationJob.id, job.id))
+    return true
+  }
+
+  try {
+    await assertWithinLimit(job.userId)
+  } catch {
+    await fail(job.id, "Monthly token limit reached")
+    return true
+  }
+
+  const jsonSchema = toJsonSchema(job.kind === "deck" ? cardSchema : questionSchema)
+  const maxTokens = batchMaxTokens(opts.perTopic)
+
+  const items: BatchItem[] = []
+  for (const topic of pending) {
+    const grounding = await groundTopic(job.userId, job.moduleId, topic)
+    const prompt =
+      job.kind === "deck"
+        ? buildCardPrompt(topic, grounding, opts.perTopic, opts.language)
+        : buildQuestionPrompt(topic, grounding, opts.perTopic, opts.mixed, opts.language)
+    items.push({ customId: topic.id, prompt, jsonSchema, maxTokens })
+    await upsertCoverage(job.targetId, topic.id, job.id, "generating")
+  }
+
+  let batchRef: string
+  try {
+    batchRef = await submitBatch(provider, items)
+  } catch (error) {
+    console.error("[generation] batch submit failed, falling back to live path", error)
+    return false
+  }
+
+  await db
+    .update(generationJob)
+    .set({
+      batchRef,
+      batchModel: modelRef,
+      topicsDone: doneRows.length,
+      producedCount: alreadyProduced,
+    })
+    .where(eq(generationJob.id, job.id))
+  return true
 }
 
 /**
@@ -284,21 +448,14 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
     return
   }
   const model = await getLanguageModel(modelRef, job.userId)
-  const embeddingRef = (await getSetting("ai"))?.defaultEmbeddingModel ?? null
+  const ai = await getSetting("ai")
+  const embeddingRef = ai?.defaultEmbeddingModel ?? null
 
   const params = (job.params ?? {}) as GenParams
   const perTopic =
     params.perTopic ?? (job.kind === "deck" ? DEFAULT_CARDS_PER_TOPIC : DEFAULT_QUESTIONS_PER_TOPIC)
   const language = params.language ?? "the language of the source materials"
   const mixed = params.mixed ?? true
-
-  // Seed de-dup with what the target already contains.
-  const deduper = new Deduper(0.9)
-  const existingKeys = await loadExistingKeys(job.kind, job.targetId)
-  deduper.seedKeys(existingKeys)
-  if (embeddingRef && existingKeys.length > 0) {
-    deduper.seedVectors(await embedTexts(job.userId, embeddingRef, existingKeys))
-  }
 
   const coverage = await db.query.generationCoverage.findMany({
     where: eq(generationCoverage.targetId, job.targetId),
@@ -309,6 +466,28 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
     .update(generationJob)
     .set({ topicsTotal: topics.length })
     .where(eq(generationJob.id, jobId))
+
+  // Optional: run the per-topic MAP step through the provider's async Batch API
+  // (~50% cheaper). Submits one batch for all uncovered topics and returns; the
+  // batch poller records the results (with tokens + audit) and completes the job
+  // when the batch finishes. Falls through to the live path when the flag is off
+  // or the active provider isn't batch-capable.
+  if (ai?.useBatchApi) {
+    const submitted = await trySubmitBatchGeneration(job, topics, modelRef, covByTopic, {
+      perTopic,
+      language,
+      mixed,
+    })
+    if (submitted) return
+  }
+
+  // Live path: seed de-dup with what the target already contains, then iterate.
+  const deduper = new Deduper(0.9)
+  const existingKeys = await loadExistingKeys(job.kind, job.targetId)
+  deduper.seedKeys(existingKeys)
+  if (embeddingRef && existingKeys.length > 0) {
+    deduper.seedVectors(await embedTexts(job.userId, embeddingRef, existingKeys))
+  }
 
   let topicsDone = 0
   let producedTotal = 0
@@ -348,21 +527,7 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
           perTopic,
           language
         )
-        const keys = cards.map((c) => c.front)
-        const vecs =
-          embeddingRef && keys.length > 0
-            ? await embedTexts(job.userId, embeddingRef, keys)
-            : undefined
-        const fresh = deduper.filter(
-          cards.map((c) => ({ key: c.front, item: c })),
-          vecs
-        )
-        if (fresh.length > 0) {
-          await db
-            .insert(flashcard)
-            .values(fresh.map((c) => ({ deckId: job.targetId, front: c.front, back: c.back })))
-        }
-        produced = fresh.length
+        produced = await persistCards(job.userId, job.targetId, deduper, embeddingRef, cards)
       } else {
         const questions = await generateTopicQuestions(
           job.userId,
@@ -375,32 +540,13 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
           mixed,
           language
         )
-        const keys = questions.map((q) => q.prompt)
-        const vecs =
-          embeddingRef && keys.length > 0
-            ? await embedTexts(job.userId, embeddingRef, keys)
-            : undefined
-        const fresh = deduper.filter(
-          questions.map((q) => ({ key: q.prompt, item: q })),
-          vecs
+        produced = await persistQuestions(
+          job.userId,
+          job.targetId,
+          deduper,
+          embeddingRef,
+          questions
         )
-        if (fresh.length > 0) {
-          const base = await nextQuizSortOrder(job.targetId)
-          await db.insert(question).values(
-            fresh.map((q, i) => ({
-              quizId: job.targetId,
-              kind: q.kind,
-              prompt: q.prompt,
-              options: q.kind === "multiple_choice" ? q.options : null,
-              correctIndex:
-                q.kind === "multiple_choice" && q.correctIndex >= 0 ? q.correctIndex : null,
-              referenceAnswer: q.kind === "free_text" ? q.referenceAnswer : null,
-              explanation: q.explanation || null,
-              sortOrder: base + i,
-            }))
-          )
-        }
-        produced = fresh.length
       }
       await upsertCoverage(job.targetId, topic.id, jobId, "done", produced)
     } catch (error) {

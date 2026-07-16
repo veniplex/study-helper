@@ -65,12 +65,12 @@ first (see Backup below), or set it correctly before the first
 
 Everything else is configured in **Admin → Settings**:
 
-| Area          | What                                                                                                                                                   |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Sign-in & SSO | open/closed registration, GitHub/Google login, generic OIDC (Keycloak, Authentik, Zitadel, Authelia, …)                                                |
-| AI            | providers (Anthropic, OpenAI, Google, Mistral, Groq, Ollama, OpenAI-compatible), models, default + embedding model (enables RAG), monthly token limits |
-| Email         | SMTP for password resets and reminders, test email                                                                                                     |
-| Branding      | app name, max upload size                                                                                                                              |
+| Area          | What                                                                                                                                                                                                                                |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sign-in & SSO | open/closed registration, GitHub/Google login, generic OIDC (Keycloak, Authentik, Zitadel, Authelia, …)                                                                                                                             |
+| AI            | providers (Anthropic, OpenAI, Google, Mistral, Groq, Ollama, OpenAI-compatible), models, default + embedding model (enables RAG), monthly token limits, optional Batch API for cheaper async complete-generation (Anthropic/OpenAI) |
+| Email         | SMTP for password resets and reminders, test email                                                                                                                                                                                  |
+| Branding      | app name, max upload size                                                                                                                                                                                                           |
 
 A small dot next to the version number in the sidebar (visible to admins)
 shows when a newer release is available on GitHub — checked once a day —
@@ -88,9 +88,34 @@ and links to the release. Installing it is a manual
 | `STUDYHELPER_VERSION` | no       | Image tag to run (default `latest`); pin e.g. `1.0.0` for reproducible deploys                                                                                                      |
 | `DATA_DIR`            | no       | Host directory for the database + uploads volumes (default `./data`, next to `docker-compose.yml`) — see [Where data is stored](#where-data-is-stored)                              |
 | `UPLOAD_DIR`          | no       | Upload path **inside the container** (default `/data/uploads`) — only relevant for non-Docker deployments; Docker users should set `DATA_DIR` instead                               |
+| `STORAGE_DRIVER`      | no       | Where uploaded files live: `local` (default, disk under `UPLOAD_DIR`) or `s3` (S3 / S3-compatible object storage) — see [Object storage (S3)](#object-storage-s3)                   |
+| `WORKERS_IN_PROCESS`  | no       | `false` runs background jobs only in a separate worker process (`npm run worker`) instead of the web tier (default `true` — in-process)                                             |
 | `SEED_TEST_DATA`      | no       | `true` seeds demo accounts (admin@example.com / admin-test-1234, user@example.com / user-test-1234) with sample study content on startup — for evaluation only, never in production |
 
 **Do not lose `ENCRYPTION_KEY`** — encrypted settings (AI keys, SMTP, OIDC secrets) become unreadable without it.
+
+## Object storage (S3)
+
+By default uploaded files are stored on disk (`STORAGE_DRIVER=local`, under
+`UPLOAD_DIR` / the `uploads` volume). For large multi-GB modules or multi-node
+deployments you can store them in S3 or any S3-compatible service (AWS S3,
+MinIO, Cloudflare R2, Hetzner Object Storage) instead:
+
+| Variable              | Required        | Description                                                                         |
+| --------------------- | --------------- | ----------------------------------------------------------------------------------- |
+| `STORAGE_DRIVER`      | set to `s3`     | Enables the S3 driver                                                               |
+| `S3_BUCKET`           | yes (with `s3`) | Target bucket name                                                                  |
+| `S3_REGION`           | no              | Bucket region (falls back to `AWS_REGION`, then `us-east-1`)                        |
+| `S3_ENDPOINT`         | no              | Custom endpoint URL for S3-compatible services (e.g. MinIO/R2); omit for AWS S3     |
+| `S3_FORCE_PATH_STYLE` | no              | `true` for path-style addressing (needed by MinIO and some S3-compatible endpoints) |
+| `S3_KEY_PREFIX`       | no              | Optional key prefix (folder) for all objects, e.g. `study-helper`                   |
+
+Credentials come from the standard AWS credential chain — set
+`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (and `AWS_SESSION_TOKEN` if
+applicable), or run on infrastructure with an attached IAM role. The value
+stored in the database is a backend-agnostic key, so nothing schema-wise
+changes; switching drivers does **not** migrate existing files, so pick a
+driver before uploading (or copy the objects yourself when migrating).
 
 ## Reverse proxy example (Caddy)
 

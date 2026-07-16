@@ -1,17 +1,9 @@
 import "server-only"
-import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { experimental_transcribe as transcribe, generateText, type TranscriptionModel } from "ai"
+import { readFileBuffer } from "@/lib/storage"
 import { getLanguageModel, getTranscriptionModel, resolveModelForUser } from "./registry"
 import { runAi } from "./run"
-
-const UPLOAD_DIR = process.env.UPLOAD_DIR ?? path.join(process.cwd(), "data", "uploads")
-
-function absolute(storagePath: string): string {
-  const abs = path.resolve(UPLOAD_DIR, storagePath)
-  if (!abs.startsWith(path.resolve(UPLOAD_DIR))) throw new Error("Invalid path")
-  return abs
-}
 
 const IMAGE_PROMPT =
   "Extract all readable text from this image verbatim (OCR). Then add a short " +
@@ -32,7 +24,7 @@ export async function extractImageText(
     const ref = await resolveModelForUser(userId)
     if (!ref) return null
     const model = await getLanguageModel(ref, userId)
-    const buffer = await readFile(absolute(storagePath))
+    const buffer = await readFileBuffer(storagePath)
     const { text } = await runAi(
       {
         userId,
@@ -75,7 +67,7 @@ export async function transcribeMedia(storagePath: string, userId: string): Prom
   try {
     const transcription = await getTranscriptionModel(userId)
     if (!transcription) return null
-    const buffer = await readFile(absolute(storagePath))
+    const buffer = await readFileBuffer(storagePath)
     const { text } = await runAi(
       {
         userId,

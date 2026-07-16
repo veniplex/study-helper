@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { saveAiSettings } from "@/app/[locale]/(app)/admin/actions"
 import type { AiSettings } from "@/lib/settings"
 
@@ -65,6 +66,7 @@ export function AiSettingsForm({ initial }: { initial: AiSettings }) {
     initial.defaultEmbeddingModel ?? ""
   )
   const [monthlyLimit, setMonthlyLimit] = React.useState(initial.monthlyTokenLimitPerUser)
+  const [useBatchApi, setUseBatchApi] = React.useState(initial.useBatchApi ?? false)
 
   const modelOptions = providers.flatMap((p) =>
     p.modelsText
@@ -102,6 +104,7 @@ export function AiSettingsForm({ initial }: { initial: AiSettings }) {
         defaultModel: defaultModel || undefined,
         defaultEmbeddingModel: defaultEmbeddingModel || undefined,
         monthlyTokenLimitPerUser: monthlyLimit,
+        useBatchApi,
       })
       toast.success(t("saved"))
     } catch (error) {
@@ -272,6 +275,13 @@ export function AiSettingsForm({ initial }: { initial: AiSettings }) {
               value={monthlyLimit}
               onChange={(e) => setMonthlyLimit(Number(e.target.value))}
             />
+          </div>
+          <div className="col-span-full space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Switch id="useBatchApi" checked={useBatchApi} onCheckedChange={setUseBatchApi} />
+              <Label htmlFor="useBatchApi">{t("useBatchApi")}</Label>
+            </div>
+            <p className="text-muted-foreground text-xs">{t("useBatchApiHint")}</p>
           </div>
         </div>
       </CardContent>
