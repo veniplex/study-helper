@@ -10,6 +10,7 @@ export const QUEUE_GENERATE_COVERAGE = "generate-coverage"
 export const QUEUE_POLL_BATCHES = "poll-batches"
 export const QUEUE_REINDEX_VECTORS = "reindex-vectors"
 export const QUEUE_UNPACK_ZIP = "unpack-zip"
+export const QUEUE_FINALIZE_UPLOAD = "finalize-upload"
 export const QUEUE_SEND_REMINDERS = "send-reminders"
 export const QUEUE_DAILY_PLAN = "daily-plan-reminder"
 export const QUEUE_CHECK_UPDATES = "check-updates"
@@ -21,6 +22,7 @@ const ALL_QUEUES = [
   QUEUE_POLL_BATCHES,
   QUEUE_REINDEX_VECTORS,
   QUEUE_UNPACK_ZIP,
+  QUEUE_FINALIZE_UPLOAD,
   QUEUE_SEND_REMINDERS,
   QUEUE_DAILY_PLAN,
   QUEUE_CHECK_UPDATES,
@@ -93,6 +95,16 @@ export async function registerWorkers(boss: PgBoss): Promise<void> {
       await unpackZip(job.data)
     }
   })
+
+  await boss.work<import("@/lib/materials/tus-finalize").FinalizeUploadPayload>(
+    QUEUE_FINALIZE_UPLOAD,
+    async (jobs) => {
+      const { finalizeUpload } = await import("@/lib/materials/tus-finalize")
+      for (const job of jobs) {
+        await finalizeUpload(job.data)
+      }
+    }
+  )
 
   await boss.work(QUEUE_SEND_REMINDERS, async () => {
     const { sendDueReminders } = await import("./reminders")
@@ -196,4 +208,17 @@ export async function enqueueUnpackZip(
   const boss = await getBoss()
   // Unpacking isn't idempotent (would duplicate files), so don't retry.
   await boss.send(QUEUE_UNPACK_ZIP, payload, { retryLimit: 0 })
+}
+
+export async function enqueueFinalizeUpload(
+  payload: import("@/lib/materials/tus-finalize").FinalizeUploadPayload
+): Promise<void> {
+  const boss = await getBoss()
+  // singletonKey on the tus id coalesces a double onUploadFinish; the finalizer
+  // removes the staging file when done, so a retry that finds it gone is a no-op.
+  await boss.send(QUEUE_FINALIZE_UPLOAD, payload, {
+    retryLimit: 3,
+    retryDelay: 30,
+    singletonKey: payload.tusId,
+  })
 }

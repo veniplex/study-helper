@@ -1,8 +1,52 @@
 /** Shared client-side upload helpers for the materials feature. */
 
+import { Upload as TusUpload, isSupported as tusSupported } from "tus-js-client"
+import { shouldUseTus } from "./upload-transport"
+
 export type UploadItem = { file: File; relativePath?: string }
 
 export type UploadProgress = { done: number; total: number; percent: number }
+
+/**
+ * Uploads one large file via the resumable tus protocol. Survives interruptions:
+ * a dropped connection is retried from the server's last byte offset, and a
+ * previous (unfinished) upload of the same file is resumed. The material is
+ * created by a background job once the upload completes, so this resolves with
+ * `queued: true`.
+ */
+function tusUpload(
+  file: File,
+  params: { moduleId: string; folderId: string | null; relativePath?: string },
+  onPercent: (percent: number) => void
+): Promise<{ queued?: boolean }> {
+  return new Promise((resolve, reject) => {
+    const upload = new TusUpload(file, {
+      endpoint: "/api/materials/tus",
+      chunkSize: 50 * 1024 * 1024,
+      retryDelays: [0, 1000, 3000, 5000, 10000],
+      removeFingerprintOnSuccess: true,
+      metadata: {
+        filename: file.name,
+        filetype: file.type || "application/octet-stream",
+        moduleId: params.moduleId,
+        ...(params.folderId ? { folderId: params.folderId } : {}),
+        ...(params.relativePath ? { relativePath: params.relativePath } : {}),
+      },
+      onError: (error) => reject(error),
+      onProgress: (sent, total) => {
+        if (total) onPercent(Math.round((sent / total) * 100))
+      },
+      onSuccess: () => resolve({ queued: true }),
+    })
+    upload
+      .findPreviousUploads()
+      .then((previous) => {
+        if (previous.length > 0) upload.resumeFromPreviousUpload(previous[0])
+        upload.start()
+      })
+      .catch(() => upload.start())
+  })
+}
 
 /**
  * POSTs one file (with optional relative path) to the upload endpoint. The file
@@ -59,11 +103,14 @@ export async function uploadFiles(
   let queued = 0
   for (let i = 0; i < items.length; i++) {
     const { file, relativePath } = items[i]
-    const res = await xhrUpload(
-      file,
-      { moduleId: opts.moduleId, folderId: opts.folderId, relativePath },
-      (percent) => opts.onProgress?.({ done: i, total: items.length, percent })
-    )
+    const params = { moduleId: opts.moduleId, folderId: opts.folderId, relativePath }
+    const onPercent = (percent: number) =>
+      opts.onProgress?.({ done: i, total: items.length, percent })
+    // Large files go through the resumable tus endpoint; small ones keep the
+    // simpler direct upload. tus is skipped where the browser can't support it.
+    const res = shouldUseTus(file.size, tusSupported)
+      ? await tusUpload(file, params, onPercent)
+      : await xhrUpload(file, params, onPercent)
     if (res.queued) queued++
   }
   opts.onProgress?.({ done: items.length, total: items.length, percent: 100 })
