@@ -32,6 +32,7 @@ import {
   Music,
   Pencil,
   Presentation,
+  RefreshCw,
   Trash2,
   Video,
   X,
@@ -49,6 +50,7 @@ import {
   moveMaterialToFolder,
   renameFolder,
   renameMaterial,
+  retryMaterialProcessing,
 } from "@/app/[locale]/(app)/materials-actions"
 import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 import { EntityContextMenu, type ContextMenuAction } from "@/components/entity-context-menu"
@@ -68,7 +70,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { cn, formatBytes } from "@/lib/utils"
-import { readDroppedItems, uploadFiles } from "./upload-client"
+import { describeUploadError, readDroppedItems, uploadFiles } from "./upload-client"
 import { LinkDialog, UploadDialog } from "./upload-dialog"
 
 const ROOT = "__root__"
@@ -82,6 +84,51 @@ export type MaterialItem = {
   sizeBytes: number | null
   folderId: string | null
   createdAt: string
+  /** AI extraction/embedding pipeline state (files only). */
+  extractionStatus?: string | null
+  extractionError?: string | null
+}
+
+/** Pipeline states that are still moving — used to poll for fresh status. */
+const ACTIVE_STATUSES = ["pending", "extracting", "embedding", "summarizing"]
+
+/**
+ * Compact pipeline-state badge for a file material. "ready" (and links) render
+ * nothing; active states show a spinner; failed/skipped show why and offer a
+ * retry via the row menu.
+ */
+function ProcessingBadge({ item }: { item: MaterialItem }) {
+  const t = useTranslations("materials.processing")
+  const status = item.extractionStatus
+  if (item.kind !== "file" || !status || status === "ready") return null
+  if (ACTIVE_STATUSES.includes(status)) {
+    return (
+      <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px]">
+        <Loader2 className="size-3 animate-spin" />
+        {t(status)}
+      </span>
+    )
+  }
+  if (status === "failed") {
+    return (
+      <span
+        className="text-destructive border-destructive/40 bg-destructive/5 inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px]"
+        title={item.extractionError ?? undefined}
+      >
+        <X className="size-3" />
+        {t("failed")}
+      </span>
+    )
+  }
+  // skipped
+  return (
+    <span
+      className="text-muted-foreground inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px]"
+      title={item.extractionError ?? t("skippedHint")}
+    >
+      {t("skipped")}
+    </span>
+  )
 }
 
 export type FolderNode = { id: string; parentId: string | null; name: string }
@@ -235,6 +282,7 @@ function FileItem({
   onRename,
   onMove,
   onDelete,
+  onRetry,
 }: {
   item: MaterialItem
   view: "list" | "grid"
@@ -244,6 +292,7 @@ function FileItem({
   onRename: () => void
   onMove: () => void
   onDelete: () => void
+  onRetry: () => void
 }) {
   const t = useTranslations("materials")
   const tCommon = useTranslations("common")
@@ -251,9 +300,16 @@ function FileItem({
   const { attributes, listeners, setNodeRef: dragRef, style: dragStyle, isDragging } =
     useItemDraggable(item.id)
 
+  const canRetry =
+    item.kind === "file" &&
+    (item.extractionStatus === "failed" || item.extractionStatus === "skipped")
+
   const actions: ContextMenuAction[] = [
     { label: t("rename"), icon: Pencil, onSelect: onRename },
     { label: t("moveTo"), icon: FolderInput, onSelect: onMove },
+    ...(canRetry
+      ? [{ label: t("processing.retry"), icon: RefreshCw, onSelect: onRetry }]
+      : []),
     { label: tCommon("delete"), icon: Trash2, destructive: true, onSelect: onDelete, separatorBefore: true },
   ]
 
@@ -278,6 +334,9 @@ function FileItem({
       <DropdownMenuContent align="end" className="w-40">
         <DropdownMenuItem onClick={onRename}><Pencil className="size-4" />{t("rename")}</DropdownMenuItem>
         <DropdownMenuItem onClick={onMove}><FolderInput className="size-4" />{t("moveTo")}</DropdownMenuItem>
+        {canRetry && (
+          <DropdownMenuItem onClick={onRetry}><RefreshCw className="size-4" />{t("processing.retry")}</DropdownMenuItem>
+        )}
         <DropdownMenuItem variant="destructive" onClick={onDelete}><Trash2 className="size-4" />{tCommon("delete")}</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -296,10 +355,11 @@ function FileItem({
         <EntityContextMenu items={actions} label={item.name}>
           <div className="min-w-0">{nameEl}</div>
         </EntityContextMenu>
-        <p className="text-muted-foreground truncate text-xs">
+        <p className="text-muted-foreground flex items-center gap-1.5 truncate text-xs">
           {formatBytes(item.sizeBytes)}
           {item.sizeBytes != null && " · "}
           {format.dateTime(new Date(item.createdAt), { dateStyle: "medium" })}
+          <ProcessingBadge item={item} />
         </p>
         <span className="absolute right-2 bottom-2 opacity-40 transition-opacity group-hover:opacity-100">{grip}</span>
       </div>
@@ -312,6 +372,7 @@ function FileItem({
       {grip}
       <MaterialIcon item={item} />
       <EntityContextMenu items={actions} label={item.name}>{nameEl}</EntityContextMenu>
+      <ProcessingBadge item={item} />
       <span className="text-muted-foreground text-xs">
         {formatBytes(item.sizeBytes)}
         {item.sizeBytes != null && " · "}
@@ -389,10 +450,13 @@ export function MaterialsBrowser({
   moduleId,
   materials,
   folders,
+  indexingEnabled = true,
 }: {
   moduleId: string
   materials: MaterialItem[]
   folders: FolderNode[]
+  /** False when no embedding model is configured — materials won't be searchable. */
+  indexingEnabled?: boolean
 }) {
   const t = useTranslations("materials")
   const router = useRouter()
@@ -418,6 +482,26 @@ export function MaterialsBrowser({
     const saved = window.localStorage.getItem("materials-view-mode")
     if (saved === "grid" || saved === "list") queueMicrotask(() => setView(saved))
   }, [])
+
+  // While any material is still extracting/embedding, refresh periodically so
+  // the pipeline badges move without a manual reload.
+  const hasActiveProcessing = materials.some(
+    (m) => m.extractionStatus && ACTIVE_STATUSES.includes(m.extractionStatus)
+  )
+  React.useEffect(() => {
+    if (!hasActiveProcessing) return
+    const id = setInterval(() => router.refresh(), 5000)
+    return () => clearInterval(id)
+  }, [hasActiveProcessing, router])
+
+  async function retryProcessing(materialId: string) {
+    try {
+      await retryMaterialProcessing(materialId)
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error))
+    }
+  }
   function changeView(next: "list" | "grid") {
     setView(next)
     window.localStorage.setItem("materials-view-mode", next)
@@ -597,7 +681,7 @@ export function MaterialsBrowser({
         if (queued > 0) toast.success(t("unpacking"))
         else toast.success(t("uploaded"))
       } catch (error) {
-        toast.error(t("uploadFailed", { error: error instanceof Error ? error.message : String(error) }))
+        toast.error(t("uploadFailed", { error: describeUploadError(error, t) }))
       } finally {
         setUploadingMsg(null)
         router.refresh()
@@ -660,6 +744,11 @@ export function MaterialsBrowser({
 
   return (
     <div className="relative space-y-3">
+      {!indexingEnabled && materials.some((m) => m.kind === "file") && (
+        <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-2 text-xs">
+          {t("notIndexedHint")}
+        </p>
+      )}
       {/* Stats bar */}
       <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
         <span>{t("stats.files", { count: totalFiles })}</span>
@@ -724,7 +813,7 @@ export function MaterialsBrowser({
               <FolderItem key={f.id} folder={f} view="grid" stats={subtreeStats.get(f.id) ?? { files: 0, size: 0 }} subfolderCount={(childrenByParent.get(f.id) ?? []).length} onOpen={() => setCurrentFolderId(f.id)} onRename={() => { setRenameTarget({ kind: "folder", id: f.id, name: f.name }); setRenameValue(f.name) }} onNewSubfolder={() => { setNewFolderParent(f.id); setNewFolderName("") }} onMove={() => setMoveTarget({ kind: "folder", id: f.id })} onDelete={() => setDeleteTarget({ kind: "folder", id: f.id, label: f.name })} />
             ))}
             {currentFiles.map((item, i) => (
-              <FileItem key={item.id} item={item} view="grid" selected={selection.has(item.id)} onSelectChange={(c) => { toggleSelect(item.id, c); lastIndexRef.current = i }} onRowClick={(e) => onFileRowClick(e, i, item.id)} onRename={() => { setRenameTarget({ kind: "file", id: item.id, name: item.name }); setRenameValue(item.name) }} onMove={() => setMoveTarget({ kind: "file", id: item.id })} onDelete={() => setDeleteTarget({ kind: "file", id: item.id, label: item.name })} />
+              <FileItem key={item.id} item={item} view="grid" selected={selection.has(item.id)} onSelectChange={(c) => { toggleSelect(item.id, c); lastIndexRef.current = i }} onRowClick={(e) => onFileRowClick(e, i, item.id)} onRename={() => { setRenameTarget({ kind: "file", id: item.id, name: item.name }); setRenameValue(item.name) }} onMove={() => setMoveTarget({ kind: "file", id: item.id })} onDelete={() => setDeleteTarget({ kind: "file", id: item.id, label: item.name })} onRetry={() => void retryProcessing(item.id)} />
             ))}
           </div>
         ) : (
@@ -734,7 +823,7 @@ export function MaterialsBrowser({
             ))}
             <ul className="space-y-2">
               {currentFiles.map((item, i) => (
-                <FileItem key={item.id} item={item} view="list" selected={selection.has(item.id)} onSelectChange={(c) => { toggleSelect(item.id, c); lastIndexRef.current = i }} onRowClick={(e) => onFileRowClick(e, i, item.id)} onRename={() => { setRenameTarget({ kind: "file", id: item.id, name: item.name }); setRenameValue(item.name) }} onMove={() => setMoveTarget({ kind: "file", id: item.id })} onDelete={() => setDeleteTarget({ kind: "file", id: item.id, label: item.name })} />
+                <FileItem key={item.id} item={item} view="list" selected={selection.has(item.id)} onSelectChange={(c) => { toggleSelect(item.id, c); lastIndexRef.current = i }} onRowClick={(e) => onFileRowClick(e, i, item.id)} onRename={() => { setRenameTarget({ kind: "file", id: item.id, name: item.name }); setRenameValue(item.name) }} onMove={() => setMoveTarget({ kind: "file", id: item.id })} onDelete={() => setDeleteTarget({ kind: "file", id: item.id, label: item.name })} onRetry={() => void retryProcessing(item.id)} />
               ))}
             </ul>
           </div>

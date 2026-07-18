@@ -123,7 +123,8 @@
       "unban": "Entsperren",
       "delete": "Löschen",
       "deleteConfirm": "Benutzer und alle zugehörigen Daten unwiderruflich löschen?",
-      "updated": "Benutzer aktualisiert."
+      "updated": "Benutzer aktualisiert.",
+      "storageUnwritable": "Der Datei-Speicher ist nicht beschreibbar — Uploads schlagen fehl. Prüfe das Upload-Volume (UPLOAD_DIR) und dessen Berechtigungen."
     },
     "auth": {
       "title": "Anmeldung & SSO",
@@ -764,11 +765,14 @@
     "download": "Herunterladen",
     "open": "Öffnen",
     "viewer": {
-      "unsupported": "Vorschau für diesen Dateityp nicht verfügbar — bitte herunterladen."
+      "unsupported": "Vorschau für diesen Dateityp nicht verfügbar — bitte herunterladen.",
+      "fileMissing": "Datei nicht mehr vorhanden",
+      "fileMissingHint": "Der Eintrag existiert, aber die Datei fehlt auf dem Server (z. B. durch ein früheres Redeploy ohne persistentes Upload-Volume verloren). Bitte lade die Datei neu hoch."
     },
     "annotator": {
       "hint": "Auf der Seite ziehen zum Markieren; Markierung anklicken für Notiz oder Löschen.",
-      "notePlaceholder": "Notiz zu dieser Markierung …"
+      "notePlaceholder": "Notiz zu dieser Markierung …",
+      "fileMissing": "Die Datei fehlt auf dem Server — vermutlich ging sie bei einem früheren Redeploy verloren. Bitte lade sie neu hoch."
     },
     "stats": {
       "files": "{count, plural, =1 {# Datei} other {# Dateien}}",
@@ -791,7 +795,21 @@
     "uploadingCount": "Lädt hoch … {done}/{total}",
     "uploadHint": "Wähle Dateien oder einen ganzen Ordner. Ordner behalten ihre Struktur; .zip-Archive werden automatisch entpackt.",
     "chooseFiles": "Dateien wählen",
-    "chooseFolder": "Ordner wählen"
+    "chooseFolder": "Ordner wählen",
+    "processing": {
+      "pending": "Wartet",
+      "extracting": "Extrahiert",
+      "embedding": "Indexiert",
+      "summarizing": "Fasst zusammen",
+      "failed": "Verarbeitung fehlgeschlagen",
+      "skipped": "Nicht verarbeitet",
+      "skippedHint": "Aus dieser Datei konnte kein Text gewonnen werden.",
+      "retry": "Neu verarbeiten"
+    },
+    "notIndexedHint": "Es ist kein Embedding-Modell konfiguriert — Materialien werden nicht für die AI-Suche indexiert. Ein Admin kann das unter Admin → AI einrichten.",
+    "uploadRateLimited": "Zu viele Uploads in kurzer Zeit — bitte kurz warten.",
+    "uploadNetworkError": "Netzwerkfehler beim Upload — Verbindung prüfen und erneut versuchen.",
+    "uploadServerError": "{name}: Serverfehler beim Speichern. Prüfe im Admin-Bereich, ob der Datei-Speicher beschreibbar ist."
   },
   "search": {
     "modules": "Module",

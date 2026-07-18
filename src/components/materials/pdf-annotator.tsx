@@ -60,10 +60,10 @@ export function PdfAnnotator({
     ;(async () => {
       try {
         const pdfjs = await import("pdfjs-dist")
-        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-          "pdfjs-dist/build/pdf.worker.min.mjs",
-          import.meta.url
-        ).toString()
+        // The worker is copied to public/ at build time (scripts/copy-pdf-worker.mjs)
+        // — a stable same-origin URL that works under every bundler; the version
+        // query busts caches when pdfjs-dist is upgraded.
+        pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs?v=${pdfjs.version}`
         const pdf = await pdfjs.getDocument({ url: fileUrl }).promise
         if (cancelled) return
         pdfRef.current = pdf
@@ -75,7 +75,20 @@ export function PdfAnnotator({
         }
         if (!cancelled) setPages(infos)
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err))
+        if (cancelled) return
+        // Distinguish "the stored file is gone" (e.g. lost to a redeploy before
+        // uploads were volume-backed) from a real render error — the former
+        // needs a human-readable explanation, not a pdf.js stack message.
+        try {
+          const probe = await fetch(fileUrl, { headers: { Range: "bytes=0-0" } })
+          if (probe.status === 404) {
+            setError(t("fileMissing"))
+            return
+          }
+        } catch {
+          // probe failed — fall through to the generic error
+        }
+        setError(err instanceof Error ? err.message : String(err))
       }
     })()
     return () => {

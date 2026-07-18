@@ -129,6 +129,22 @@ export async function summarizeMaterial(materialId: string): Promise<void> {
     .set({ extractionStatus: "summarizing" })
     .where(eq(material.id, materialId))
 
+  try {
+    await runSummarization(row, materialId, modelRef)
+  } catch (error) {
+    // Summaries are best-effort — never leave the material stuck in
+    // "summarizing" (an eternal spinner in the UI) because of a model error.
+    await db.update(material).set({ extractionStatus: "ready" }).where(eq(material.id, materialId))
+    throw error
+  }
+}
+
+async function runSummarization(
+  row: typeof material.$inferSelect,
+  materialId: string,
+  modelRef: string
+): Promise<void> {
+  const sections = await getSectionTexts(row)
   const model = await getLanguageModel(modelRef, row.userId)
   let usage: AiUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
   const acc = (u: AiUsage) => {

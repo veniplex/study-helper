@@ -66,9 +66,9 @@ export async function processMaterial(materialId: string): Promise<void> {
   if (!row || row.kind !== "file" || !row.storagePath) return
 
   try {
-    const text = await ensureExtractedText(row)
+    const { text, skipReason } = await ensureExtractedText(row)
     if (text == null) {
-      await setStatus(materialId, "skipped")
+      await setStatus(materialId, "skipped", { extractionError: skipReason ?? null })
       return
     }
 
@@ -100,10 +100,12 @@ export async function processMaterial(materialId: string): Promise<void> {
  * a bounded preview + char count are stored on the row (so multi-GB documents
  * are not capped by a single DB column, and re-runs don't re-extract).
  */
-async function ensureExtractedText(row: typeof material.$inferSelect): Promise<string | null> {
+async function ensureExtractedText(
+  row: typeof material.$inferSelect
+): Promise<{ text: string | null; skipReason?: string }> {
   if (row.textStoragePath && row.charCount != null) {
     try {
-      return await readStoredText(row.textStoragePath)
+      return { text: await readStoredText(row.textStoragePath) }
     } catch {
       // stored text missing — fall through and re-extract
     }
@@ -111,19 +113,37 @@ async function ensureExtractedText(row: typeof material.$inferSelect): Promise<s
 
   await setStatus(row.id, "extracting")
   let text = await extractText(row.storagePath!, row.mimeType)
+  let skipReason: string | undefined
   if (!text) {
     // Media without extractable text: OCR images, transcribe audio/video.
+    // When the capability is missing we record WHY, so the material doesn't
+    // just silently show up as "skipped" with no explanation.
     const { classifyFile } = await import("./filetypes")
     const strategy = classifyFile(row.storagePath!, row.mimeType)
     if (strategy === "image") {
-      const { extractImageText } = await import("./media")
-      text = await extractImageText(row.storagePath!, row.mimeType, row.userId)
+      const { resolveModelForUser } = await import("./registry")
+      if (!(await resolveModelForUser(row.userId))) {
+        skipReason = "No AI model configured — image text (OCR) was not extracted."
+      } else {
+        const { extractImageText } = await import("./media")
+        text = await extractImageText(row.storagePath!, row.mimeType, row.userId)
+        if (!text) skipReason = "OCR returned no text (the configured model may not support images)."
+      }
     } else if (strategy === "audio") {
-      const { transcribeMedia } = await import("./media")
-      text = await transcribeMedia(row.storagePath!, row.userId)
+      const { getTranscriptionModel } = await import("./registry")
+      if (!(await getTranscriptionModel(row.userId))) {
+        skipReason =
+          "No transcription model available — audio/video needs an OpenAI or Groq provider."
+      } else {
+        const { transcribeMedia } = await import("./media")
+        text = await transcribeMedia(row.storagePath!, row.userId)
+        if (!text) skipReason = "Transcription returned no text."
+      }
+    } else {
+      skipReason = "No extractable text in this file type."
     }
   }
-  if (!text) return null
+  if (!text) return { text: null, skipReason }
 
   const textStoragePath = await saveText(row.userId, `${row.id}.txt`, text)
   const previous = row.textStoragePath
@@ -132,7 +152,7 @@ async function ensureExtractedText(row: typeof material.$inferSelect): Promise<s
     .set({ textStoragePath, charCount: text.length, textContent: text.slice(0, PREVIEW_CHARS) })
     .where(eq(material.id, row.id))
   if (previous && previous !== textStoragePath) await deleteFile(previous)
-  return text
+  return { text }
 }
 
 /** Chunks and embeds a material's text incrementally (batched, resumable). */

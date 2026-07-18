@@ -64,6 +64,22 @@ async function ownMaterial(materialId: string, userId: string) {
   return row
 }
 
+/** Re-runs extraction/embedding for a file material (idempotent — already
+ *  embedded chunks for the active model are skipped). */
+export async function retryMaterialProcessing(materialId: string) {
+  const session = await requireSession()
+  const row = await ownMaterial(materialId, session.user.id)
+  if (row.kind !== "file") throw new Error("Not a file material")
+  await db
+    .update(material)
+    .set({ extractionStatus: "pending", extractionError: null })
+    .where(eq(material.id, materialId))
+  const { enqueueEmbedMaterial } = await import("@/lib/jobs")
+  await enqueueEmbedMaterial(materialId)
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
 export async function renameMaterial(materialId: string, name: string) {
   const session = await requireSession()
   const clean = name.trim().slice(0, 300)

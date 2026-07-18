@@ -7,6 +7,18 @@ export type UploadItem = { file: File; relativePath?: string }
 
 export type UploadProgress = { done: number; total: number; percent: number }
 
+/** Upload failure carrying the HTTP status so the UI can explain the cause. */
+export class UploadError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly fileName: string
+  ) {
+    super(message)
+    this.name = "UploadError"
+  }
+}
+
 /**
  * Uploads one large file via the resumable tus protocol. Survives interruptions:
  * a dropped connection is retried from the server's last byte offset, and a
@@ -78,16 +90,33 @@ function xhrUpload(
           resolve({})
         }
       } else {
+        let message = xhr.statusText
         try {
-          reject(new Error(JSON.parse(xhr.responseText).error ?? xhr.statusText))
+          message = JSON.parse(xhr.responseText).error ?? xhr.statusText
         } catch {
-          reject(new Error(xhr.statusText))
+          // keep statusText
         }
+        reject(new UploadError(message, xhr.status, file.name))
       }
     }
-    xhr.onerror = () => reject(new Error("network error"))
+    xhr.onerror = () => reject(new UploadError("network error", 0, file.name))
     xhr.send(file)
   })
+}
+
+/**
+ * Maps an upload failure onto a translated, user-actionable message.
+ * `t` is the "materials" namespace translator.
+ */
+export function describeUploadError(error: unknown, t: (key: string, values?: Record<string, string>) => string): string {
+  if (error instanceof UploadError) {
+    if (error.status === 413) return `${error.fileName}: ${error.message}`
+    if (error.status === 429) return t("uploadRateLimited")
+    if (error.status === 0) return t("uploadNetworkError")
+    if (error.status >= 500) return t("uploadServerError", { name: error.fileName })
+    return `${error.fileName}: ${error.message}`
+  }
+  return error instanceof Error ? error.message : String(error)
 }
 
 /**

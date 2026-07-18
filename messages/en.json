@@ -123,7 +123,8 @@
       "unban": "Unban",
       "delete": "Delete",
       "deleteConfirm": "Permanently delete this user and all associated data?",
-      "updated": "User updated."
+      "updated": "User updated.",
+      "storageUnwritable": "File storage is not writable — uploads will fail. Check the upload volume (UPLOAD_DIR) and its permissions."
     },
     "auth": {
       "title": "Sign-in & SSO",
@@ -764,11 +765,14 @@
     "download": "Download",
     "open": "Open",
     "viewer": {
-      "unsupported": "No preview available for this file type — please download."
+      "unsupported": "No preview available for this file type — please download.",
+      "fileMissing": "File no longer available",
+      "fileMissingHint": "The entry exists, but the file is missing on the server (e.g. lost in an earlier redeploy without a persistent upload volume). Please upload it again."
     },
     "annotator": {
       "hint": "Drag on a page to highlight; click a highlight to add a note or delete it.",
-      "notePlaceholder": "Note for this highlight …"
+      "notePlaceholder": "Note for this highlight …",
+      "fileMissing": "The file is missing on the server — it was probably lost in an earlier redeploy. Please upload it again."
     },
     "stats": {
       "files": "{count, plural, =1 {# file} other {# files}}",
@@ -791,7 +795,21 @@
     "uploadingCount": "Uploading … {done}/{total}",
     "uploadHint": "Choose files or a whole folder. Folders keep their structure; .zip archives are unpacked automatically.",
     "chooseFiles": "Choose files",
-    "chooseFolder": "Choose folder"
+    "chooseFolder": "Choose folder",
+    "processing": {
+      "pending": "Queued",
+      "extracting": "Extracting",
+      "embedding": "Indexing",
+      "summarizing": "Summarizing",
+      "failed": "Processing failed",
+      "skipped": "Not processed",
+      "skippedHint": "No text could be extracted from this file.",
+      "retry": "Process again"
+    },
+    "notIndexedHint": "No embedding model is configured — materials are not indexed for AI search. An admin can set this up under Admin → AI.",
+    "uploadRateLimited": "Too many uploads in a short time — please wait a moment.",
+    "uploadNetworkError": "Network error during upload — check your connection and try again.",
+    "uploadServerError": "{name}: Server error while saving. Check in the admin area whether file storage is writable."
   },
   "search": {
     "modules": "Modules",
