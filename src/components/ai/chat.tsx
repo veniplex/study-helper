@@ -320,11 +320,14 @@ export function Chat({
         )}
         {error && (
           <p className="text-destructive text-sm">
-            {/* Raw error.message can carry transport/provider internals — log
-                it for debugging, show the user a friendly message. */}
-            {error.message.toLowerCase().includes("limit")
-              ? t("errorLimit")
-              : t("errorGeneric")}
+            {/* Server categorizes stream errors as AI_ERROR:<code>; anything
+                else stays generic so provider internals never reach the UI. */}
+            {error.message === "AI_ERROR:auth"
+              ? t("errorAuth")
+              : error.message === "AI_ERROR:rate-limit" ||
+                  error.message.toLowerCase().includes("limit")
+                ? t("errorLimit")
+                : t("errorGeneric")}
           </p>
         )}
         <div ref={bottomRef} />

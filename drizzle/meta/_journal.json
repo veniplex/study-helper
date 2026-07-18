@@ -253,6 +253,13 @@
       "when": 1784359449655,
       "tag": "0035_fair_killmonger",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1784365495581,
+      "tag": "0036_motionless_rick_jones",
+      "breakpoints": true
     }
   ]
 }

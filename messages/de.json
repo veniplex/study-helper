@@ -195,7 +195,23 @@
       "annStatusFailed": "Fehlgeschlagen",
       "annRebuild": "Index (neu) aufbauen",
       "annRebuilding": "Index-Aufbau gestartet – läuft im Hintergrund.",
-      "annNeedEmbedding": "Zuerst ein Standard-Embedding-Modell konfigurieren."
+      "annNeedEmbedding": "Zuerst ein Standard-Embedding-Modell konfigurieren.",
+      "reembedTitle": "Embedding-Backfill",
+      "reembedDescription": "Nach einem Wechsel des Embedding-Modells müssen bestehende Materialien neu eingebettet werden — sonst findet die AI-Suche sie nicht mehr.",
+      "reembedStaleWarning": "{count} Material(ien) sind mit einem anderen Modell eingebettet und derzeit nicht per Vektorsuche auffindbar.",
+      "reembedRunning": "Re-Embedding läuft… {done}/{total}",
+      "reembedDone": "Abgeschlossen: {done} neu eingebettet, {failed} fehlgeschlagen.",
+      "reembedFailed": "Fehlgeschlagen",
+      "reembedIdle": "Kein Backfill nötig oder noch nie gelaufen.",
+      "reembedStart": "Jetzt neu einbetten",
+      "reembedStarted": "Re-Embedding gestartet.",
+      "usageByFeature": "Nutzung nach Feature & Modell (30 Tage)",
+      "usageFeature": "Feature",
+      "usageModel": "Modell",
+      "usageCalls": "Aufrufe",
+      "testConnection": "Verbindung testen",
+      "testOk": "Verbindung erfolgreich — der API-Key funktioniert.",
+      "testFailed": "Verbindungstest fehlgeschlagen: {error}"
     },
     "email": {
       "title": "E-Mail (SMTP)",
@@ -896,7 +912,8 @@
       "history": "Verlauf"
     },
     "errorGeneric": "Die Anfrage ist fehlgeschlagen. Bitte versuche es erneut.",
-    "errorLimit": "Dein monatliches AI-Kontingent ist aufgebraucht."
+    "errorLimit": "Dein monatliches AI-Kontingent ist aufgebraucht.",
+    "errorAuth": "Der AI-Anbieter hat die Anfrage abgelehnt (API-Key ungültig oder abgelaufen). Bitte prüfe die AI-Einstellungen."
   },
   "learn": {
     "title": "Lernen",

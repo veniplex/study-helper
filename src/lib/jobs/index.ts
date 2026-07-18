@@ -9,6 +9,7 @@ export const QUEUE_SUMMARIZE_MATERIAL = "summarize-material"
 export const QUEUE_GENERATE_COVERAGE = "generate-coverage"
 export const QUEUE_POLL_BATCHES = "poll-batches"
 export const QUEUE_REINDEX_VECTORS = "reindex-vectors"
+export const QUEUE_REEMBED_MATERIALS = "reembed-materials"
 export const QUEUE_UNPACK_ZIP = "unpack-zip"
 export const QUEUE_FINALIZE_UPLOAD = "finalize-upload"
 export const QUEUE_SEND_REMINDERS = "send-reminders"
@@ -21,6 +22,7 @@ const ALL_QUEUES = [
   QUEUE_GENERATE_COVERAGE,
   QUEUE_POLL_BATCHES,
   QUEUE_REINDEX_VECTORS,
+  QUEUE_REEMBED_MATERIALS,
   QUEUE_UNPACK_ZIP,
   QUEUE_FINALIZE_UPLOAD,
   QUEUE_SEND_REMINDERS,
@@ -87,6 +89,11 @@ export async function registerWorkers(boss: PgBoss): Promise<void> {
   await boss.work(QUEUE_REINDEX_VECTORS, async () => {
     const { reindexVectors } = await import("@/lib/ai/ann")
     await reindexVectors()
+  })
+
+  await boss.work(QUEUE_REEMBED_MATERIALS, async () => {
+    const { reembedStaleMaterials } = await import("@/lib/ai/reembed")
+    await reembedStaleMaterials()
   })
 
   await boss.work<import("./unpack-zip").UnpackZipPayload>(QUEUE_UNPACK_ZIP, async (jobs) => {
@@ -199,6 +206,16 @@ export async function enqueueReindexVectors(): Promise<void> {
     QUEUE_REINDEX_VECTORS,
     {},
     { retryLimit: 0, singletonKey: "reindex", expireInSeconds: 7200 }
+  )
+}
+
+export async function enqueueReembedMaterials(): Promise<void> {
+  const boss = await getBoss()
+  // Long-running backfill; one at a time, resumable via a manual re-trigger.
+  await boss.send(
+    QUEUE_REEMBED_MATERIALS,
+    {},
+    { retryLimit: 0, singletonKey: "reembed", expireInSeconds: 4 * 3600 }
   )
 }
 

@@ -14,6 +14,7 @@ import {
   type GenerationKind,
 } from "@/db/schema"
 import { getSetting } from "@/lib/settings"
+import { GEN_PARAMS, maxTokensForItems } from "@/lib/ai/params"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { runAi } from "@/lib/ai/run"
 import { assertWithinLimit } from "@/lib/ai/usage"
@@ -62,7 +63,14 @@ export function buildCardPrompt(
   return `Create up to ${count} high-quality spaced-repetition flashcards about the topic "${topic.title}".${
     topic.summary ? ` Topic scope: ${topic.summary}` : ""
   }
-Base the cards strictly on the excerpts below — do not invent facts not present. Each card: a concise question/term on the front, a precise answer/definition on the back. Write all cards in ${language}.
+Base the cards strictly on the excerpts below — do not invent facts not present.
+
+Quality rubric:
+- Atomic: each card tests exactly ONE fact, definition, distinction or step — never a list of several.
+- The front is a specific question or term (not "Explain X" for a whole chapter); the back is the precise, complete answer in 1-3 sentences.
+- Prefer why/how/compare cards over pure recall where the excerpts support it; skip trivia that no exam would ask.
+- No card may be answerable from its own front text alone, and no two cards may test the same fact.
+Write all cards in ${language}.
 
 Excerpts:
 ${grounding || "(no excerpts available — use the topic title/scope)"}`
@@ -80,7 +88,13 @@ export function buildQuestionPrompt(
     topic.summary ? ` Topic scope: ${topic.summary}` : ""
   }
 ${mixed ? "Mix multiple_choice (exactly 4 plausible options, correctIndex set) and free_text (referenceAnswer set), about 70/30." : "Use only multiple_choice questions with exactly 4 plausible options and correctIndex set."}
-Give each question a short explanation of the correct answer. Base questions strictly on the excerpts. Write everything in ${language}.
+
+Quality rubric:
+- Vary difficulty: roughly half recall/understanding, half application/analysis (small scenarios, "which of these is NOT…", cause-effect).
+- Multiple choice: all 4 options must be plausible and mutually exclusive; distractors reflect real misconceptions; avoid "all/none of the above"; distribute correctIndex evenly, never always the same position.
+- Free text: the question must be answerable in 1-4 sentences and the referenceAnswer must contain every fact required for full credit.
+- Base every question strictly on the excerpts; give each question a short explanation of the correct answer.
+Write everything in ${language}.
 
 Excerpts:
 ${grounding || "(no excerpts available — use the topic title/scope)"}`
@@ -186,6 +200,8 @@ async function generateTopicCards(
         model,
         schema: cardSchema,
         prompt: buildCardPrompt(topic, grounding, count, language),
+        ...GEN_PARAMS,
+        maxOutputTokens: maxTokensForItems(count),
       })
   )
   return object.cards.slice(0, count)
@@ -218,6 +234,8 @@ async function generateTopicQuestions(
         model,
         schema: questionSchema,
         prompt: buildQuestionPrompt(topic, grounding, count, mixed, language),
+        ...GEN_PARAMS,
+        maxOutputTokens: maxTokensForItems(count),
       })
   )
   return object.questions.slice(0, count)
@@ -347,7 +365,7 @@ async function fail(jobId: string, message: string): Promise<void> {
 
 /** Batch-request token budget per topic (Anthropic requires max_tokens). */
 function batchMaxTokens(count: number): number {
-  return Math.min(8000, Math.max(1500, count * 400))
+  return maxTokensForItems(count)
 }
 
 /**

@@ -11,6 +11,7 @@ import { searchChunks } from "@/lib/ai/rag"
 import { MODE_PROMPTS, type ChatMode } from "@/lib/ai/modes"
 import { writeToolDescriptions, writeToolSchemas, WRITE_TOOL_NAMES } from "@/lib/ai/tools"
 import { mergeToolOutputs } from "@/lib/ai/chat-history"
+import { CHAT_PARAMS } from "@/lib/ai/params"
 import { getStudyContext } from "@/lib/studies/context"
 import { getModuleDetail } from "@/lib/studies/module-detail"
 import { getModuleFinalGrades } from "@/lib/studies/grades-server"
@@ -191,6 +192,7 @@ export async function POST(request: Request) {
 
   const result = streamText({
     model,
+    ...CHAT_PARAMS,
     system: buildSystemPrompt(
       conversation.module?.name,
       conversation.moduleId,
@@ -334,7 +336,24 @@ export async function POST(request: Request) {
   void Promise.resolve(result.consumeStream()).catch(() => {})
 
   return result.toUIMessageStreamResponse({
+    // Categorize provider failures for the client (which maps the codes onto
+    // translated messages) without leaking raw provider/stack details.
+    onError: (error) => {
+      console.error("[chat] stream error", error)
+      const message = error instanceof Error ? error.message : String(error)
+      if (/api.?key|unauthorized|authentication|401|403/i.test(message)) return "AI_ERROR:auth"
+      if (/rate.?limit|quota|429|overloaded/i.test(message)) return "AI_ERROR:rate-limit"
+      return "AI_ERROR:generic"
+    },
     onFinish: async ({ responseMessage }) => {
+      // A failed stream can produce an empty assistant message — persisting it
+      // would litter the conversation with blank turns.
+      const hasContent = responseMessage.parts.some(
+        (p) =>
+          (p.type === "text" && p.text.trim().length > 0) ||
+          (typeof p.type === "string" && p.type.startsWith("tool-"))
+      )
+      if (!hasContent) return
       await db.insert(aiMessage).values({
         conversationId: conversation.id,
         role: "assistant",

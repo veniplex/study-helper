@@ -19,7 +19,13 @@ export async function saveUserAiKey(input: unknown) {
   const { providerId, apiKey } = keySchema.parse(input)
   const { getSetting } = await import("@/lib/settings")
   const ai = await getSetting("ai")
-  if (!ai?.providers.some((p) => p.id === providerId)) throw new Error("Unknown provider")
+  const provider = ai?.providers.find((p) => p.id === providerId)
+  if (!provider) throw new Error("Unknown provider")
+  // Validate the key with a one-token request before storing it — a bad key
+  // would otherwise only surface later, deep inside a chat stream or job.
+  const { testProviderConnection } = await import("@/lib/ai/registry")
+  const test = await testProviderConnection(provider, apiKey)
+  if (!test.ok) throw new Error(`Key check failed: ${test.error}`)
   const encrypted = encrypt(apiKey)
   const existing = await db.query.userAiKey.findFirst({
     where: and(eq(userAiKey.userId, session.user.id), eq(userAiKey.providerId, providerId)),

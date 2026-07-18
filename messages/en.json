@@ -195,7 +195,23 @@
       "annStatusFailed": "Failed",
       "annRebuild": "Build / rebuild index",
       "annRebuilding": "Index build started — running in the background.",
-      "annNeedEmbedding": "Configure a default embedding model first."
+      "annNeedEmbedding": "Configure a default embedding model first.",
+      "reembedTitle": "Embedding backfill",
+      "reembedDescription": "After changing the embedding model, existing materials must be re-embedded — otherwise AI search can no longer find them.",
+      "reembedStaleWarning": "{count} material(s) are embedded with a different model and currently invisible to vector search.",
+      "reembedRunning": "Re-embedding… {done}/{total}",
+      "reembedDone": "Finished: {done} re-embedded, {failed} failed.",
+      "reembedFailed": "Failed",
+      "reembedIdle": "No backfill needed or never run.",
+      "reembedStart": "Re-embed now",
+      "reembedStarted": "Re-embedding started.",
+      "usageByFeature": "Usage by feature & model (30 days)",
+      "usageFeature": "Feature",
+      "usageModel": "Model",
+      "usageCalls": "Calls",
+      "testConnection": "Test connection",
+      "testOk": "Connection successful — the API key works.",
+      "testFailed": "Connection test failed: {error}"
     },
     "email": {
       "title": "Email (SMTP)",
@@ -896,7 +912,8 @@
       "history": "History"
     },
     "errorGeneric": "The request failed. Please try again.",
-    "errorLimit": "Your monthly AI quota is used up."
+    "errorLimit": "Your monthly AI quota is used up.",
+    "errorAuth": "The AI provider rejected the request (API key invalid or expired). Please check the AI settings."
   },
   "learn": {
     "title": "Learn",

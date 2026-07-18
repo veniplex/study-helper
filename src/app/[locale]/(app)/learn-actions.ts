@@ -1,4 +1,5 @@
 "use server"
+import { GEN_PARAMS } from "@/lib/ai/params"
 
 import { revalidatePath } from "next/cache"
 import { and, eq } from "drizzle-orm"
@@ -237,6 +238,7 @@ export async function generateStudyPlan(input: unknown) {
     () =>
       generateObject({
         model,
+        ...GEN_PARAMS,
         schema: generatedPlanSchema,
         prompt: `Create a realistic study plan for a university student.
 Today is ${today}. The exam is on ${data.examDate}.
@@ -366,6 +368,7 @@ export async function analyzeProgress(moduleId: string) {
     () =>
       generateText({
         model,
+        ...GEN_PARAMS,
         prompt: `You are a study coach. Analyze this learning history for one university module and tell the student what to deepen next.
 Requirements:
 - Answer in the language of the quiz/flashcard content (German if mixed).

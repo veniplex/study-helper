@@ -36,6 +36,7 @@ export async function extractImageText(
       },
       () =>
         generateText({
+          temperature: 0,
           model,
           messages: [
             {

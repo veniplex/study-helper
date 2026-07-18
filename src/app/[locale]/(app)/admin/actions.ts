@@ -110,7 +110,24 @@ export async function saveUploads(value: unknown) {
 
 export async function saveAiSettings(value: unknown) {
   await requireAdmin()
-  await setSetting("ai", aiSettingsSchema.parse(value))
+  const { getSetting } = await import("@/lib/settings")
+  const previous = await getSetting("ai")
+  const next = aiSettingsSchema.parse(value)
+  await setSetting("ai", next)
+  // A changed embedding model orphans every existing chunk (vector search
+  // filters on the active model ref) — kick off the re-embed backfill so
+  // search doesn't silently go dark.
+  if (
+    next.defaultEmbeddingModel &&
+    previous?.defaultEmbeddingModel !== next.defaultEmbeddingModel
+  ) {
+    try {
+      const { enqueueReembedMaterials } = await import("@/lib/jobs")
+      await enqueueReembedMaterials()
+    } catch (error) {
+      console.error("[admin] failed to enqueue re-embed after model change", error)
+    }
+  }
   revalidatePath("/", "layout")
   return { ok: true as const }
 }
@@ -128,4 +145,35 @@ export async function getAnnStatus() {
   await requireAdmin()
   const { getSetting } = await import("@/lib/settings")
   return (await getSetting("ai.ann")) ?? { status: "idle" as const }
+}
+
+/** Fires a one-token test request against a (possibly unsaved) provider config. */
+export async function testAiProvider(value: unknown) {
+  await requireAdmin()
+  const { aiProviderSchema } = await import("@/lib/settings")
+  const provider = aiProviderSchema.parse(value)
+  const { testProviderConnection } = await import("@/lib/ai/registry")
+  return testProviderConnection(provider, provider.apiKey)
+}
+
+/** Starts the re-embed backfill for materials embedded with a stale model. */
+export async function startReembed() {
+  await requireAdmin()
+  const { enqueueReembedMaterials } = await import("@/lib/jobs")
+  await enqueueReembedMaterials()
+  return { ok: true as const }
+}
+
+/** Re-embed progress + live count of stale materials, for the admin UI. */
+export async function getReembedStatus() {
+  await requireAdmin()
+  const { getSetting } = await import("@/lib/settings")
+  const [state, ai] = await Promise.all([getSetting("ai.reembed"), getSetting("ai")])
+  const ref = ai?.defaultEmbeddingModel
+  let staleCount = 0
+  if (ref) {
+    const { countStaleMaterials } = await import("@/lib/ai/reembed")
+    staleCount = await countStaleMaterials(ref)
+  }
+  return { state: state ?? { status: "idle" as const }, staleCount, embeddingModel: ref ?? null }
 }

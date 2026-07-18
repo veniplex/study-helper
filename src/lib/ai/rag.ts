@@ -286,12 +286,26 @@ type ScoredRow = {
  * retrieval robust to the vector model missing exact terms/acronyms/formulae
  * (which lexical catches) and vice-versa.
  */
+/**
+ * Vector-only hits below this cosine similarity are cut before fusion: nearest-
+ * neighbour search always returns *something*, even for a query the corpus
+ * doesn't cover, and those noise chunks would otherwise flow into prompts.
+ * Deliberately conservative (clearly-unrelated territory across common
+ * embedding models); hits that also match lexically are never cut — a term
+ * match is real signal regardless of the cosine value.
+ */
+const MIN_VECTOR_SIMILARITY = 0.15
+
 function rrfFuse(
   vector: ScoredRow[],
   lexical: Omit<ScoredRow, "similarity">[],
   limit: number
 ): RagHit[] {
   const K = 60
+  const lexicalIds = new Set(lexical.map((r) => r.id))
+  vector = vector.filter(
+    (r) => r.similarity >= MIN_VECTOR_SIMILARITY || lexicalIds.has(r.id)
+  )
   const acc = new Map<string, { hit: RagHit; score: number }>()
   vector.forEach((r, i) => {
     acc.set(r.id, {
@@ -339,7 +353,11 @@ async function hybridSearch(
   const base = and(eq(material.userId, userId), ...extraWhere)
 
   // Lexical ranking via Postgres full-text search over the generated tsvector.
-  const tsq = sql`plainto_tsquery('simple', ${query})`
+  // websearch_to_tsquery never throws on arbitrary (user/model-supplied) query
+  // strings and supports quoted phrases. Config MUST match the generated
+  // column's config (schema/material-chunks.ts) or stemming mismatches kill
+  // recall despite the GIN index.
+  const tsq = sql`websearch_to_tsquery('german', ${query})`
   const lexical = await db
     .select({
       id: materialChunk.id,

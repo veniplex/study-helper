@@ -1,4 +1,5 @@
 import "server-only"
+import { GEN_PARAMS } from "@/lib/ai/params"
 import { generateText, embedMany } from "ai"
 import { and, asc, eq, gt } from "drizzle-orm"
 import { db } from "@/db"
@@ -165,7 +166,7 @@ async function runSummarization(
         entityLabel: row.name,
         audit: false,
       },
-      () => generateText({ model, prompt: SECTION_PROMPT(section) })
+      () => generateText({ model, prompt: SECTION_PROMPT(section), ...GEN_PARAMS })
     )
     acc(aiUsage)
     const trimmed = text.trim()
@@ -203,7 +204,7 @@ async function runSummarization(
           entityLabel: row.name,
           audit: false,
         },
-        () => generateText({ model, prompt: REDUCE_PROMPT(group) })
+        () => generateText({ model, prompt: REDUCE_PROMPT(group), ...GEN_PARAMS })
       )
       acc(aiUsage)
       next.push(text.trim())
