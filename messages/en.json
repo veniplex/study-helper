@@ -1256,8 +1256,12 @@
     "assignments": "Assignments",
     "decks": "Flashcards",
     "quizzes": "Quizzes",
+    "paper": "Write-up",
+    "plan": "Study plan",
     "chat": "Chat",
-    "thesisPlanner": "Thesis planner"
+    "thesisPlanner": "Thesis planner",
+    "moreTools": "More tools",
+    "comingSoon": "Coming soon"
   },
   "offline": {
     "synced": "{count} offline changes synced."

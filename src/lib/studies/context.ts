@@ -2,7 +2,7 @@ import "server-only"
 import { and, asc, eq, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { degreeProgram, userPrefs, writingProject } from "@/db/schema"
-import type { GoalGradingRole, GoalType } from "@/db/schema/studies"
+import type { GoalGradingRole, GoalType, ModuleToolKey } from "@/db/schema/studies"
 import { hasGoal } from "@/lib/studies/goals"
 
 export type SemesterModuleGoal = {
@@ -25,6 +25,8 @@ export type SemesterModule = {
   color: string | null
   /** The module's learning goals (drives workspace + thesis derivation). */
   goals: SemesterModuleGoal[]
+  /** Per-module force-show/hide of workspace tools (matrix ⊕ overrides). */
+  toolOverrides: Partial<Record<ModuleToolKey, boolean>>
   /** Derived label for compact lists: the primary grade goal's title. */
   examType: string | null
   /** Derived: the module carries a `thesis` goal (special module). */
@@ -91,6 +93,7 @@ export async function getStudyContext(userId: string): Promise<StudyContext> {
                 notes: true,
                 icon: true,
                 color: true,
+                toolOverrides: true,
               },
               with: {
                 goals: {
@@ -159,6 +162,7 @@ export async function getStudyContext(userId: string): Promise<StudyContext> {
           icon: m.icon,
           color: m.color,
           goals: m.goals,
+          toolOverrides: m.toolOverrides,
           examType: gradeGoal?.title ?? null,
           isThesis: hasGoal(m.goals, "thesis"),
         }

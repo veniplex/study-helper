@@ -7,6 +7,7 @@ import { db } from "@/db"
 import { studyModule } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { isAiAvailable } from "@/lib/ai/registry"
+import { enabledTools } from "@/config/module-tabs"
 import { formatGrade, moduleGrade } from "@/lib/grades"
 import { hasGoal } from "@/lib/studies/goals"
 import { PageContextSetter } from "@/components/ai/page-context"
@@ -92,7 +93,12 @@ export default async function ModuleWorkspaceLayout({
       <ModuleTabs
         basePath={`/studies/${programId}/${moduleId}`}
         aiAvailable={aiAvailable}
-        isThesis={hasGoal(mod.goals, "thesis")}
+        enabledTools={enabledTools(
+          mod.goals.map((g) => g.type),
+          mod.toolOverrides
+        )}
+        hasThesisGoal={hasGoal(mod.goals, "thesis")}
+        moduleId={moduleId}
       />
       {children}
     </div>

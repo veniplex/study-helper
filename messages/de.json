@@ -1256,8 +1256,12 @@
     "assignments": "Abgaben",
     "decks": "Karteikarten",
     "quizzes": "Quizze",
+    "paper": "Ausarbeitung",
+    "plan": "Lernplan",
     "chat": "Chat",
-    "thesisPlanner": "Thesis-Planer"
+    "thesisPlanner": "Thesis-Planer",
+    "moreTools": "Weitere Werkzeuge",
+    "comingSoon": "In Arbeit"
   },
   "offline": {
     "synced": "{count} Offline-Änderungen synchronisiert."

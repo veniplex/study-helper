@@ -17,7 +17,7 @@ import {
 import { useTranslations } from "next-intl"
 import { Link, usePathname, useRouter } from "@/i18n/navigation"
 import { navItems } from "@/config/nav"
-import { visibleModuleTabs } from "@/config/module-tabs"
+import { enabledTools, visibleModuleTabs } from "@/config/module-tabs"
 import { deleteModule, deleteSemester } from "@/app/[locale]/(app)/studies/actions"
 import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 import { EntityContextMenu } from "@/components/entity-context-menu"
@@ -157,8 +157,13 @@ function SidebarModule({
       </EntityContextMenu>
       {open && (
         <div className="mt-0.5 mb-1 ml-4 space-y-0.5 border-l pl-2">
-          {visibleModuleTabs(aiAvailable)
-            .map((tab) => {
+          {visibleModuleTabs({
+            aiAvailable,
+            enabledTools: enabledTools(
+              mod.goals.map((g) => g.type),
+              mod.toolOverrides
+            ),
+          }).map((tab) => {
               const tabHref = `${href}${tab.segment}`
               const active = tab.segment === "" ? pathname === href : pathname.startsWith(tabHref)
               return (

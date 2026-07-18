@@ -209,6 +209,30 @@ export async function deleteModule(moduleId: string) {
   return { ok: true as const }
 }
 
+/** Force-show/hide of the optional workspace tools (matrix ⊕ overrides). */
+const toolOverridesSchema = z.object({
+  assignments: z.boolean().optional(),
+  decks: z.boolean().optional(),
+  quizzes: z.boolean().optional(),
+  paper: z.boolean().optional(),
+})
+
+/**
+ * Toggles a module's optional workspace tools. Overrides are merged into the
+ * existing `toolOverrides` map (other keys untouched) and drive both the tab
+ * bar and the sidebar tree.
+ */
+export async function updateModuleTools(moduleId: string, input: unknown) {
+  const session = await requireSession()
+  const mod = await ownModule(moduleId, session.user.id)
+  const overrides = toolOverridesSchema.parse(input)
+  const merged = { ...(mod.toolOverrides ?? {}), ...overrides }
+  await db.update(studyModule).set({ toolOverrides: merged }).where(eq(studyModule.id, moduleId))
+  revalidatePath(`/studies/${mod.semester.programId}/${moduleId}`)
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
 
 const reorderMovesSchema = z
   .array(z.object({ semesterId: z.string(), ids: z.array(z.string()).max(200) }))
