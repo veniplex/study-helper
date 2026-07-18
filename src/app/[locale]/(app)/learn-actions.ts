@@ -10,6 +10,7 @@ import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { assertWithinLimit } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 import { ownModule } from "@/lib/studies/access"
+import { getModuleGoalContext } from "@/lib/studies/goal-context"
 
 async function ownModuleOrNull(moduleId: string | null | undefined, userId: string) {
   if (moduleId) await ownModule(moduleId, userId)
@@ -91,7 +92,15 @@ export async function analyzeProgress(moduleId: string) {
   ])
   void dsql
 
+  const goalCtx = await getModuleGoalContext(moduleId)
+
   const data = {
+    goals: goalCtx.goals.map((g) => ({
+      type: g.type,
+      title: g.title,
+      dueDate: g.dueDate,
+      daysUntil: g.daysUntil,
+    })),
     quizzes: quizzes.map((q) => ({
       title: q.title,
       attempts: q.attempts
@@ -113,6 +122,17 @@ export async function analyzeProgress(moduleId: string) {
       kind: s.kind,
     })),
   }
+
+  // Nearest upcoming (or otherwise first) goal, to anchor the recommendations.
+  const upcomingGoal =
+    goalCtx.goals
+      .filter((g) => g.dueDate && (g.daysUntil == null || g.daysUntil >= 0))
+      .sort((a, b) => (a.daysUntil ?? Infinity) - (b.daysUntil ?? Infinity))[0] ??
+    goalCtx.goals[0] ??
+    null
+  const goalSentence = upcomingGoal
+    ? `\n- Relate the recommendations to the upcoming ${upcomingGoal.title?.trim() || upcomingGoal.type}${upcomingGoal.dueDate ? ` on ${upcomingGoal.dueDate}` : ""}.`
+    : ""
 
   const defaultModel = await resolveModelForUser(session.user.id)
   if (!defaultModel) throw new Error("No AI model configured")
@@ -136,7 +156,7 @@ Requirements:
 - Answer in the language of the quiz/flashcard content (German if mixed).
 - Look at trends ACROSS attempts over time: explicitly mention topics where the student has already improved, and topics that keep going wrong.
 - Recommend 2-4 concrete focus areas with a short reason each.
-- Keep it under 250 words, use Markdown with a short bullet list.
+- Keep it under 250 words, use Markdown with a short bullet list.${goalSentence}
 
 Data (JSON): ${JSON.stringify(data).slice(0, 20000)}`,
       })

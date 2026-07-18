@@ -31,6 +31,8 @@ export type GenParams = {
   perTopic?: number
   language?: string
   mixed?: boolean
+  /** One-sentence exam-format hint so items mirror the module's assessment. */
+  examContext?: string
 }
 
 export const cardSchema = z.object({
@@ -58,11 +60,12 @@ export function buildCardPrompt(
   topic: OutlineTopic,
   grounding: string,
   count: number,
-  language: string
+  language: string,
+  examContext?: string
 ): string {
   return `Create up to ${count} high-quality spaced-repetition flashcards about the topic "${topic.title}".${
     topic.summary ? ` Topic scope: ${topic.summary}` : ""
-  }
+  }${examContext ? `\n${examContext}` : ""}
 Base the cards strictly on the excerpts below — do not invent facts not present.
 
 Quality rubric:
@@ -82,11 +85,12 @@ export function buildQuestionPrompt(
   grounding: string,
   count: number,
   mixed: boolean,
-  language: string
+  language: string,
+  examContext?: string
 ): string {
   return `Create up to ${count} exam-style quiz questions about the topic "${topic.title}".${
     topic.summary ? ` Topic scope: ${topic.summary}` : ""
-  }
+  }${examContext ? `\n${examContext}` : ""}
 ${mixed ? "Mix multiple_choice (exactly 4 plausible options, correctIndex set) and free_text (referenceAnswer set), about 70/30." : "Use only multiple_choice questions with exactly 4 plausible options and correctIndex set."}
 
 Quality rubric:
@@ -182,7 +186,8 @@ async function generateTopicCards(
   topic: OutlineTopic,
   grounding: string,
   count: number,
-  language: string
+  language: string,
+  examContext?: string
 ): Promise<{ front: string; back: string }[]> {
   const { object } = await runAi(
     {
@@ -199,7 +204,7 @@ async function generateTopicCards(
       generateObject({
         model,
         schema: cardSchema,
-        prompt: buildCardPrompt(topic, grounding, count, language),
+        prompt: buildCardPrompt(topic, grounding, count, language, examContext),
         ...GEN_PARAMS,
         maxOutputTokens: maxTokensForItems(count),
       })
@@ -216,7 +221,8 @@ async function generateTopicQuestions(
   grounding: string,
   count: number,
   mixed: boolean,
-  language: string
+  language: string,
+  examContext?: string
 ): Promise<z.infer<typeof questionSchema>["questions"]> {
   const { object } = await runAi(
     {
@@ -233,7 +239,7 @@ async function generateTopicQuestions(
       generateObject({
         model,
         schema: questionSchema,
-        prompt: buildQuestionPrompt(topic, grounding, count, mixed, language),
+        prompt: buildQuestionPrompt(topic, grounding, count, mixed, language, examContext),
         ...GEN_PARAMS,
         maxOutputTokens: maxTokensForItems(count),
       })
@@ -381,7 +387,7 @@ async function trySubmitBatchGeneration(
   topics: OutlineTopic[],
   modelRef: string,
   covByTopic: Map<string, typeof generationCoverage.$inferSelect>,
-  opts: { perTopic: number; language: string; mixed: boolean }
+  opts: { perTopic: number; language: string; mixed: boolean; examContext?: string }
 ): Promise<boolean> {
   const provider = await resolveBatchProvider(modelRef, job.userId)
   if (!provider) return false
@@ -416,8 +422,15 @@ async function trySubmitBatchGeneration(
     const grounding = await groundTopic(job.userId, job.moduleId, topic)
     const prompt =
       job.kind === "deck"
-        ? buildCardPrompt(topic, grounding, opts.perTopic, opts.language)
-        : buildQuestionPrompt(topic, grounding, opts.perTopic, opts.mixed, opts.language)
+        ? buildCardPrompt(topic, grounding, opts.perTopic, opts.language, opts.examContext)
+        : buildQuestionPrompt(
+            topic,
+            grounding,
+            opts.perTopic,
+            opts.mixed,
+            opts.language,
+            opts.examContext
+          )
     items.push({ customId: topic.id, prompt, jsonSchema, maxTokens })
     await upsertCoverage(job.targetId, topic.id, job.id, "generating")
   }
@@ -493,6 +506,7 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
     params.perTopic ?? (job.kind === "deck" ? DEFAULT_CARDS_PER_TOPIC : DEFAULT_QUESTIONS_PER_TOPIC)
   const language = params.language ?? "the language of the source materials"
   const mixed = params.mixed ?? true
+  const examContext = params.examContext
 
   const coverage = await db.query.generationCoverage.findMany({
     where: eq(generationCoverage.targetId, job.targetId),
@@ -514,6 +528,7 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
       perTopic,
       language,
       mixed,
+      examContext,
     })
     if (submitted) return
   }
@@ -562,7 +577,8 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
           topic,
           grounding,
           perTopic,
-          language
+          language,
+          examContext
         )
         produced = await persistCards(job.userId, job.targetId, deduper, embeddingRef, cards)
       } else {
@@ -575,7 +591,8 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
           grounding,
           perTopic,
           mixed,
-          language
+          language,
+          examContext
         )
         produced = await persistQuestions(
           job.userId,

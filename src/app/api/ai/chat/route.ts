@@ -14,6 +14,7 @@ import { mergeToolOutputs } from "@/lib/ai/chat-history"
 import { CHAT_PARAMS } from "@/lib/ai/params"
 import { getStudyContext } from "@/lib/studies/context"
 import { getModuleDetail } from "@/lib/studies/module-detail"
+import { formatGoalContext, getModuleGoalContext } from "@/lib/studies/goal-context"
 import { getModuleFinalGrades } from "@/lib/studies/grades-server"
 import { getSetting } from "@/lib/settings"
 
@@ -35,7 +36,8 @@ function buildSystemPrompt(
   mode: ChatMode,
   pageContext?: string,
   locale?: string,
-  documentName?: string | null
+  documentName?: string | null,
+  goalContext?: string
 ): string {
   const language = locale ? LOCALE_NAMES[locale] : undefined
   return [
@@ -47,6 +49,7 @@ function buildSystemPrompt(
     moduleName
       ? `The current conversation is about the module "${moduleName}"${moduleId ? ` (moduleId: ${moduleId})` : ""}. Use this moduleId for write tools that target this module.`
       : "",
+    goalContext ?? "",
     MODE_PROMPTS[mode] ?? "",
     documentName
       ? `This conversation is about ONE specific document: "${documentName}". The searchMaterials tool searches only inside this document — use it for every content question, and answer from this document rather than general knowledge.`
@@ -225,6 +228,26 @@ export async function POST(request: Request) {
   const userId = session.user.id
   const moduleId = conversation.moduleId
   const scopedMaterialId = conversation.materialId
+
+  // Goal-aware chat: describe the module's learning goals in the system prompt
+  // and, when the user hasn't picked a mode, derive an effective default from
+  // the goals (never persisted — the stored mode always wins once set).
+  const storedMode = (conversation.mode as ChatMode) ?? "general"
+  let effectiveMode = storedMode
+  let goalContextText = ""
+  if (moduleId) {
+    const goalCtx = await getModuleGoalContext(moduleId)
+    goalContextText = formatGoalContext(goalCtx)
+    if (storedMode === "general" && goalCtx.goals.length > 0) {
+      const inWritingPhase =
+        goalCtx.writingPhase === "writing" || goalCtx.writingPhase === "revision"
+      if ((goalCtx.hasTermPaper || goalCtx.hasThesis) && inWritingPhase) {
+        effectiveMode = "writing"
+      } else if (goalCtx.hasThesis) {
+        effectiveMode = "thesis"
+      }
+    }
+  }
   // Citation counter shared across all searchMaterials calls of this response
   // so [n] indices stay unique within one assistant turn.
   let citationIndex = 0
@@ -236,10 +259,11 @@ export async function POST(request: Request) {
       conversation.module?.name,
       conversation.moduleId,
       ragEnabled,
-      (conversation.mode as ChatMode) ?? "general",
+      effectiveMode,
       pageContext,
       locale,
-      conversation.material?.name ?? null
+      conversation.material?.name ?? null,
+      goalContextText
     ),
     // Incomplete write-tool calls (user typed on without confirming) are
     // dropped so providers don't reject the dangling tool_use.
@@ -324,6 +348,12 @@ export async function POST(request: Request) {
                 name: m.name,
                 status: m.status,
                 finalGrade: finalGrades.get(m.id)?.grade ?? null,
+                goalTypes: m.goals.map((g) => g.type),
+                nextDueDate:
+                  m.goals
+                    .map((g) => g.dueDate)
+                    .filter((d): d is string => d != null)
+                    .sort()[0] ?? null,
               })),
             })),
             upcomingEvents: events,
@@ -332,7 +362,7 @@ export async function POST(request: Request) {
       }),
       getModuleDetails: tool({
         description:
-          "Get everything about ONE module: status, ECTS, exam type, assessment attempts and computed final grade, assignment bonus progress, contacts, assignments, upcoming events and deck/quiz counts. Pass the module id from getContext.",
+          "Get everything about ONE module: status, ECTS, its learning goals (exams, papers, assignments — each with type, title, grading role, deadline and attempts), computed final grade, assignment bonus progress, contacts, assignments, upcoming events and deck/quiz counts. Pass the module id from getContext.",
         inputSchema: z.object({ moduleId: z.string().describe("Module id from getContext") }),
         execute: async ({ moduleId: id }) => {
           try {

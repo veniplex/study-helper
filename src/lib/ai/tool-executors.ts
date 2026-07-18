@@ -1,7 +1,8 @@
 import "server-only"
 import { z } from "zod"
 import { db } from "@/db"
-import { assignment, deck, flashcard, question, quiz, studyEvent } from "@/db/schema"
+import { asc, eq } from "drizzle-orm"
+import { assignment, deck, flashcard, moduleGoal, question, quiz, studyEvent } from "@/db/schema"
 import { ownModule } from "@/lib/studies/access"
 import { writeToolSchemas, type WriteToolName } from "./tools"
 
@@ -135,11 +136,22 @@ async function runTool(
       const input = writeToolSchemas.createAssignment.parse(rawInput)
       const mod = await ownModule(input.moduleId, userId)
       const dueDate = input.dueDate ? z.string().date().parse(input.dueDate) : null
+      // Link the sheet to a goal: the caller-supplied one (validated against the
+      // module) or, by default, the module's assignments goal.
+      const goals = await db.query.moduleGoal.findMany({
+        where: eq(moduleGoal.moduleId, mod.id),
+        orderBy: (g) => [asc(g.sortOrder), asc(g.createdAt)],
+        columns: { id: true, type: true },
+      })
+      const goalId = input.goalId
+        ? (goals.find((g) => g.id === input.goalId)?.id ?? null)
+        : (goals.find((g) => g.type === "assignments")?.id ?? null)
       const [created] = await db
         .insert(assignment)
         .values({
           userId,
           moduleId: mod.id,
+          goalId,
           title: input.title,
           description: input.description ?? null,
           dueDate,
