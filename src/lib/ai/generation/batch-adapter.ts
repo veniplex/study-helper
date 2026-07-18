@@ -78,6 +78,60 @@ export function toJsonSchema(schema: z.ZodType): Record<string, unknown> {
   return zod.toJSONSchema(schema) as Record<string, unknown>
 }
 
+/** Keywords OpenAI's strict structured-output mode rejects. Dropping the
+ *  constraint keywords is safe: results are re-validated with the original Zod
+ *  schema on ingestion (safeParse in generate.ts / batch-poll.ts). */
+const STRICT_UNSUPPORTED_KEYWORDS = [
+  "default",
+  "minItems",
+  "maxItems",
+  "minLength",
+  "maxLength",
+  "pattern",
+  "format",
+  "minimum",
+  "maximum",
+]
+
+/**
+ * Rewrites a JSON Schema to satisfy OpenAI strict mode: every object requires
+ * all of its properties, forbids additional ones, and unsupported constraint
+ * keywords are stripped. Strict mode makes the model's output reliably parse —
+ * with strict:false the model may emit free-form JSON that fails validation and
+ * silently fails the batch item.
+ */
+export function toStrictJsonSchema(schema: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(schema)) {
+    if (STRICT_UNSUPPORTED_KEYWORDS.includes(key)) continue
+    out[key] = value
+  }
+  if (out.type === "object" && out.properties && typeof out.properties === "object") {
+    const properties: Record<string, unknown> = {}
+    for (const [name, prop] of Object.entries(out.properties as Record<string, unknown>)) {
+      properties[name] =
+        prop && typeof prop === "object"
+          ? toStrictJsonSchema(prop as Record<string, unknown>)
+          : prop
+    }
+    out.properties = properties
+    out.required = Object.keys(properties)
+    out.additionalProperties = false
+  }
+  if (out.items && typeof out.items === "object" && !Array.isArray(out.items)) {
+    out.items = toStrictJsonSchema(out.items as Record<string, unknown>)
+  }
+  for (const combiner of ["anyOf", "allOf", "oneOf"] as const) {
+    const branches = out[combiner]
+    if (Array.isArray(branches)) {
+      out[combiner] = branches.map((b) =>
+        b && typeof b === "object" ? toStrictJsonSchema(b as Record<string, unknown>) : b
+      )
+    }
+  }
+  return out
+}
+
 // ---- Anthropic Message Batches --------------------------------------------------
 
 type AnthropicRequest = {
@@ -158,7 +212,8 @@ type OpenAiTask = {
   url: "/v1/chat/completions"
   body: {
     model: string
-    max_tokens: number
+    /** max_tokens is rejected by newer OpenAI models (o-series, gpt-5+). */
+    max_completion_tokens: number
     messages: { role: "user"; content: string }[]
     response_format: {
       type: "json_schema"
@@ -176,11 +231,11 @@ export function buildOpenAiTasks(items: BatchItem[], modelId: string): OpenAiTas
     url: "/v1/chat/completions",
     body: {
       model: modelId,
-      max_tokens: item.maxTokens,
+      max_completion_tokens: item.maxTokens,
       messages: [{ role: "user", content: item.prompt }],
       response_format: {
         type: "json_schema",
-        json_schema: { name: "result", schema: item.jsonSchema, strict: false },
+        json_schema: { name: "result", schema: toStrictJsonSchema(item.jsonSchema), strict: true },
       },
     },
   }))

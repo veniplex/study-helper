@@ -5,7 +5,15 @@ import { studyModule } from "./studies"
 import { outlineTopic } from "./outline"
 
 export type GenerationKind = "deck" | "quiz"
-export type GenerationJobStatus = "pending" | "running" | "completed" | "failed" | "canceled"
+/** "applying" = a poller has claimed the job's finished batch and is ingesting
+ *  its results — the claim makes result application single-writer. */
+export type GenerationJobStatus =
+  | "pending"
+  | "running"
+  | "applying"
+  | "completed"
+  | "failed"
+  | "canceled"
 export type CoverageStatus = "pending" | "generating" | "done" | "failed"
 
 /**

@@ -21,14 +21,31 @@ export const writeToolSchemas = {
     title: z.string().min(1).max(200),
     questions: z
       .array(
-        z.object({
-          kind: z.enum(["multiple_choice", "free_text"]),
-          prompt: z.string().min(1).max(2000),
-          options: z.array(z.string().max(500)).max(8).nullish(),
-          correctIndex: z.number().int().min(0).max(7).nullish(),
-          referenceAnswer: z.string().max(2000).nullish(),
-          explanation: z.string().max(2000).nullish(),
-        })
+        z
+          .object({
+            kind: z.enum(["multiple_choice", "free_text"]),
+            prompt: z.string().min(1).max(2000),
+            options: z.array(z.string().max(500)).max(8).nullish(),
+            correctIndex: z.number().int().min(0).max(7).nullish(),
+            referenceAnswer: z.string().max(2000).nullish(),
+            explanation: z.string().max(2000).nullish(),
+          })
+          .superRefine((q, ctx) => {
+            if (q.kind !== "multiple_choice") return
+            const count = q.options?.length ?? 0
+            if (count < 2) {
+              ctx.addIssue({
+                code: "custom",
+                message: "multiple_choice needs at least 2 options",
+              })
+            }
+            if (q.correctIndex == null || q.correctIndex >= count) {
+              ctx.addIssue({
+                code: "custom",
+                message: "correctIndex must point at one of the options",
+              })
+            }
+          })
       )
       .min(1)
       .max(30),

@@ -28,6 +28,7 @@ import {
   parseOpenAiResults,
   resolveBatchProvider,
   toJsonSchema,
+  toStrictJsonSchema,
   type BatchItem,
 } from "./batch-adapter"
 
@@ -58,14 +59,38 @@ describe("buildAnthropicRequests", () => {
 })
 
 describe("buildOpenAiTasks", () => {
-  it("builds json_schema chat-completion tasks", () => {
+  it("builds strict json_schema chat-completion tasks", () => {
     const tasks = buildOpenAiTasks(items, "gpt-x")
     expect(tasks[0].custom_id).toBe("topic-1")
     expect(tasks[0].method).toBe("POST")
     expect(tasks[0].url).toBe("/v1/chat/completions")
     expect(tasks[0].body.model).toBe("gpt-x")
-    expect(tasks[0].body.response_format.json_schema.schema).toEqual({ type: "object" })
+    // Newer OpenAI models reject max_tokens.
+    expect(tasks[0].body.max_completion_tokens).toBe(2000)
+    expect(tasks[0].body.response_format.json_schema.strict).toBe(true)
     expect(tasks[0].body.messages).toEqual([{ role: "user", content: "PROMPT" }])
+  })
+})
+
+describe("toStrictJsonSchema", () => {
+  it("requires all properties, forbids extras and strips unsupported keywords", () => {
+    const strict = toStrictJsonSchema(
+      toJsonSchema(
+        z.object({
+          cards: z
+            .array(z.object({ front: z.string(), back: z.string().default("") }))
+            .max(60),
+        })
+      )
+    )
+    expect(strict.required).toEqual(["cards"])
+    expect(strict.additionalProperties).toBe(false)
+    const cards = (strict.properties as Record<string, Record<string, unknown>>).cards
+    expect(cards.maxItems).toBeUndefined()
+    const item = cards.items as Record<string, unknown>
+    expect(item.required).toEqual(["front", "back"])
+    expect(item.additionalProperties).toBe(false)
+    expect((item.properties as Record<string, Record<string, unknown>>).back.default).toBeUndefined()
   })
 })
 
