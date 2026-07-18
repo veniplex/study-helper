@@ -5,13 +5,7 @@ import { BellRing, Loader2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { saveNotificationPrefs } from "@/app/[locale]/(app)/settings/actions"
@@ -20,6 +14,20 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4)
   const raw = atob((base64 + padding).replace(/-/g, "+").replace(/_/g, "/"))
   return Uint8Array.from(raw, (c) => c.charCodeAt(0))
+}
+
+/**
+ * navigator.serviceWorker.ready never settles when no service worker manages
+ * the page (e.g. registration failed) — race it against a timeout so the push
+ * buttons can't hang forever.
+ */
+async function serviceWorkerReady(timeoutMs = 10_000): Promise<ServiceWorkerRegistration> {
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("sw-unavailable")), timeoutMs)
+    ),
+  ])
 }
 
 export type NotificationChannelsState = {
@@ -51,14 +59,17 @@ export function NotificationSettings({
   }, [])
 
   function toggle(category: (typeof CATEGORIES)[number], channel: "email" | "push", on: boolean) {
+    const previous = channels
     const next = {
       ...channels,
       [category]: { ...channels[category], [channel]: on },
     }
     setChannels(next)
-    saveNotificationPrefs(next).catch((error: unknown) =>
-      toast.error(error instanceof Error ? error.message : String(error))
-    )
+    saveNotificationPrefs(next).catch(() => {
+      // Roll the optimistic switch back so the UI matches the server state.
+      setChannels(previous)
+      toast.error(t("saveFailed"))
+    })
   }
 
   async function enablePush() {
@@ -73,22 +84,42 @@ export function NotificationSettings({
         toast.error(t("denied"))
         return
       }
-      const registration = await navigator.serviceWorker.ready
+      const registration = await serviceWorkerReady()
       const { publicKey } = await fetch("/api/push").then((r) => r.json())
-      const subscription = await registration.pushManager.subscribe({
+      let subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
       })
-      const res = await fetch("/api/push", {
+      let res = await fetch("/api/push", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(subscription.toJSON()),
       })
+      if (res.status === 409) {
+        // The browser subscription still belongs to another account (shared
+        // device). Drop it and subscribe fresh — that yields a new endpoint.
+        await subscription.unsubscribe()
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
+        })
+        res = await fetch("/api/push", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(subscription.toJSON()),
+        })
+      }
       if (!res.ok) throw new Error(await res.text())
       setPushSubscribed(true)
       toast.success(t("pushEnabled"))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      toast.error(
+        error instanceof Error && error.message === "sw-unavailable"
+          ? t("swUnavailable")
+          : error instanceof Error
+            ? error.message
+            : String(error)
+      )
     } finally {
       setPending(false)
     }
@@ -97,7 +128,7 @@ export function NotificationSettings({
   async function disablePush() {
     setPending(true)
     try {
-      const registration = await navigator.serviceWorker.ready
+      const registration = await serviceWorkerReady()
       const subscription = await registration.pushManager.getSubscription()
       if (subscription) {
         await fetch("/api/push", {
@@ -110,7 +141,13 @@ export function NotificationSettings({
       setPushSubscribed(false)
       toast.success(t("pushDisabled"))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      toast.error(
+        error instanceof Error && error.message === "sw-unavailable"
+          ? t("swUnavailable")
+          : error instanceof Error
+            ? error.message
+            : String(error)
+      )
     } finally {
       setPending(false)
     }

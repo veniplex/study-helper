@@ -338,7 +338,9 @@
       "pushEnabled": "Push enabled.",
       "pushDisabled": "Push disabled.",
       "unsupported": "This browser does not support push notifications.",
-      "denied": "Notifications are blocked in the browser."
+      "denied": "Notifications are blocked in the browser.",
+      "swUnavailable": "The background service for push is unavailable. Reload the page and try again.",
+      "saveFailed": "The setting could not be saved."
     },
     "usage": {
       "title": "Your token usage (30 days)",

@@ -338,7 +338,9 @@
       "pushEnabled": "Push aktiviert.",
       "pushDisabled": "Push deaktiviert.",
       "unsupported": "Dieser Browser unterstützt keine Push-Benachrichtigungen.",
-      "denied": "Benachrichtigungen wurden im Browser blockiert."
+      "denied": "Benachrichtigungen wurden im Browser blockiert.",
+      "swUnavailable": "Der Hintergrunddienst für Push ist nicht verfügbar. Lade die Seite neu und versuche es erneut.",
+      "saveFailed": "Einstellung konnte nicht gespeichert werden."
     },
     "usage": {
       "title": "Dein Token-Verbrauch (30 Tage)",
