@@ -320,7 +320,11 @@ export function Chat({
         )}
         {error && (
           <p className="text-destructive text-sm">
-            {t("error")}: {error.message}
+            {/* Raw error.message can carry transport/provider internals — log
+                it for debugging, show the user a friendly message. */}
+            {error.message.toLowerCase().includes("limit")
+              ? t("errorLimit")
+              : t("errorGeneric")}
           </p>
         )}
         <div ref={bottomRef} />

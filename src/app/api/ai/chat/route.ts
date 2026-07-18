@@ -10,6 +10,7 @@ import { normalizeUsage, recordAiAudit, recordAiUsage } from "@/lib/ai/run"
 import { searchChunks } from "@/lib/ai/rag"
 import { MODE_PROMPTS, type ChatMode } from "@/lib/ai/modes"
 import { writeToolDescriptions, writeToolSchemas, WRITE_TOOL_NAMES } from "@/lib/ai/tools"
+import { mergeToolOutputs } from "@/lib/ai/chat-history"
 import { getStudyContext } from "@/lib/studies/context"
 import { getModuleDetail } from "@/lib/studies/module-detail"
 import { getModuleFinalGrades } from "@/lib/studies/grades-server"
@@ -17,7 +18,14 @@ import { getSetting } from "@/lib/settings"
 
 export const maxDuration = 300
 
+/** Bound on a single user message (sum of its text parts). */
+const MAX_USER_MESSAGE_CHARS = 32_000
+/** History window sent to the model — the DB keeps the full conversation. */
+const MAX_HISTORY_MESSAGES = 40
+
 const LOCALE_NAMES: Record<string, string> = { de: "German", en: "English" }
+
+type StoredMessage = { id: string; role: "user" | "assistant" | "system"; parts: UIMessage["parts"] }
 
 function buildSystemPrompt(
   moduleName: string | null | undefined,
@@ -106,35 +114,75 @@ export async function POST(request: Request) {
     })
   }
 
-  // Persist the latest user message
+  // The DB is the source of truth for the conversation history — the client
+  // only contributes its latest message. Trusting the full client-supplied
+  // history would let a request spoof prior assistant turns and carry an
+  // unbounded number of tokens to the model.
+  const stored = (await db.query.aiMessage.findMany({
+    where: eq(aiMessage.conversationId, conversation.id),
+    orderBy: [asc(aiMessage.createdAt)],
+    columns: { id: true, role: true, parts: true },
+  })) as StoredMessage[]
+  const history: UIMessage[] = stored.map((m) => ({ id: m.id, role: m.role, parts: m.parts }))
+
   const lastMessage = body.messages.at(-1)
   if (lastMessage?.role === "user") {
-    await db.insert(aiMessage).values({
-      conversationId: conversation.id,
-      role: "user",
-      parts: lastMessage.parts,
-    })
-  }
+    // New user turn: keep only text parts and bound their size.
+    const textParts = lastMessage.parts.filter(
+      (p): p is { type: "text"; text: string } => p.type === "text" && typeof p.text === "string"
+    )
+    const totalChars = textParts.reduce((n, p) => n + p.text.length, 0)
+    if (textParts.length === 0 || totalChars === 0) {
+      return new Response("Empty message", { status: 400 })
+    }
+    if (totalChars > MAX_USER_MESSAGE_CHARS) {
+      return new Response("Message too long", { status: 413 })
+    }
+    const [inserted] = await db
+      .insert(aiMessage)
+      .values({ conversationId: conversation.id, role: "user", parts: textParts })
+      .returning({ id: aiMessage.id })
+    history.push({ id: inserted.id, role: "user", parts: textParts })
 
-  // Derive a title from the first user message
-  if (conversation.title === "New conversation" && lastMessage?.role === "user") {
-    const text = lastMessage.parts
-      .filter((p): p is { type: "text"; text: string } => p.type === "text")
-      .map((p) => p.text)
-      .join(" ")
-      .slice(0, 80)
-    if (text) {
+    // Derive a title from the first user message
+    if (conversation.title === "New conversation") {
+      const text = textParts
+        .map((p) => p.text)
+        .join(" ")
+        .slice(0, 80)
       await db
         .update(aiConversation)
         .set({ title: text, model: body.model })
         .where(eq(aiConversation.id, conversation.id))
+    } else {
+      await db
+        .update(aiConversation)
+        .set({ model: body.model, updatedAt: new Date() })
+        .where(eq(aiConversation.id, conversation.id))
     }
-  } else {
+  } else if (lastMessage?.role === "assistant") {
+    // Tool-confirmation continuation (sendAutomaticallyWhen): adopt the
+    // executed/rejected outcomes for the pending write-tool calls of the last
+    // stored assistant message, then let the model continue.
+    const lastStored = stored.at(-1)
+    if (!lastStored || lastStored.role !== "assistant") {
+      return new Response("Nothing to continue", { status: 400 })
+    }
+    const { parts, changed } = mergeToolOutputs(lastStored.parts, lastMessage.parts)
+    if (!changed) {
+      return new Response("Nothing to continue", { status: 400 })
+    }
+    await db.update(aiMessage).set({ parts }).where(eq(aiMessage.id, lastStored.id))
+    history[history.length - 1] = { id: lastStored.id, role: "assistant", parts }
     await db
       .update(aiConversation)
       .set({ model: body.model, updatedAt: new Date() })
       .where(eq(aiConversation.id, conversation.id))
+  } else {
+    return new Response("Invalid last message", { status: 400 })
   }
+
+  const windowedHistory = history.slice(-MAX_HISTORY_MESSAGES)
 
   const ai = await getSetting("ai")
   const ragEnabled = Boolean(ai?.defaultEmbeddingModel)
@@ -151,7 +199,11 @@ export async function POST(request: Request) {
       pageContext,
       locale
     ),
-    messages: await convertToModelMessages(body.messages),
+    // Incomplete write-tool calls (user typed on without confirming) are
+    // dropped so providers don't reject the dangling tool_use.
+    messages: await convertToModelMessages(windowedHistory, {
+      ignoreIncompleteToolCalls: true,
+    }),
     stopWhen: stepCountIs(8),
     tools: {
       ...(ragEnabled
@@ -275,6 +327,11 @@ export async function POST(request: Request) {
       await recordAiAudit(ctx, usage)
     },
   })
+
+  // Drain the stream server-side even if the client disconnects mid-response,
+  // so the assistant message and usage logging always land in the DB and the
+  // stored history can't diverge from what the user was shown.
+  void Promise.resolve(result.consumeStream()).catch(() => {})
 
   return result.toUIMessageStreamResponse({
     onFinish: async ({ responseMessage }) => {

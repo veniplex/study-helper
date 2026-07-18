@@ -867,7 +867,9 @@
       "generateQuiz": "Quiz generieren",
       "ragHint": "Der Chat kennt deine hochgeladenen Materialien und bezieht sie in Antworten ein.",
       "history": "Verlauf"
-    }
+    },
+    "errorGeneric": "Die Anfrage ist fehlgeschlagen. Bitte versuche es erneut.",
+    "errorLimit": "Dein monatliches AI-Kontingent ist aufgebraucht."
   },
   "learn": {
     "title": "Lernen",

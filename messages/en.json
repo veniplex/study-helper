@@ -867,7 +867,9 @@
       "generateQuiz": "Generate quiz",
       "ragHint": "The chat knows your uploaded materials and uses them in its answers.",
       "history": "History"
-    }
+    },
+    "errorGeneric": "The request failed. Please try again.",
+    "errorLimit": "Your monthly AI quota is used up."
   },
   "learn": {
     "title": "Learn",
