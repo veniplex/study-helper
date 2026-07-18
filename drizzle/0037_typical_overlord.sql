@@ -1,0 +1,2 @@
+ALTER TABLE "ai_conversation" ADD COLUMN "material_id" text;--> statement-breakpoint
+ALTER TABLE "ai_conversation" ADD CONSTRAINT "ai_conversation_material_id_material_id_fk" FOREIGN KEY ("material_id") REFERENCES "public"."material"("id") ON DELETE set null ON UPDATE no action;

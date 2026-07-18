@@ -1,8 +1,10 @@
 import { desc } from "drizzle-orm"
+import { AlertTriangle } from "lucide-react"
 import { getTranslations, getFormatter } from "next-intl/server"
 import { db } from "@/db"
 import { user } from "@/db/schema"
 import { requireAdmin } from "@/lib/auth/session"
+import { deleteFile, saveFile } from "@/lib/storage"
 import { UserActions } from "@/components/admin/user-actions"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -13,13 +15,34 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
+/** Write-probe of the storage backend (same check as /api/health). */
+async function storageWritable(): Promise<boolean> {
+  try {
+    const path = await saveFile("_health", `probe-${crypto.randomUUID()}.txt`, Buffer.from("ok"))
+    await deleteFile(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export default async function AdminUsersPage() {
   const session = await requireAdmin()
   const t = await getTranslations("admin.users")
   const format = await getFormatter()
-  const users = await db.select().from(user).orderBy(desc(user.createdAt))
+  const [users, writable] = await Promise.all([
+    db.select().from(user).orderBy(desc(user.createdAt)),
+    storageWritable(),
+  ])
 
   return (
+    <>
+    {!writable && (
+      <div className="border-destructive/40 bg-destructive/5 text-destructive mb-4 flex items-start gap-2 rounded-lg border p-3 text-sm">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+        <p>{t("storageUnwritable")}</p>
+      </div>
+    )}
     <Card>
       <CardHeader>
         <CardTitle>{t("title")}</CardTitle>
@@ -71,5 +94,6 @@ export default async function AdminUsersPage() {
         </div>
       </CardContent>
     </Card>
+    </>
   )
 }

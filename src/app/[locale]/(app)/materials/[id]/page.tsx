@@ -6,7 +6,9 @@ import { asc } from "drizzle-orm"
 import { db } from "@/db"
 import { material, materialAnnotation } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
+import { fileSize } from "@/lib/storage"
 import { Link } from "@/i18n/navigation"
+import { AskDocumentButton } from "@/components/materials/ask-document-button"
 import { MediaPlayer } from "@/components/materials/media-player"
 import { PdfAnnotator } from "@/components/materials/pdf-annotator"
 import { Button } from "@/components/ui/button"
@@ -33,6 +35,18 @@ export default async function MaterialViewerPage({
   const fileUrl = `/api/materials/${row.id}/file`
   const mime = row.mimeType ?? ""
 
+  // The DB row can outlive the stored file (e.g. uploads lost to a redeploy
+  // before the storage volume was mounted). Detect that here and explain it,
+  // instead of every viewer failing with its own cryptic error.
+  let fileAvailable = Boolean(row.storagePath)
+  if (fileAvailable) {
+    try {
+      await fileSize(row.storagePath!)
+    } catch {
+      fileAvailable = false
+    }
+  }
+
   const annotations =
     mime === "application/pdf"
       ? await db.query.materialAnnotation.findMany({
@@ -52,13 +66,21 @@ export default async function MaterialViewerPage({
           <h1 className="truncate font-heading text-lg font-semibold tracking-tight">{row.name}</h1>
           <p className="text-muted-foreground text-xs">{row.module.name}</p>
         </div>
+        <AskDocumentButton materialId={row.id} />
         <Button variant="outline" size="sm" nativeButton={false} render={<a href={fileUrl} download={row.name} />}>
           <Download className="size-3.5" />
           {t("download")}
         </Button>
       </div>
 
-      {mime === "application/pdf" ? (
+      {!fileAvailable ? (
+        <Card>
+          <CardContent className="space-y-1 py-8 text-center text-sm">
+            <p className="font-medium">{t("viewer.fileMissing")}</p>
+            <p className="text-muted-foreground">{t("viewer.fileMissingHint")}</p>
+          </CardContent>
+        </Card>
+      ) : mime === "application/pdf" ? (
         <PdfAnnotator
           materialId={row.id}
           fileUrl={fileUrl}

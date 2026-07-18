@@ -1,4 +1,5 @@
 import "server-only"
+import { GEN_PARAMS } from "@/lib/ai/params"
 import { createHash } from "node:crypto"
 import { generateObject } from "ai"
 import { and, asc, eq } from "drizzle-orm"
@@ -159,6 +160,7 @@ export async function buildModuleOutline(
       },
       () =>
         generateObject({
+          ...GEN_PARAMS,
           model,
           schema: topicSchema,
           prompt: `You are building a complete study outline for one university course module from summaries of ALL its materials. Produce a de-duplicated, comprehensive list of topics such that generating flashcards/quiz questions per topic would cover the ENTIRE material — miss nothing, but do not duplicate topics. Use more topics for larger/broader corpora (roughly one topic per distinct concept area). For each topic give: a concise title, a 1-3 sentence summary of what it covers, the material tags that cover it (from the list), and a weight 1-10 for how much of the corpus it represents.\n\nMaterials:\n${catalog}`,

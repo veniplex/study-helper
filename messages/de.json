@@ -123,7 +123,8 @@
       "unban": "Entsperren",
       "delete": "Löschen",
       "deleteConfirm": "Benutzer und alle zugehörigen Daten unwiderruflich löschen?",
-      "updated": "Benutzer aktualisiert."
+      "updated": "Benutzer aktualisiert.",
+      "storageUnwritable": "Der Datei-Speicher ist nicht beschreibbar — Uploads schlagen fehl. Prüfe das Upload-Volume (UPLOAD_DIR) und dessen Berechtigungen."
     },
     "auth": {
       "title": "Anmeldung & SSO",
@@ -194,7 +195,25 @@
       "annStatusFailed": "Fehlgeschlagen",
       "annRebuild": "Index (neu) aufbauen",
       "annRebuilding": "Index-Aufbau gestartet – läuft im Hintergrund.",
-      "annNeedEmbedding": "Zuerst ein Standard-Embedding-Modell konfigurieren."
+      "annNeedEmbedding": "Zuerst ein Standard-Embedding-Modell konfigurieren.",
+      "reembedTitle": "Embedding-Backfill",
+      "reembedDescription": "Nach einem Wechsel des Embedding-Modells müssen bestehende Materialien neu eingebettet werden — sonst findet die AI-Suche sie nicht mehr.",
+      "reembedStaleWarning": "{count} Material(ien) sind mit einem anderen Modell eingebettet und derzeit nicht per Vektorsuche auffindbar.",
+      "reembedRunning": "Re-Embedding läuft… {done}/{total}",
+      "reembedDone": "Abgeschlossen: {done} neu eingebettet, {failed} fehlgeschlagen.",
+      "reembedFailed": "Fehlgeschlagen",
+      "reembedIdle": "Kein Backfill nötig oder noch nie gelaufen.",
+      "reembedStart": "Jetzt neu einbetten",
+      "reembedStarted": "Re-Embedding gestartet.",
+      "usageByFeature": "Nutzung nach Feature & Modell (30 Tage)",
+      "usageFeature": "Feature",
+      "usageModel": "Modell",
+      "usageCalls": "Aufrufe",
+      "testConnection": "Verbindung testen",
+      "testOk": "Verbindung erfolgreich — der API-Key funktioniert.",
+      "testFailed": "Verbindungstest fehlgeschlagen: {error}",
+      "rerank": "LLM-Reranking der Suche",
+      "rerankHint": "Sortiert Suchtreffer vor der Nutzung mit dem Standard-Modell neu — präzisere Ergebnisse, kostet einen kleinen Zusatzaufruf pro Suche."
     },
     "email": {
       "title": "E-Mail (SMTP)",
@@ -354,7 +373,9 @@
       "input": "Input",
       "output": "Output",
       "limit": "Limit",
-      "unlimited": "unbegrenzt"
+      "unlimited": "unbegrenzt",
+      "utilization": "Auslastung (dieser Monat)",
+      "byFeature": "Nach Feature (dieser Monat)"
     },
     "security": {
       "title": "Sicherheit",
@@ -764,11 +785,16 @@
     "download": "Herunterladen",
     "open": "Öffnen",
     "viewer": {
-      "unsupported": "Vorschau für diesen Dateityp nicht verfügbar — bitte herunterladen."
+      "unsupported": "Vorschau für diesen Dateityp nicht verfügbar — bitte herunterladen.",
+      "fileMissing": "Datei nicht mehr vorhanden",
+      "fileMissingHint": "Der Eintrag existiert, aber die Datei fehlt auf dem Server (z. B. durch ein früheres Redeploy ohne persistentes Upload-Volume verloren). Bitte lade die Datei neu hoch."
     },
     "annotator": {
       "hint": "Auf der Seite ziehen zum Markieren; Markierung anklicken für Notiz oder Löschen.",
-      "notePlaceholder": "Notiz zu dieser Markierung …"
+      "notePlaceholder": "Notiz zu dieser Markierung …",
+      "fileMissing": "Die Datei fehlt auf dem Server — vermutlich ging sie bei einem früheren Redeploy verloren. Bitte lade sie neu hoch.",
+      "explain": "Erklären",
+      "explainEmpty": "In der Markierung wurde kein Text gefunden."
     },
     "stats": {
       "files": "{count, plural, =1 {# Datei} other {# Dateien}}",
@@ -791,7 +817,22 @@
     "uploadingCount": "Lädt hoch … {done}/{total}",
     "uploadHint": "Wähle Dateien oder einen ganzen Ordner. Ordner behalten ihre Struktur; .zip-Archive werden automatisch entpackt.",
     "chooseFiles": "Dateien wählen",
-    "chooseFolder": "Ordner wählen"
+    "chooseFolder": "Ordner wählen",
+    "processing": {
+      "pending": "Wartet",
+      "extracting": "Extrahiert",
+      "embedding": "Indexiert",
+      "summarizing": "Fasst zusammen",
+      "failed": "Verarbeitung fehlgeschlagen",
+      "skipped": "Nicht verarbeitet",
+      "skippedHint": "Aus dieser Datei konnte kein Text gewonnen werden.",
+      "retry": "Neu verarbeiten"
+    },
+    "notIndexedHint": "Es ist kein Embedding-Modell konfiguriert — Materialien werden nicht für die AI-Suche indexiert. Ein Admin kann das unter Admin → AI einrichten.",
+    "uploadRateLimited": "Zu viele Uploads in kurzer Zeit — bitte kurz warten.",
+    "uploadNetworkError": "Netzwerkfehler beim Upload — Verbindung prüfen und erneut versuchen.",
+    "uploadServerError": "{name}: Serverfehler beim Speichern. Prüfe im Admin-Bereich, ob der Datei-Speicher beschreibbar ist.",
+    "askDocument": "Im Chat fragen"
   },
   "search": {
     "modules": "Module",
@@ -878,7 +919,18 @@
       "history": "Verlauf"
     },
     "errorGeneric": "Die Anfrage ist fehlgeschlagen. Bitte versuche es erneut.",
-    "errorLimit": "Dein monatliches AI-Kontingent ist aufgebraucht."
+    "errorLimit": "Dein monatliches AI-Kontingent ist aufgebraucht.",
+    "errorAuth": "Der AI-Anbieter hat die Anfrage abgelehnt (API-Key ungültig oder abgelaufen). Bitte prüfe die AI-Einstellungen.",
+    "sources": "Quellen",
+    "regenerate": "Antwort neu generieren",
+    "stop": "Stoppen",
+    "modeLabel": "Modus",
+    "voice": {
+      "start": "Spracheingabe starten",
+      "stop": "Aufnahme beenden",
+      "empty": "Keine Sprache erkannt.",
+      "micDenied": "Mikrofonzugriff wurde verweigert."
+    }
   },
   "learn": {
     "title": "Lernen",
@@ -1193,7 +1245,10 @@
     "analyzeTitle": "KI-Auswertung",
     "analyzing": "Analysiere deine Lernhistorie …",
     "capped": "Session mit {shown} — insgesamt {total} fällig",
-    "swipeHint": "Nach rechts wischen = Gut, nach links = Nochmal"
+    "swipeHint": "Nach rechts wischen = Gut, nach links = Nochmal",
+    "weakTopicsQuiz": "Quiz aus Schwachthemen",
+    "weakTopicsDeck": "Deck aus Schwachthemen",
+    "weakTopicsDeckName": "Schwachthemen-Wiederholung"
   },
   "moduleTabs": {
     "overview": "Übersicht",

@@ -5,7 +5,7 @@ import { db } from "@/db"
 import { material, materialChunk, type ExtractionStatus } from "@/db/schema"
 import { getSetting } from "@/lib/settings"
 import { deleteFile, readStoredText, saveText } from "@/lib/storage"
-import { getEmbeddingModel } from "./registry"
+import { getEmbeddingModel, getLanguageModel, resolveModelForUser } from "./registry"
 import { recordAiAudit, runAi } from "./run"
 import { extractText } from "./extract"
 import { annDimensionFor, populateAnn } from "./ann"
@@ -66,9 +66,9 @@ export async function processMaterial(materialId: string): Promise<void> {
   if (!row || row.kind !== "file" || !row.storagePath) return
 
   try {
-    const text = await ensureExtractedText(row)
+    const { text, skipReason } = await ensureExtractedText(row)
     if (text == null) {
-      await setStatus(materialId, "skipped")
+      await setStatus(materialId, "skipped", { extractionError: skipReason ?? null })
       return
     }
 
@@ -100,10 +100,12 @@ export async function processMaterial(materialId: string): Promise<void> {
  * a bounded preview + char count are stored on the row (so multi-GB documents
  * are not capped by a single DB column, and re-runs don't re-extract).
  */
-async function ensureExtractedText(row: typeof material.$inferSelect): Promise<string | null> {
+async function ensureExtractedText(
+  row: typeof material.$inferSelect
+): Promise<{ text: string | null; skipReason?: string }> {
   if (row.textStoragePath && row.charCount != null) {
     try {
-      return await readStoredText(row.textStoragePath)
+      return { text: await readStoredText(row.textStoragePath) }
     } catch {
       // stored text missing — fall through and re-extract
     }
@@ -111,19 +113,37 @@ async function ensureExtractedText(row: typeof material.$inferSelect): Promise<s
 
   await setStatus(row.id, "extracting")
   let text = await extractText(row.storagePath!, row.mimeType)
+  let skipReason: string | undefined
   if (!text) {
     // Media without extractable text: OCR images, transcribe audio/video.
+    // When the capability is missing we record WHY, so the material doesn't
+    // just silently show up as "skipped" with no explanation.
     const { classifyFile } = await import("./filetypes")
     const strategy = classifyFile(row.storagePath!, row.mimeType)
     if (strategy === "image") {
-      const { extractImageText } = await import("./media")
-      text = await extractImageText(row.storagePath!, row.mimeType, row.userId)
+      const { resolveModelForUser } = await import("./registry")
+      if (!(await resolveModelForUser(row.userId))) {
+        skipReason = "No AI model configured — image text (OCR) was not extracted."
+      } else {
+        const { extractImageText } = await import("./media")
+        text = await extractImageText(row.storagePath!, row.mimeType, row.userId)
+        if (!text) skipReason = "OCR returned no text (the configured model may not support images)."
+      }
     } else if (strategy === "audio") {
-      const { transcribeMedia } = await import("./media")
-      text = await transcribeMedia(row.storagePath!, row.userId)
+      const { getTranscriptionModel } = await import("./registry")
+      if (!(await getTranscriptionModel(row.userId))) {
+        skipReason =
+          "No transcription model available — audio/video needs an OpenAI or Groq provider."
+      } else {
+        const { transcribeMedia } = await import("./media")
+        text = await transcribeMedia(row.storagePath!, row.userId)
+        if (!text) skipReason = "Transcription returned no text."
+      }
+    } else {
+      skipReason = "No extractable text in this file type."
     }
   }
-  if (!text) return null
+  if (!text) return { text: null, skipReason }
 
   const textStoragePath = await saveText(row.userId, `${row.id}.txt`, text)
   const previous = row.textStoragePath
@@ -132,7 +152,7 @@ async function ensureExtractedText(row: typeof material.$inferSelect): Promise<s
     .set({ textStoragePath, charCount: text.length, textContent: text.slice(0, PREVIEW_CHARS) })
     .where(eq(material.id, row.id))
   if (previous && previous !== textStoragePath) await deleteFile(previous)
-  return text
+  return { text }
 }
 
 /** Chunks and embeds a material's text incrementally (batched, resumable). */
@@ -266,12 +286,26 @@ type ScoredRow = {
  * retrieval robust to the vector model missing exact terms/acronyms/formulae
  * (which lexical catches) and vice-versa.
  */
+/**
+ * Vector-only hits below this cosine similarity are cut before fusion: nearest-
+ * neighbour search always returns *something*, even for a query the corpus
+ * doesn't cover, and those noise chunks would otherwise flow into prompts.
+ * Deliberately conservative (clearly-unrelated territory across common
+ * embedding models); hits that also match lexically are never cut — a term
+ * match is real signal regardless of the cosine value.
+ */
+const MIN_VECTOR_SIMILARITY = 0.15
+
 function rrfFuse(
   vector: ScoredRow[],
   lexical: Omit<ScoredRow, "similarity">[],
   limit: number
 ): RagHit[] {
   const K = 60
+  const lexicalIds = new Set(lexical.map((r) => r.id))
+  vector = vector.filter(
+    (r) => r.similarity >= MIN_VECTOR_SIMILARITY || lexicalIds.has(r.id)
+  )
   const acc = new Map<string, { hit: RagHit; score: number }>()
   vector.forEach((r, i) => {
     acc.set(r.id, {
@@ -319,7 +353,11 @@ async function hybridSearch(
   const base = and(eq(material.userId, userId), ...extraWhere)
 
   // Lexical ranking via Postgres full-text search over the generated tsvector.
-  const tsq = sql`plainto_tsquery('simple', ${query})`
+  // websearch_to_tsquery never throws on arbitrary (user/model-supplied) query
+  // strings and supports quoted phrases. Config MUST match the generated
+  // column's config (schema/material-chunks.ts) or stemming mismatches kill
+  // recall despite the GIN index.
+  const tsq = sql`websearch_to_tsquery('german', ${query})`
   const lexical = await db
     .select({
       id: materialChunk.id,
@@ -367,7 +405,70 @@ async function hybridSearch(
     .orderBy(distExpr)
     .limit(pool)
 
+  // Optional precision pass: let the chat model re-rank a wider candidate set.
+  if (ai?.rerank) {
+    const candidates = rrfFuse(vector, lexical, Math.min(pool, limit * 3))
+    if (candidates.length > limit) return rerankHits(userId, query, candidates, limit)
+    return candidates
+  }
   return rrfFuse(vector, lexical, limit)
+}
+
+/**
+ * LLM re-ranking (admin opt-in): scores the fused candidates against the query
+ * with the user's default model and keeps the top `limit`. Best-effort — any
+ * failure falls back to the RRF order.
+ */
+async function rerankHits(
+  userId: string,
+  query: string,
+  candidates: RagHit[],
+  limit: number
+): Promise<RagHit[]> {
+  try {
+    const modelRef = await resolveModelForUser(userId)
+    if (!modelRef) return candidates.slice(0, limit)
+    const model = await getLanguageModel(modelRef, userId)
+    const { generateObject } = await import("ai")
+    const { z } = await import("zod")
+    const numbered = candidates
+      .map((c, i) => `[${i}] ${c.content.slice(0, 500)}`)
+      .join("\n---\n")
+    const { object } = await runAi(
+      {
+        userId,
+        model: modelRef,
+        feature: "rerank",
+        operation: "ai_embed",
+        audit: false,
+      },
+      () =>
+        generateObject({
+          model,
+          temperature: 0,
+          maxOutputTokens: 200,
+          schema: z.object({ ranking: z.array(z.number().int()).max(candidates.length) }),
+          prompt: `Rank these excerpts by relevance to the query. Return the indices of the ${limit} most relevant, best first.\nQuery: ${query}\n\nExcerpts:\n${numbered}`,
+        })
+    )
+    const seen = new Set<number>()
+    const ranked: RagHit[] = []
+    for (const i of object.ranking) {
+      if (Number.isInteger(i) && i >= 0 && i < candidates.length && !seen.has(i)) {
+        seen.add(i)
+        ranked.push(candidates[i])
+        if (ranked.length === limit) break
+      }
+    }
+    // Fill up from the RRF order if the model returned too few valid indices.
+    for (let i = 0; ranked.length < limit && i < candidates.length; i++) {
+      if (!seen.has(i)) ranked.push(candidates[i])
+    }
+    return ranked
+  } catch (error) {
+    console.warn("[rag] rerank failed — falling back to RRF order", error)
+    return candidates.slice(0, limit)
+  }
 }
 
 /** Hybrid (vector + lexical, RRF-fused) search over the user's material chunks. */

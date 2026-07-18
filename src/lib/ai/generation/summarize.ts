@@ -1,4 +1,5 @@
 import "server-only"
+import { GEN_PARAMS } from "@/lib/ai/params"
 import { generateText, embedMany } from "ai"
 import { and, asc, eq, gt } from "drizzle-orm"
 import { db } from "@/db"
@@ -129,6 +130,22 @@ export async function summarizeMaterial(materialId: string): Promise<void> {
     .set({ extractionStatus: "summarizing" })
     .where(eq(material.id, materialId))
 
+  try {
+    await runSummarization(row, materialId, modelRef)
+  } catch (error) {
+    // Summaries are best-effort — never leave the material stuck in
+    // "summarizing" (an eternal spinner in the UI) because of a model error.
+    await db.update(material).set({ extractionStatus: "ready" }).where(eq(material.id, materialId))
+    throw error
+  }
+}
+
+async function runSummarization(
+  row: typeof material.$inferSelect,
+  materialId: string,
+  modelRef: string
+): Promise<void> {
+  const sections = await getSectionTexts(row)
   const model = await getLanguageModel(modelRef, row.userId)
   let usage: AiUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
   const acc = (u: AiUsage) => {
@@ -149,7 +166,7 @@ export async function summarizeMaterial(materialId: string): Promise<void> {
         entityLabel: row.name,
         audit: false,
       },
-      () => generateText({ model, prompt: SECTION_PROMPT(section) })
+      () => generateText({ model, prompt: SECTION_PROMPT(section), ...GEN_PARAMS })
     )
     acc(aiUsage)
     const trimmed = text.trim()
@@ -187,7 +204,7 @@ export async function summarizeMaterial(materialId: string): Promise<void> {
           entityLabel: row.name,
           audit: false,
         },
-        () => generateText({ model, prompt: REDUCE_PROMPT(group) })
+        () => generateText({ model, prompt: REDUCE_PROMPT(group), ...GEN_PARAMS })
       )
       acc(aiUsage)
       next.push(text.trim())

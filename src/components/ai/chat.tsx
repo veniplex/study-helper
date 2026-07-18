@@ -7,7 +7,17 @@ import {
   lastAssistantMessageIsCompleteWithToolCalls,
   type UIMessage,
 } from "ai"
-import { ArrowUp, Check, FileSearch, Loader2, Sparkles, Wrench, X } from "lucide-react"
+import {
+  ArrowUp,
+  Check,
+  FileSearch,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+  Square,
+  Wrench,
+  X,
+} from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { Link } from "@/i18n/navigation"
 import { executeAiTool } from "@/app/[locale]/(app)/ai/actions"
@@ -15,6 +25,7 @@ import { WRITE_TOOL_NAMES } from "@/lib/ai/tools"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Markdown } from "./markdown"
+import { VoiceInputButton } from "./voice-input-button"
 import { describePageContext, usePageContext } from "./page-context"
 import { cn } from "@/lib/utils"
 
@@ -37,6 +48,63 @@ function summarizeInput(input: unknown): { key: string; value: string }[] {
 type ToolOutput =
   | { status: "executed"; label: string; href?: string }
   | { status: "rejected" }
+
+type SourceRef = { index: number; source: string; materialId: string }
+
+/** Collects the searchMaterials results of a message into deduped source refs. */
+function collectSources(parts: UIMessage["parts"]): SourceRef[] {
+  const seen = new Map<string, SourceRef>()
+  for (const part of parts) {
+    if (part.type !== "tool-searchMaterials") continue
+    const p = part as { state?: string; output?: unknown }
+    if (p.state !== "output-available" || !Array.isArray(p.output)) continue
+    for (const hit of p.output) {
+      const h = hit as { index?: number; source?: string; materialId?: string }
+      if (typeof h.index !== "number" || typeof h.materialId !== "string" || !h.source) continue
+      const existing = seen.get(h.materialId)
+      if (!existing || h.index < existing.index) {
+        seen.set(h.materialId, { index: h.index, source: h.source, materialId: h.materialId })
+      }
+    }
+  }
+  return [...seen.values()].sort((a, b) => a.index - b.index)
+}
+
+/** Numbered, clickable source chips below an assistant answer. */
+function SourceChips({ parts }: { parts: UIMessage["parts"] }) {
+  const t = useTranslations("ai")
+  const sources = collectSources(parts)
+  if (sources.length === 0) return null
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 px-1">
+      <span className="text-muted-foreground text-xs">{t("sources")}:</span>
+      {sources.map((s) => (
+        <Link
+          key={s.materialId}
+          href={`/materials/${s.materialId}`}
+          className="text-muted-foreground hover:text-foreground hover:border-primary/50 max-w-56 truncate rounded-full border px-2 py-0.5 text-xs transition-colors"
+        >
+          [{s.index}] {s.source}
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+/** True when the message contains an executed write tool (side effect exists). */
+function hasExecutedWriteTool(parts: UIMessage["parts"]): boolean {
+  return parts.some((part) => {
+    if (!part.type.startsWith("tool-")) return false
+    if (!WRITE_TOOL_NAMES.includes(part.type.slice(5) as (typeof WRITE_TOOL_NAMES)[number])) {
+      return false
+    }
+    const p = part as { state?: string; output?: unknown }
+    return (
+      p.state === "output-available" &&
+      (p.output as { status?: string } | undefined)?.status === "executed"
+    )
+  })
+}
 
 function ToolCard({
   toolName,
@@ -180,7 +248,7 @@ export function Chat({
       })
   )
 
-  const { messages, sendMessage, status, error, addToolResult } = useChat({
+  const { messages, sendMessage, status, error, addToolResult, stop, regenerate } = useChat({
     id: conversationId,
     messages: initialMessages,
     transport,
@@ -251,7 +319,7 @@ export function Chat({
                 .join("")}
             </div>
           ) : (
-            <div key={m.id} className="mr-auto max-w-[85%] space-y-2">
+            <div key={m.id} className="group/msg mr-auto max-w-[85%] space-y-2">
               {m.parts.map((part, i) => {
                 if (part.type === "text") {
                   return (
@@ -309,6 +377,19 @@ export function Chat({
                 }
                 return null
               })}
+              <SourceChips parts={m.parts} />
+              {m.id === messages.at(-1)?.id &&
+                status === "ready" &&
+                !hasExecutedWriteTool(m.parts) && (
+                  <button
+                    type="button"
+                    onClick={() => void regenerate()}
+                    className="text-muted-foreground hover:text-foreground flex items-center gap-1 px-1 text-xs opacity-0 transition-opacity group-hover/msg:opacity-100 focus-visible:opacity-100"
+                  >
+                    <RefreshCw className="size-3" />
+                    {t("regenerate")}
+                  </button>
+                )}
             </div>
           )
         )}
@@ -320,11 +401,14 @@ export function Chat({
         )}
         {error && (
           <p className="text-destructive text-sm">
-            {/* Raw error.message can carry transport/provider internals — log
-                it for debugging, show the user a friendly message. */}
-            {error.message.toLowerCase().includes("limit")
-              ? t("errorLimit")
-              : t("errorGeneric")}
+            {/* Server categorizes stream errors as AI_ERROR:<code>; anything
+                else stays generic so provider internals never reach the UI. */}
+            {error.message === "AI_ERROR:auth"
+              ? t("errorAuth")
+              : error.message === "AI_ERROR:rate-limit" ||
+                  error.message.toLowerCase().includes("limit")
+                ? t("errorLimit")
+                : t("errorGeneric")}
           </p>
         )}
         <div ref={bottomRef} />
@@ -345,9 +429,22 @@ export function Chat({
             rows={2}
             className="max-h-40 flex-1 resize-none"
           />
-          <Button size="icon" onClick={submit} disabled={busy || !input.trim() || !model}>
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
-          </Button>
+          <VoiceInputButton
+            disabled={busy}
+            onTranscript={(text) => setInput((v) => (v ? `${v} ${text}` : text))}
+          />
+          {busy ? (
+            // Streaming: the send slot becomes a stop button. Note the server
+            // deliberately drains the stream for crash-safe persistence, so the
+            // DB keeps the full answer; regenerate removes it if unwanted.
+            <Button size="icon" variant="outline" onClick={() => void stop()} aria-label={t("stop")}>
+              <Square className="size-4" />
+            </Button>
+          ) : (
+            <Button size="icon" onClick={submit} disabled={!input.trim() || !model}>
+              <ArrowUp className="size-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

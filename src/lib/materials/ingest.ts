@@ -119,12 +119,21 @@ export async function registerUploadedFile(input: RegisterInput): Promise<Regist
     after: created,
   })
 
-  // Kick off text extraction + embedding in the background.
+  // Kick off text extraction + embedding in the background. A failed enqueue
+  // (e.g. job system unreachable) must not fail the upload, but it also must
+  // not stay invisible — mark the material failed so the UI offers a retry.
   try {
     const { enqueueEmbedMaterial } = await import("@/lib/jobs")
     await enqueueEmbedMaterial(created.id)
   } catch (error) {
     console.error("[ingest] failed to enqueue embedding job", error)
+    await db
+      .update(material)
+      .set({
+        extractionStatus: "failed",
+        extractionError: "Processing could not be scheduled — retry via the material menu.",
+      })
+      .where(eq(material.id, created.id))
   }
 
   return { kind: "created", id: created.id }

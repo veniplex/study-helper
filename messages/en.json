@@ -123,7 +123,8 @@
       "unban": "Unban",
       "delete": "Delete",
       "deleteConfirm": "Permanently delete this user and all associated data?",
-      "updated": "User updated."
+      "updated": "User updated.",
+      "storageUnwritable": "File storage is not writable — uploads will fail. Check the upload volume (UPLOAD_DIR) and its permissions."
     },
     "auth": {
       "title": "Sign-in & SSO",
@@ -194,7 +195,25 @@
       "annStatusFailed": "Failed",
       "annRebuild": "Build / rebuild index",
       "annRebuilding": "Index build started — running in the background.",
-      "annNeedEmbedding": "Configure a default embedding model first."
+      "annNeedEmbedding": "Configure a default embedding model first.",
+      "reembedTitle": "Embedding backfill",
+      "reembedDescription": "After changing the embedding model, existing materials must be re-embedded — otherwise AI search can no longer find them.",
+      "reembedStaleWarning": "{count} material(s) are embedded with a different model and currently invisible to vector search.",
+      "reembedRunning": "Re-embedding… {done}/{total}",
+      "reembedDone": "Finished: {done} re-embedded, {failed} failed.",
+      "reembedFailed": "Failed",
+      "reembedIdle": "No backfill needed or never run.",
+      "reembedStart": "Re-embed now",
+      "reembedStarted": "Re-embedding started.",
+      "usageByFeature": "Usage by feature & model (30 days)",
+      "usageFeature": "Feature",
+      "usageModel": "Model",
+      "usageCalls": "Calls",
+      "testConnection": "Test connection",
+      "testOk": "Connection successful — the API key works.",
+      "testFailed": "Connection test failed: {error}",
+      "rerank": "LLM re-ranking for search",
+      "rerankHint": "Re-orders search hits with the default model before use — more precise results at the cost of one small extra call per search."
     },
     "email": {
       "title": "Email (SMTP)",
@@ -354,7 +373,9 @@
       "input": "Input",
       "output": "Output",
       "limit": "Limit",
-      "unlimited": "unlimited"
+      "unlimited": "unlimited",
+      "utilization": "Utilization (this month)",
+      "byFeature": "By feature (this month)"
     },
     "security": {
       "title": "Security",
@@ -764,11 +785,16 @@
     "download": "Download",
     "open": "Open",
     "viewer": {
-      "unsupported": "No preview available for this file type — please download."
+      "unsupported": "No preview available for this file type — please download.",
+      "fileMissing": "File no longer available",
+      "fileMissingHint": "The entry exists, but the file is missing on the server (e.g. lost in an earlier redeploy without a persistent upload volume). Please upload it again."
     },
     "annotator": {
       "hint": "Drag on a page to highlight; click a highlight to add a note or delete it.",
-      "notePlaceholder": "Note for this highlight …"
+      "notePlaceholder": "Note for this highlight …",
+      "fileMissing": "The file is missing on the server — it was probably lost in an earlier redeploy. Please upload it again.",
+      "explain": "Explain",
+      "explainEmpty": "No text found in the highlighted area."
     },
     "stats": {
       "files": "{count, plural, =1 {# file} other {# files}}",
@@ -791,7 +817,22 @@
     "uploadingCount": "Uploading … {done}/{total}",
     "uploadHint": "Choose files or a whole folder. Folders keep their structure; .zip archives are unpacked automatically.",
     "chooseFiles": "Choose files",
-    "chooseFolder": "Choose folder"
+    "chooseFolder": "Choose folder",
+    "processing": {
+      "pending": "Queued",
+      "extracting": "Extracting",
+      "embedding": "Indexing",
+      "summarizing": "Summarizing",
+      "failed": "Processing failed",
+      "skipped": "Not processed",
+      "skippedHint": "No text could be extracted from this file.",
+      "retry": "Process again"
+    },
+    "notIndexedHint": "No embedding model is configured — materials are not indexed for AI search. An admin can set this up under Admin → AI.",
+    "uploadRateLimited": "Too many uploads in a short time — please wait a moment.",
+    "uploadNetworkError": "Network error during upload — check your connection and try again.",
+    "uploadServerError": "{name}: Server error while saving. Check in the admin area whether file storage is writable.",
+    "askDocument": "Ask in chat"
   },
   "search": {
     "modules": "Modules",
@@ -878,7 +919,18 @@
       "history": "History"
     },
     "errorGeneric": "The request failed. Please try again.",
-    "errorLimit": "Your monthly AI quota is used up."
+    "errorLimit": "Your monthly AI quota is used up.",
+    "errorAuth": "The AI provider rejected the request (API key invalid or expired). Please check the AI settings.",
+    "sources": "Sources",
+    "regenerate": "Regenerate answer",
+    "stop": "Stop",
+    "modeLabel": "Mode",
+    "voice": {
+      "start": "Start voice input",
+      "stop": "Stop recording",
+      "empty": "No speech detected.",
+      "micDenied": "Microphone access was denied."
+    }
   },
   "learn": {
     "title": "Learn",
@@ -1193,7 +1245,10 @@
     "analyzeTitle": "AI analysis",
     "analyzing": "Analyzing your learning history …",
     "capped": "session of {shown} — {total} due in total",
-    "swipeHint": "Swipe right = good, left = again"
+    "swipeHint": "Swipe right = good, left = again",
+    "weakTopicsQuiz": "Quiz from weak topics",
+    "weakTopicsDeck": "Deck from weak topics",
+    "weakTopicsDeckName": "Weak-topics review"
   },
   "moduleTabs": {
     "overview": "Overview",

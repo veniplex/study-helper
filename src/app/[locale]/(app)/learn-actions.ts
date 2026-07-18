@@ -1,4 +1,5 @@
 "use server"
+import { GEN_PARAMS } from "@/lib/ai/params"
 
 import { revalidatePath } from "next/cache"
 import { and, eq } from "drizzle-orm"
@@ -237,6 +238,7 @@ export async function generateStudyPlan(input: unknown) {
     () =>
       generateObject({
         model,
+        ...GEN_PARAMS,
         schema: generatedPlanSchema,
         prompt: `Create a realistic study plan for a university student.
 Today is ${today}. The exam is on ${data.examDate}.
@@ -366,6 +368,7 @@ export async function analyzeProgress(moduleId: string) {
     () =>
       generateText({
         model,
+        ...GEN_PARAMS,
         prompt: `You are a study coach. Analyze this learning history for one university module and tell the student what to deepen next.
 Requirements:
 - Answer in the language of the quiz/flashcard content (German if mixed).
@@ -377,5 +380,15 @@ Data (JSON): ${JSON.stringify(data).slice(0, 20000)}`,
       })
   )
 
-  return { ok: true as const, analysis: text }
+  // Compact weak-topic list (recent wrong questions + most-lapsed cards) so
+  // the UI can offer one-click "generate a review quiz/deck on my weak spots".
+  const wrongQuestions = [
+    ...new Set(
+      data.quizzes.flatMap((q) => q.attempts.slice(0, 3).flatMap((a) => a.wrongQuestions))
+    ),
+  ].slice(0, 20)
+  const lapsedFronts = data.problemFlashcards.slice(0, 10).map((c) => c.front)
+  const weakTopics = [...wrongQuestions, ...lapsedFronts].join("\n").slice(0, 1500)
+
+  return { ok: true as const, analysis: text, weakTopics }
 }

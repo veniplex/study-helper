@@ -47,9 +47,13 @@ export const materialChunk = pgTable(
      * retrieval). Improves retrieval precision on ambiguous chunks.
      */
     contextualHeader: text("contextual_header"),
-    /** Full-text search vector over `content`, for hybrid (lexical + vector) search. */
+    /** Full-text search vector over `content`, for hybrid (lexical + vector)
+     *  search. Uses the 'german' config (stemming + stop words) — the app's
+     *  content is mostly German; English tokens still index as exact matches,
+     *  and the vector leg of hybrid search covers English recall. Must match
+     *  the query config in rag.ts. */
     contentTsv: tsvector("content_tsv").generatedAlwaysAs(
-      (): SQL => sql`to_tsvector('simple', ${materialChunk.content})`
+      (): SQL => sql`to_tsvector('german', ${materialChunk.content})`
     ),
   },
   (t) => [

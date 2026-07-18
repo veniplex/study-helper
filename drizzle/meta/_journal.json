@@ -253,6 +253,20 @@
       "when": 1784359449655,
       "tag": "0035_fair_killmonger",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1784365495581,
+      "tag": "0036_motionless_rick_jones",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1784365763129,
+      "tag": "0037_typical_overlord",
+      "breakpoints": true
     }
   ]
 }

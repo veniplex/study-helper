@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Trash2 } from "lucide-react"
+import { Loader2, Sparkles, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import {
@@ -9,7 +9,9 @@ import {
   deleteAnnotation,
   updateAnnotationNote,
 } from "@/app/[locale]/(app)/materials-actions"
+import { explainSnippet } from "@/app/[locale]/(app)/ai/actions"
 import type { AnnotationColor, AnnotationRect } from "@/db/schema/materials"
+import { Markdown } from "@/components/ai/markdown"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -60,10 +62,10 @@ export function PdfAnnotator({
     ;(async () => {
       try {
         const pdfjs = await import("pdfjs-dist")
-        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-          "pdfjs-dist/build/pdf.worker.min.mjs",
-          import.meta.url
-        ).toString()
+        // The worker is copied to public/ at build time (scripts/copy-pdf-worker.mjs)
+        // — a stable same-origin URL that works under every bundler; the version
+        // query busts caches when pdfjs-dist is upgraded.
+        pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs?v=${pdfjs.version}`
         const pdf = await pdfjs.getDocument({ url: fileUrl }).promise
         if (cancelled) return
         pdfRef.current = pdf
@@ -75,13 +77,26 @@ export function PdfAnnotator({
         }
         if (!cancelled) setPages(infos)
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err))
+        if (cancelled) return
+        // Distinguish "the stored file is gone" (e.g. lost to a redeploy before
+        // uploads were volume-backed) from a real render error — the former
+        // needs a human-readable explanation, not a pdf.js stack message.
+        try {
+          const probe = await fetch(fileUrl, { headers: { Range: "bytes=0-0" } })
+          if (probe.status === 404) {
+            setError(t("fileMissing"))
+            return
+          }
+        } catch {
+          // probe failed — fall through to the generic error
+        }
+        setError(err instanceof Error ? err.message : String(err))
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [fileUrl])
+  }, [fileUrl, t])
 
   async function onCreate(page: number, rect: AnnotationRect) {
     const temp: PdfAnnotation = { id: `tmp-${crypto.randomUUID()}`, page, rect, color, note: null }
@@ -117,6 +132,67 @@ export function PdfAnnotator({
       await updateAnnotationNote(selected.id, note)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  const [explaining, setExplaining] = React.useState(false)
+  const [explanation, setExplanation] = React.useState<string | null>(null)
+
+  /** Text of the page region covered by an annotation (pdf.js text layer). */
+  async function extractRectText(annotation: PdfAnnotation): Promise<{
+    snippet: string
+    pageText: string
+  }> {
+    const pdf = pdfRef.current as {
+      getPage: (n: number) => Promise<{
+        getViewport: (o: { scale: number }) => { width: number; height: number }
+        getTextContent: () => Promise<{
+          items: { str?: string; transform?: number[]; width?: number; height?: number }[]
+        }>
+      }>
+    } | null
+    if (!pdf) return { snippet: "", pageText: "" }
+    const page = await pdf.getPage(annotation.page)
+    const viewport = page.getViewport({ scale: 1 })
+    const content = await page.getTextContent()
+    const parts: string[] = []
+    const all: string[] = []
+    const r = annotation.rect
+    for (const item of content.items) {
+      if (!item.str || !item.transform) continue
+      all.push(item.str)
+      // transform[4]/[5] are the item's origin in PDF units (bottom-left based);
+      // annotation rects are normalized with y from the top.
+      const cx = (item.transform[4] + (item.width ?? 0) / 2) / viewport.width
+      const cy = 1 - item.transform[5] / viewport.height
+      const pad = 0.01
+      if (
+        cx >= r.x - pad &&
+        cx <= r.x + r.w + pad &&
+        cy >= r.y - pad &&
+        cy <= r.y + r.h + pad
+      ) {
+        parts.push(item.str)
+      }
+    }
+    return { snippet: parts.join(" ").trim(), pageText: all.join(" ").trim() }
+  }
+
+  async function onExplain() {
+    if (!selected) return
+    setExplaining(true)
+    setExplanation(null)
+    try {
+      const { snippet, pageText } = await extractRectText(selected)
+      // A rect over a diagram may cover no text — fall back to the note or page.
+      const effective = snippet || selected.note || pageText.slice(0, 1000)
+      if (!effective) throw new Error(t("explainEmpty"))
+      const result = await explainSnippet(materialId, effective, pageText)
+      setExplanation(result.explanation)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err))
+    } finally {
+      setExplaining(false)
     }
   }
 
@@ -164,6 +240,7 @@ export function PdfAnnotator({
             onSelect={(a) => {
               setSelected(a)
               setNote(a.note ?? "")
+              setExplanation(null)
             }}
           />
         ))}
@@ -171,6 +248,11 @@ export function PdfAnnotator({
 
       {selected && (
         <div className="bg-background fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md space-y-2 rounded-lg border p-3 shadow-lg">
+          {explanation && (
+            <div className="max-h-60 overflow-y-auto rounded-md border p-2 text-sm">
+              <Markdown>{explanation}</Markdown>
+            </div>
+          )}
           <Textarea
             rows={2}
             value={note}
@@ -187,6 +269,19 @@ export function PdfAnnotator({
             >
               <Trash2 className="size-4" />
               <span className="sr-only">{tCommon("delete")}</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={explaining}
+              onClick={() => void onExplain()}
+            >
+              {explaining ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="size-3.5" />
+              )}
+              {t("explain")}
             </Button>
             <Button variant="outline" size="sm" className="ml-auto" onClick={() => setSelected(null)}>
               {tCommon("cancel")}

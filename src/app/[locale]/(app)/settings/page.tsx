@@ -19,9 +19,14 @@ import { Link } from "@/i18n/navigation"
 export default async function SettingsPage() {
   const session = await requireSession()
   const t = await getTranslations("settings")
-  const thirtyDaysAgo = daysAgo(30)
+  // Calendar-month window — the SAME window the monthly token limit uses
+  // (usage.ts assertWithinLimit), so the shown numbers match the enforcement.
+  const monthStart = new Date()
+  monthStart.setDate(1)
+  monthStart.setHours(0, 0, 0, 0)
+  void daysAgo
 
-  const [passkeys, ai, userKeys, usage, nPrefs, prefs, availableModels, uploads, storage] =
+  const [passkeys, ai, userKeys, usage, usageByFeature, nPrefs, prefs, availableModels, uploads, storage] =
     await Promise.all([
     db
       .select({ id: passkey.id, name: passkey.name, createdAt: passkey.createdAt })
@@ -36,8 +41,19 @@ export default async function SettingsPage() {
       })
       .from(aiUsageLog)
       .where(
-        and(eq(aiUsageLog.userId, session.user.id), gte(aiUsageLog.createdAt, thirtyDaysAgo))
+        and(eq(aiUsageLog.userId, session.user.id), gte(aiUsageLog.createdAt, monthStart))
       ),
+    db
+      .select({
+        feature: aiUsageLog.feature,
+        inputTokens: sum(aiUsageLog.inputTokens).mapWith(Number),
+        outputTokens: sum(aiUsageLog.outputTokens).mapWith(Number),
+      })
+      .from(aiUsageLog)
+      .where(
+        and(eq(aiUsageLog.userId, session.user.id), gte(aiUsageLog.createdAt, monthStart))
+      )
+      .groupBy(aiUsageLog.feature),
     db.query.notificationPrefs.findFirst({
       where: eq(notificationPrefs.userId, session.user.id),
     }),
@@ -54,6 +70,12 @@ export default async function SettingsPage() {
   }))
   const totals = usage[0] ?? { inputTokens: 0, outputTokens: 0 }
   const limit = ai?.monthlyTokenLimitPerUser ?? 0
+  const usedTokens = (totals.inputTokens ?? 0) + (totals.outputTokens ?? 0)
+  const usagePct = limit > 0 ? Math.min(100, Math.round((usedTokens / limit) * 100)) : 0
+  const featureRows = usageByFeature
+    .map((r) => ({ feature: r.feature, tokens: (r.inputTokens ?? 0) + (r.outputTokens ?? 0) }))
+    .filter((r) => r.tokens > 0)
+    .sort((a, b) => b.tokens - a.tokens)
   const quotaMb = uploads?.storageQuotaMbPerUser ?? 0
   const quotaBytes = quotaMb * 1024 * 1024
   const storagePct =
@@ -156,25 +178,54 @@ export default async function SettingsPage() {
             <CardHeader>
               <CardTitle className="text-base">{t("usage.title")}</CardTitle>
             </CardHeader>
-            <CardContent className="flex gap-6 text-sm">
-              <div>
-                <p className="text-muted-foreground text-xs">{t("usage.input")}</p>
-                <p className="font-semibold tabular-nums">
-                  {(totals.inputTokens ?? 0).toLocaleString()}
-                </p>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex gap-6">
+                <div>
+                  <p className="text-muted-foreground text-xs">{t("usage.input")}</p>
+                  <p className="font-semibold tabular-nums">
+                    {(totals.inputTokens ?? 0).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">{t("usage.output")}</p>
+                  <p className="font-semibold tabular-nums">
+                    {(totals.outputTokens ?? 0).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">{t("usage.limit")}</p>
+                  <p className="font-semibold tabular-nums">
+                    {limit === 0 ? t("usage.unlimited") : limit.toLocaleString()}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-muted-foreground text-xs">{t("usage.output")}</p>
-                <p className="font-semibold tabular-nums">
-                  {(totals.outputTokens ?? 0).toLocaleString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">{t("usage.limit")}</p>
-                <p className="font-semibold tabular-nums">
-                  {limit === 0 ? t("usage.unlimited") : limit.toLocaleString()}
-                </p>
-              </div>
+              {limit > 0 && (
+                <div className="space-y-1">
+                  <div className="text-muted-foreground flex justify-between text-xs">
+                    <span>{t("usage.utilization")}</span>
+                    <span className="tabular-nums">{usagePct}%</span>
+                  </div>
+                  <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
+                    <div
+                      className={usagePct >= 100 ? "bg-destructive h-full" : "bg-primary h-full"}
+                      style={{ width: `${usagePct}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              {featureRows.length > 0 && (
+                <div className="space-y-1 border-t pt-2">
+                  <p className="text-muted-foreground text-xs">{t("usage.byFeature")}</p>
+                  <ul className="space-y-0.5">
+                    {featureRows.map((row) => (
+                      <li key={row.feature} className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">{row.feature}</span>
+                        <span className="tabular-nums">{row.tokens.toLocaleString()}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </CardContent>
           </Card>
         </>

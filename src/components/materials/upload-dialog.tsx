@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createLinkMaterial } from "@/app/[locale]/(app)/materials-actions"
-import { uploadFiles, type UploadItem } from "./upload-client"
+import { describeUploadError, uploadFiles, type UploadItem } from "./upload-client"
 
 export function UploadDialog({ moduleId, folderId }: { moduleId: string; folderId: string | null }) {
   const t = useTranslations("materials")
@@ -37,7 +37,7 @@ export function UploadDialog({ moduleId, folderId }: { moduleId: string; folderI
       toast.success(queued > 0 ? t("unpacking") : t("uploaded"))
       setOpen(false)
     } catch (error) {
-      toast.error(t("uploadFailed", { error: error instanceof Error ? error.message : String(error) }))
+      toast.error(t("uploadFailed", { error: describeUploadError(error, t) }))
     } finally {
       setProgress(null)
       router.refresh()

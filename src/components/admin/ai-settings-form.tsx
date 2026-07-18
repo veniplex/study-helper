@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { saveAiSettings } from "@/app/[locale]/(app)/admin/actions"
+import { saveAiSettings, testAiProvider } from "@/app/[locale]/(app)/admin/actions"
 import type { AiSettings } from "@/lib/settings"
 
 const PROVIDER_TYPES = [
@@ -67,6 +67,7 @@ export function AiSettingsForm({ initial }: { initial: AiSettings }) {
   )
   const [monthlyLimit, setMonthlyLimit] = React.useState(initial.monthlyTokenLimitPerUser)
   const [useBatchApi, setUseBatchApi] = React.useState(initial.useBatchApi ?? false)
+  const [rerank, setRerank] = React.useState(initial.rerank ?? false)
 
   const modelOptions = providers.flatMap((p) =>
     p.modelsText
@@ -81,6 +82,34 @@ export function AiSettingsForm({ initial }: { initial: AiSettings }) {
 
   function update(index: number, patch: Partial<ProviderDraft>) {
     setProviders((list) => list.map((p, i) => (i === index ? { ...p, ...patch } : p)))
+  }
+
+  const [testing, setTesting] = React.useState<string | null>(null)
+
+  /** One-token live request against the (possibly unsaved) provider config. */
+  async function testProvider(index: number) {
+    const p = providers[index]
+    setTesting(p.id)
+    try {
+      const result = await testAiProvider({
+        id: p.id,
+        type: p.type,
+        name: p.name || p.id,
+        apiKey: p.apiKey || undefined,
+        baseUrl: p.baseUrl || undefined,
+        models: p.modelsText
+          .split(",")
+          .map((m) => m.trim())
+          .filter(Boolean),
+        embeddingModel: p.embeddingModel.trim() || undefined,
+      })
+      if (result.ok) toast.success(t("testOk"))
+      else toast.error(t("testFailed", { error: result.error }))
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error))
+    } finally {
+      setTesting(null)
+    }
   }
 
   async function save() {
@@ -105,6 +134,7 @@ export function AiSettingsForm({ initial }: { initial: AiSettings }) {
         defaultEmbeddingModel: defaultEmbeddingModel || undefined,
         monthlyTokenLimitPerUser: monthlyLimit,
         useBatchApi,
+        rerank,
       })
       toast.success(t("saved"))
     } catch (error) {
@@ -199,7 +229,16 @@ export function AiSettingsForm({ initial }: { initial: AiSettings }) {
                 />
               </div>
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={testing === p.id}
+                onClick={() => void testProvider(i)}
+              >
+                {testing === p.id && <Loader2 className="size-3.5 animate-spin" />}
+                {t("testConnection")}
+              </Button>
               <Button
                 variant="destructive"
                 size="sm"
@@ -282,6 +321,13 @@ export function AiSettingsForm({ initial }: { initial: AiSettings }) {
               <Label htmlFor="useBatchApi">{t("useBatchApi")}</Label>
             </div>
             <p className="text-muted-foreground text-xs">{t("useBatchApiHint")}</p>
+          </div>
+          <div className="col-span-full space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Switch id="rerank" checked={rerank} onCheckedChange={setRerank} />
+              <Label htmlFor="rerank">{t("rerank")}</Label>
+            </div>
+            <p className="text-muted-foreground text-xs">{t("rerankHint")}</p>
           </div>
         </div>
       </CardContent>

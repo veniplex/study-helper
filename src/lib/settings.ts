@@ -102,6 +102,12 @@ export const aiSettingsSchema = z.object({
    * OpenAI provider; otherwise the synchronous live path is used. Default off.
    */
   useBatchApi: z.boolean().default(false),
+  /**
+   * Re-rank hybrid-search candidates with the default chat model before
+   * returning them. Improves retrieval precision at the cost of one extra
+   * (small) model call per search — opt-in.
+   */
+  rerank: z.boolean().default(false),
 })
 
 export type AiSettings = z.infer<typeof aiSettingsSchema>
@@ -121,6 +127,21 @@ export const annSettingsSchema = z.object({
   error: z.string().optional(),
 })
 
+/**
+ * Progress of the re-embed backfill that runs after the default embedding
+ * model changes (existing chunks are unusable for vector search until they
+ * are re-embedded with the new model). Operational state like `ai.ann`.
+ */
+export const reembedSettingsSchema = z.object({
+  status: z.enum(["idle", "running", "done", "failed"]).default("idle"),
+  /** "providerId:modelId" the backfill (re-)embeds for. */
+  embeddingModel: z.string().optional(),
+  total: z.number().int().nonnegative().optional(),
+  done: z.number().int().nonnegative().optional(),
+  failed: z.number().int().nonnegative().optional(),
+  error: z.string().optional(),
+})
+
 const settingsSchemas = {
   "auth.registrationMode": registrationModeSchema,
   "auth.socialProviders": socialProvidersSchema,
@@ -130,6 +151,7 @@ const settingsSchemas = {
   uploads: uploadsSchema,
   ai: aiSettingsSchema,
   "ai.ann": annSettingsSchema,
+  "ai.reembed": reembedSettingsSchema,
   "push.vapid": vapidSchema,
   "system.updateCheck": updateCheckSchema,
 } as const
@@ -153,8 +175,9 @@ const defaults: { [K in SettingKey]: SettingValue<K> } = {
   smtp: undefined as never, // no default — unset means email disabled
   branding: { appName: "StudyHelper" },
   uploads: { maxUploadMb: 200, storageQuotaMbPerUser: 0 },
-  ai: { providers: [], monthlyTokenLimitPerUser: 0, useBatchApi: false },
+  ai: { providers: [], monthlyTokenLimitPerUser: 0, useBatchApi: false, rerank: false },
   "ai.ann": { status: "idle" },
+  "ai.reembed": { status: "idle" },
   "push.vapid": undefined as never, // generated on first use
   "system.updateCheck": undefined as never, // set once the first check has run
 }

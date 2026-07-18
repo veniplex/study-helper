@@ -52,6 +52,30 @@ function instantiate(provider: AiProvider, apiKey: string | undefined) {
   }
 }
 
+/**
+ * Fires a minimal real request against a provider to verify its API key /
+ * endpoint before it gets saved and fails later deep inside a stream or a
+ * background job. Uses the given model (or the provider's default/first) with
+ * a one-token completion.
+ */
+export async function testProviderConnection(
+  provider: AiProvider,
+  apiKey: string | undefined,
+  modelId?: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { generateText } = await import("ai")
+  const id = modelId || provider.models[0]
+  if (!id) return { ok: false, error: "No model configured for this provider" }
+  try {
+    const sdk = instantiate(provider, apiKey)
+    await generateText({ model: sdk.languageModel(id), prompt: "ping", maxOutputTokens: 1 })
+    return { ok: true }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { ok: false, error: message.slice(0, 300) }
+  }
+}
+
 async function getProvider(providerId: string): Promise<AiProvider> {
   const ai = await getSetting("ai")
   const provider = ai?.providers.find((p) => p.id === providerId)

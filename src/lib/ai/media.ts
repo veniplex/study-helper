@@ -36,6 +36,7 @@ export async function extractImageText(
       },
       () =>
         generateText({
+          temperature: 0,
           model,
           messages: [
             {
@@ -57,6 +58,27 @@ export async function extractImageText(
     console.warn("[media] image extraction failed", error)
     return null
   }
+}
+
+/**
+ * Transcribes an in-memory audio buffer (voice input in chat). Throws on
+ * failure so the caller can show a real error — unlike the best-effort
+ * material pipeline.
+ */
+export async function transcribeAudioBuffer(buffer: Uint8Array, userId: string): Promise<string> {
+  const transcription = await getTranscriptionModel(userId)
+  if (!transcription) throw new Error("No transcription model available")
+  const { text } = await runAi(
+    {
+      userId,
+      model: transcription.ref,
+      feature: "voice-input",
+      operation: "ai_transcribe",
+      entityType: "chat",
+    },
+    () => transcribe({ model: transcription.model as TranscriptionModel, audio: buffer })
+  )
+  return text.trim()
 }
 
 /**

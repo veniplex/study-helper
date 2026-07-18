@@ -1,4 +1,5 @@
 "use server"
+import { GEN_PARAMS, GRADING_PARAMS } from "@/lib/ai/params"
 
 import { revalidatePath } from "next/cache"
 import { and, eq, isNull } from "drizzle-orm"
@@ -260,6 +261,7 @@ export async function generateQuiz(input: unknown) {
     () =>
       generateObject({
         model,
+        ...GEN_PARAMS,
         schema: generatedQuizSchema,
         prompt: `Create a quiz with ${data.count} exam-style questions about: ${query}.
 ${data.mixed ? "Mix multiple_choice (with exactly 4 plausible options) and free_text questions (about 70/30)." : "Use only multiple_choice questions with exactly 4 plausible options."}
@@ -365,11 +367,21 @@ export async function submitAttempt(input: unknown): Promise<AttemptResult> {
         () =>
           generateObject({
             model,
+            // Deterministic: a re-submitted identical answer must not flip
+            // between correct and incorrect.
+            ...GRADING_PARAMS,
             schema: z.object({ correct: z.boolean(), feedback: z.string() }),
-            prompt: `Grade this student answer. Question: "${prompt}"
+            prompt: `Grade this student answer against the reference.
+Question: "${prompt}"
 Reference answer: "${reference}"
 Student answer: "${answer}"
-Judge leniently on wording but strictly on content. Reply with correct=true/false and one sentence of feedback in the language of the question.`,
+
+Grading rubric:
+- correct=true only if the answer contains the core facts/concepts of the reference; wording, order and minor omissions do not matter.
+- correct=false if a core fact is missing, wrong, or contradicted — even when parts are right.
+- An empty, off-topic or "I don't know" answer is always false.
+- Ignore spelling/grammar entirely.
+Reply with correct=true/false and one sentence of feedback in the language of the question.`,
           })
       )
       return object
