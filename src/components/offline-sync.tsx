@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { flush } from "@/lib/offline/outbox"
 import { reviewCard } from "@/app/[locale]/(app)/deck-actions"
-import { togglePlanItem } from "@/app/[locale]/(app)/learn-actions"
+import { toggleSession } from "@/app/[locale]/(app)/plan/schedule-actions"
 import type { ReviewRating } from "@/lib/learning/fsrs"
 
 /** Replays queued offline writes on app start and whenever we come back online. */
@@ -16,7 +16,7 @@ export function OfflineSync() {
     async function sync() {
       const replayed = await flush({
         "review-card": (p) => reviewCard(String(p.cardId), Number(p.rating) as ReviewRating),
-        "toggle-plan-item": (p) => togglePlanItem(String(p.itemId), Boolean(p.done)),
+        "toggle-session": (p) => toggleSession(String(p.sessionId), Boolean(p.done)),
       })
       if (replayed > 0) toast.success(t("synced", { count: replayed }))
     }

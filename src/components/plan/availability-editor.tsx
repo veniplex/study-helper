@@ -1,14 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Plus, Sparkles, Trash2 } from "lucide-react"
+import { Loader2, Plus, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
-import {
-  generateSemesterPlan,
-  saveAvailability,
-} from "@/app/[locale]/(app)/plan/actions"
+import { saveAvailability } from "@/app/[locale]/(app)/plan/actions"
 import type { PlanAvailability } from "@/db/schema"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,15 +21,13 @@ type WeeklyRow = { enabled: boolean; from: string; to: string }
 export function AvailabilityEditor({
   semesterId,
   initial,
-  hasPlan,
 }: {
   semesterId: string
   initial: PlanAvailability | null
-  hasPlan: boolean
 }) {
   const t = useTranslations("semesterPlan")
   const router = useRouter()
-  const [pending, setPending] = React.useState<"save" | "generate" | null>(null)
+  const [pending, setPending] = React.useState<"save" | null>(null)
   const [weekly, setWeekly] = React.useState<Record<number, WeeklyRow>>(() => {
     const base: Record<number, WeeklyRow> = {}
     for (const d of WEEKDAYS) base[d] = { enabled: false, from: "18:00", to: "20:00" }
@@ -61,20 +56,6 @@ export function AvailabilityEditor({
     try {
       await saveAvailability(semesterId, payload())
       toast.success(t("saved"))
-      router.refresh()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-    } finally {
-      setPending(null)
-    }
-  }
-
-  async function onGenerate() {
-    setPending("generate")
-    try {
-      await saveAvailability(semesterId, payload())
-      const result = await generateSemesterPlan(semesterId)
-      toast.success(t("generated", { count: result.count }))
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
@@ -382,17 +363,9 @@ export function AvailabilityEditor({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" disabled={pending !== null} onClick={() => void onSave()}>
+          <Button disabled={pending !== null} onClick={() => void onSave()}>
             {pending === "save" && <Loader2 className="size-4 animate-spin" />}
             {t("save")}
-          </Button>
-          <Button disabled={pending !== null} onClick={() => void onGenerate()}>
-            {pending === "generate" ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Sparkles className="size-4" />
-            )}
-            {hasPlan ? t("regenerate") : t("generate")}
           </Button>
         </div>
       </CardContent>

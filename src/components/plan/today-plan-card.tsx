@@ -4,23 +4,23 @@ import { CalendarClock } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Link, useRouter } from "@/i18n/navigation"
-import { togglePlanItem } from "@/app/[locale]/(app)/plan/actions"
+import { toggleSession } from "@/app/[locale]/(app)/plan/schedule-actions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 
-export type TodayPlanItem = {
+export type TodayPlanSession = {
   id: string
-  title: string
-  startTime: string | null
+  startTime: string
   durationMinutes: number
   done: boolean
   moduleName: string | null
   semesterId: string
+  tasks: { id: string; title: string; done: boolean }[]
 }
 
-/** Dashboard card: today's semester-plan sessions, checkable. */
-export function TodayPlanCard({ items }: { items: TodayPlanItem[] }) {
+/** Dashboard card: today's plan sessions, each checkable, with task titles. */
+export function TodayPlanCard({ items }: { items: TodayPlanSession[] }) {
   const t = useTranslations("semesterPlan")
   const router = useRouter()
 
@@ -28,7 +28,7 @@ export function TodayPlanCard({ items }: { items: TodayPlanItem[] }) {
 
   async function onToggle(id: string, done: boolean) {
     try {
-      await togglePlanItem(id, done)
+      await toggleSession(id, done)
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
@@ -55,24 +55,31 @@ export function TodayPlanCard({ items }: { items: TodayPlanItem[] }) {
             <li
               key={item.id}
               className={cn(
-                "flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm",
+                "rounded-md border px-3 py-2 text-sm",
                 item.done && "opacity-60"
               )}
             >
-              <Checkbox
-                checked={item.done}
-                onCheckedChange={(on) => void onToggle(item.id, Boolean(on))}
-              />
-              <span className={cn("font-medium", item.done && "line-through")}>
-                {item.title}
-              </span>
-              {item.moduleName && (
-                <span className="text-muted-foreground text-xs">{item.moduleName}</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Checkbox
+                  checked={item.done}
+                  onCheckedChange={(on) => void onToggle(item.id, Boolean(on))}
+                />
+                <span className={cn("font-medium", item.done && "line-through")}>
+                  {item.moduleName ?? ""}
+                </span>
+                <span className="text-muted-foreground ml-auto text-xs">
+                  {item.startTime} · {item.durationMinutes} min
+                </span>
+              </div>
+              {item.tasks.length > 0 && (
+                <ul className="text-muted-foreground mt-1 space-y-0.5 pl-6 text-xs">
+                  {item.tasks.map((task) => (
+                    <li key={task.id} className={cn(task.done && "line-through")}>
+                      {task.title}
+                    </li>
+                  ))}
+                </ul>
               )}
-              <span className="text-muted-foreground ml-auto text-xs">
-                {item.startTime && `${item.startTime} · `}
-                {item.durationMinutes} min
-              </span>
             </li>
           ))}
         </ul>

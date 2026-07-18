@@ -9,7 +9,7 @@ import Dexie, { type EntityTable } from "dexie"
 
 export type OutboxEntry = {
   id: number
-  kind: "review-card" | "toggle-plan-item"
+  kind: "review-card" | "toggle-session"
   payload: Record<string, unknown>
   createdAt: number
 }

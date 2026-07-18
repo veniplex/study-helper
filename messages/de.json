@@ -970,30 +970,6 @@
       "targetDate": "Zieldatum",
       "empty": "Noch keine Lernziele definiert."
     },
-    "plans": {
-      "new": "Lernplan anlegen",
-      "generate": "Mit KI generieren",
-      "title": "Titel",
-      "description": "Beschreibung",
-      "empty": "Noch keine Lernpläne.",
-      "aiBadge": "KI-generiert",
-      "items": "Einheiten",
-      "addItem": "Einheit hinzufügen",
-      "itemTitle": "Titel",
-      "itemDate": "Datum",
-      "itemDuration": "Dauer (Minuten)",
-      "generateDialog": {
-        "title": "Lernplan mit KI generieren",
-        "examDate": "Prüfungsdatum",
-        "hoursPerWeek": "Stunden pro Woche",
-        "topics": "Themen / Beschreibung (was ist zu lernen?)",
-        "useMaterials": "Hochgeladene Materialien berücksichtigen",
-        "submit": "Generieren",
-        "generating": "Generiere Lernplan …"
-      },
-      "editItem": "Lerneinheit bearbeiten",
-      "itemDescription": "Beschreibung"
-    },
     "decks": {
       "new": "Deck anlegen",
       "name": "Name",
@@ -1244,17 +1220,6 @@
     "cronDuration": "Dauer (Min.)",
     "save": "Speichern",
     "saved": "Verfügbarkeit gespeichert.",
-    "generate": "Plan generieren (KI)",
-    "regenerate": "Neu generieren (erledigte bleiben)",
-    "generated": "{count} Lerneinheiten geplant.",
-    "empty": "Noch kein Plan. Verfügbarkeit festlegen und generieren — Klausuren und Abgabefristen werden berücksichtigt.",
-    "week": "Woche {week}",
-    "kind": {
-      "study": "Lernen",
-      "review": "Wiederholung",
-      "assignment": "Abgabe"
-    },
-    "deleteItem": "Entfernen",
     "today": "Heute lernen",
     "weekdaysShort": {
       "0": "So",
@@ -1264,6 +1229,80 @@
       "4": "Do",
       "5": "Fr",
       "6": "Sa"
+    }
+  },
+  "plan": {
+    "weekdaysShort": {
+      "0": "So",
+      "1": "Mo",
+      "2": "Di",
+      "3": "Mi",
+      "4": "Do",
+      "5": "Fr",
+      "6": "Sa"
+    },
+    "phases": {
+      "1": "Jetzt",
+      "2": "Danach",
+      "3": "Später"
+    },
+    "tasks": {
+      "title": "Aufgaben",
+      "empty": "Noch keine Aufgaben. Generiere sie aus deinen Lernzielen oder füge manuell welche hinzu.",
+      "generate": "Aus Lernzielen generieren",
+      "generated": "{count} Aufgaben erstellt.",
+      "add": "Aufgabe hinzufügen",
+      "edit": "Aufgabe bearbeiten",
+      "delete": "Löschen",
+      "reorder": "Verschieben",
+      "titleField": "Titel",
+      "description": "Beschreibung",
+      "estimatedMinutes": "Dauer (Min.)",
+      "dueDate": "Frist",
+      "due": "bis",
+      "scheduled": "Verplant",
+      "goal": "Lernziel",
+      "noGoal": "Kein Lernziel"
+    },
+    "prefs": {
+      "title": "Planungs-Einstellungen",
+      "active": "Im Lernplan aktiv",
+      "weight": "Gewicht",
+      "weeklyHours": "Wochenstunden",
+      "phase": "Phase",
+      "weekdays": "Bevorzugte Wochentage",
+      "save": "Speichern",
+      "saved": "Gespeichert.",
+      "linkToSemester": "Zur Semester-Koordination"
+    },
+    "sessions": {
+      "title": "Kommende Termine",
+      "empty": "Noch keine Termine geplant.",
+      "linkToSemester": "Zum Semester-Lernplan",
+      "taskCount": "{count} Aufgaben"
+    },
+    "strategy": {
+      "title": "Strategie-Board",
+      "compute": "Plan berechnen",
+      "computed": "{count} Termine geplant.",
+      "needAvailability": "Lege zuerst deine Verfügbarkeit fest.",
+      "noModules": "Keine Module in diesem Semester.",
+      "warning": {
+        "deadline_unreachable": "Frist nicht erreichbar",
+        "no_capacity": "Keine Kapazität"
+      }
+    },
+    "preview": {
+      "title": "Vorschau",
+      "empty": "Noch kein Plan berechnet.",
+      "week": "Woche {week}",
+      "taskCount": "{count} Aufgaben"
+    },
+    "session": {
+      "title": "Lerneinheit",
+      "done": "Erledigt",
+      "tasks": "Aufgaben",
+      "noTasks": "Keine Aufgaben in dieser Einheit."
     }
   },
   "learnSession": {

@@ -1,6 +1,5 @@
 import {
   boolean,
-  date,
   index,
   integer,
   jsonb,
@@ -26,42 +25,6 @@ const timestamps = {
     .defaultNow()
     .$onUpdate(() => new Date()),
 }
-
-// ---- Study plans ---------------------------------------------------------------
-
-export const studyPlan = pgTable(
-  "study_plan",
-  {
-    id: id(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    moduleId: text("module_id").references(() => studyModule.id, { onDelete: "set null" }),
-    title: text("title").notNull(),
-    description: text("description"),
-    aiGenerated: boolean("ai_generated").notNull().default(false),
-    ...timestamps,
-  },
-  (t) => [index("study_plan_userId_idx").on(t.userId)]
-)
-
-export const studyPlanItem = pgTable(
-  "study_plan_item",
-  {
-    id: id(),
-    planId: text("plan_id")
-      .notNull()
-      .references(() => studyPlan.id, { onDelete: "cascade" }),
-    title: text("title").notNull(),
-    description: text("description"),
-    scheduledDate: date("scheduled_date"),
-    durationMinutes: integer("duration_minutes"),
-    done: boolean("done").notNull().default(false),
-    sortOrder: integer("sort_order").notNull().default(0),
-    ...timestamps,
-  },
-  (t) => [index("study_plan_item_planId_idx").on(t.planId)]
-)
 
 // ---- Flashcards (FSRS) ---------------------------------------------------------
 
@@ -206,15 +169,6 @@ export const answerLog = pgTable(
 )
 
 // ---- Relations -----------------------------------------------------------------
-
-export const studyPlanRelations = relations(studyPlan, ({ one, many }) => ({
-  module: one(studyModule, { fields: [studyPlan.moduleId], references: [studyModule.id] }),
-  items: many(studyPlanItem),
-}))
-
-export const studyPlanItemRelations = relations(studyPlanItem, ({ one }) => ({
-  plan: one(studyPlan, { fields: [studyPlanItem.planId], references: [studyPlan.id] }),
-}))
 
 export const deckRelations = relations(deck, ({ one, many }) => ({
   module: one(studyModule, { fields: [deck.moduleId], references: [studyModule.id] }),

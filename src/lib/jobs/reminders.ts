@@ -5,7 +5,9 @@ import {
   assignment,
   notificationPrefs,
   notificationSent,
+  planSession,
   reminderSent,
+  semesterPlan,
   studyEvent,
   user,
   type NotificationChannels,
@@ -151,18 +153,19 @@ async function sendAssignmentReminders(now: Date): Promise<void> {
   }
 }
 
-/** Daily morning reminder listing today's open study-plan sessions. */
+/** Daily morning reminder listing today's open plan sessions. */
 export async function sendDailyPlanReminders(): Promise<void> {
   const today = new Date().toISOString().slice(0, 10)
 
-  const items = await db.query.semesterPlanItem.findMany({
-    where: (item, { and: a, eq: e }) => a(e(item.date, today), e(item.done, false)),
-    with: { plan: { columns: { userId: true } } },
-  })
+  const sessions = await db
+    .select({ userId: semesterPlan.userId })
+    .from(planSession)
+    .innerJoin(semesterPlan, eq(planSession.semesterPlanId, semesterPlan.id))
+    .where(and(eq(planSession.date, today), eq(planSession.done, false)))
 
   const byUser = new Map<string, number>()
-  for (const item of items) {
-    byUser.set(item.plan.userId, (byUser.get(item.plan.userId) ?? 0) + 1)
+  for (const row of sessions) {
+    byUser.set(row.userId, (byUser.get(row.userId) ?? 0) + 1)
   }
 
   const appName = await getAppName()

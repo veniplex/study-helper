@@ -1,17 +1,7 @@
-import {
-  boolean,
-  date,
-  index,
-  integer,
-  jsonb,
-  pgTable,
-  text,
-  timestamp,
-} from "drizzle-orm/pg-core"
+import { index, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { user } from "./auth"
-import { semester, studyModule } from "./studies"
-import { assignment } from "./assignments"
+import { semester } from "./studies"
 
 export type PlanAvailability = {
   /** Weekly study windows, weekday 0 (Sunday) – 6. */
@@ -37,8 +27,6 @@ export type PlanAvailability = {
     durationMinutes?: number
   }[]
 }
-
-export type SemesterPlanItemKind = "study" | "review" | "assignment"
 
 /**
  * Scheduler tuning for a semester plan. Missing/null is treated as
@@ -73,45 +61,9 @@ export const semesterPlan = pgTable(
   (t) => [index("semester_plan_user_idx").on(t.userId)]
 )
 
-export const semesterPlanItem = pgTable(
-  "semester_plan_item",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    planId: text("plan_id")
-      .notNull()
-      .references(() => semesterPlan.id, { onDelete: "cascade" }),
-    moduleId: text("module_id").references(() => studyModule.id, { onDelete: "cascade" }),
-    assignmentId: text("assignment_id").references(() => assignment.id, {
-      onDelete: "set null",
-    }),
-    kind: text("kind").$type<SemesterPlanItemKind>().notNull().default("study"),
-    title: text("title").notNull(),
-    date: date("date").notNull(),
-    startTime: text("start_time"), // "HH:mm"
-    durationMinutes: integer("duration_minutes").notNull().default(60),
-    done: boolean("done").notNull().default(false),
-    sortOrder: integer("sort_order").notNull().default(0),
-  },
-  (t) => [index("semester_plan_item_plan_idx").on(t.planId, t.date)]
-)
-
-export const semesterPlanRelations = relations(semesterPlan, ({ one, many }) => ({
+export const semesterPlanRelations = relations(semesterPlan, ({ one }) => ({
   semester: one(semester, {
     fields: [semesterPlan.semesterId],
     references: [semester.id],
-  }),
-  items: many(semesterPlanItem),
-}))
-
-export const semesterPlanItemRelations = relations(semesterPlanItem, ({ one }) => ({
-  plan: one(semesterPlan, {
-    fields: [semesterPlanItem.planId],
-    references: [semesterPlan.id],
-  }),
-  module: one(studyModule, {
-    fields: [semesterPlanItem.moduleId],
-    references: [studyModule.id],
   }),
 }))

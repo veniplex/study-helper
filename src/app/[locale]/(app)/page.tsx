@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server"
-import { and, asc, eq, gte, lte } from "drizzle-orm"
+import { and, asc, eq, gte, inArray, lte } from "drizzle-orm"
 import { db } from "@/db"
-import { semesterPlan, studyEvent } from "@/db/schema"
+import { planSession, semesterPlan, studyEvent } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { isAiAvailable } from "@/lib/ai/registry"
 import { getDashboardStats, getPreparednessByModule } from "@/lib/learning/stats-server"
@@ -85,23 +85,30 @@ export default async function DashboardPage() {
   ])
 
   const today = new Date().toISOString().slice(0, 10)
-  const todayPlanItems = await db.query.semesterPlanItem.findMany({
-    where: (item, { exists, and: a, eq: e }) =>
-      a(
-        e(item.date, today),
-        exists(
-          db
-            .select()
-            .from(semesterPlan)
-            .where(a(e(semesterPlan.id, item.planId), e(semesterPlan.userId, session.user.id)))
-        )
-      ),
-    orderBy: (item, { asc: ascFn }) => [ascFn(item.startTime)],
-    with: {
-      module: { columns: { name: true } },
-      plan: { columns: { semesterId: true } },
-    },
+  const userPlans = await db.query.semesterPlan.findMany({
+    where: eq(semesterPlan.userId, session.user.id),
+    columns: { id: true },
   })
+  const todayPlanSessions = userPlans.length
+    ? await db.query.planSession.findMany({
+        where: and(
+          inArray(
+            planSession.semesterPlanId,
+            userPlans.map((p) => p.id)
+          ),
+          eq(planSession.date, today)
+        ),
+        orderBy: [asc(planSession.startTime)],
+        with: {
+          module: { columns: { name: true } },
+          semesterPlan: { columns: { semesterId: true } },
+          tasks: {
+            orderBy: (task, { asc: ascFn }) => [ascFn(task.sortOrder)],
+            columns: { id: true, title: true, done: true },
+          },
+        },
+      })
+    : []
 
   // Next upcoming exam of the active program's modules, with its preparedness.
   const nextExamRow = await db.query.studyEvent.findFirst({
@@ -136,7 +143,7 @@ export default async function DashboardPage() {
 
       <TodayFocusCard
         dueCards={stats.dueToday}
-        openPlanItems={todayPlanItems.filter((i) => !i.done).length}
+        openPlanItems={todayPlanSessions.filter((s) => !s.done).length}
         nextExam={nextExam}
       />
 
@@ -150,14 +157,14 @@ export default async function DashboardPage() {
       </div>
 
       <TodayPlanCard
-        items={todayPlanItems.map((i) => ({
-          id: i.id,
-          title: i.title,
-          startTime: i.startTime,
-          durationMinutes: i.durationMinutes,
-          done: i.done,
-          moduleName: i.module?.name ?? null,
-          semesterId: i.plan.semesterId,
+        items={todayPlanSessions.map((s) => ({
+          id: s.id,
+          startTime: s.startTime,
+          durationMinutes: s.durationMinutes,
+          done: s.done,
+          moduleName: s.module?.name ?? null,
+          semesterId: s.semesterPlan.semesterId,
+          tasks: s.tasks.map((task) => ({ id: task.id, title: task.title, done: task.done })),
         }))}
       />
 

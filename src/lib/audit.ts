@@ -10,7 +10,6 @@ import {
   question,
   quiz,
   studyEvent,
-  studyPlan,
   writingProject,
   type AuditActor,
   type AuditOperation,
@@ -26,7 +25,6 @@ const ENTITY_TABLES: Record<string, PgTable> = {
   question,
   event: studyEvent,
   material,
-  plan: studyPlan,
   thesis: writingProject,
 }
 

@@ -970,30 +970,6 @@
       "targetDate": "Target date",
       "empty": "No learning goals defined yet."
     },
-    "plans": {
-      "new": "Create study plan",
-      "generate": "Generate with AI",
-      "title": "Title",
-      "description": "Description",
-      "empty": "No study plans yet.",
-      "aiBadge": "AI-generated",
-      "items": "Sessions",
-      "addItem": "Add session",
-      "itemTitle": "Title",
-      "itemDate": "Date",
-      "itemDuration": "Duration (minutes)",
-      "generateDialog": {
-        "title": "Generate study plan with AI",
-        "examDate": "Exam date",
-        "hoursPerWeek": "Hours per week",
-        "topics": "Topics / description (what needs to be learned?)",
-        "useMaterials": "Consider uploaded materials",
-        "submit": "Generate",
-        "generating": "Generating study plan …"
-      },
-      "editItem": "Edit study item",
-      "itemDescription": "Description"
-    },
     "decks": {
       "new": "Create deck",
       "name": "Name",
@@ -1244,17 +1220,6 @@
     "cronDuration": "Duration (min)",
     "save": "Save",
     "saved": "Availability saved.",
-    "generate": "Generate plan (AI)",
-    "regenerate": "Regenerate (done items kept)",
-    "generated": "{count} sessions planned.",
-    "empty": "No plan yet. Set your availability and generate — exams and assignment deadlines are taken into account.",
-    "week": "Week {week}",
-    "kind": {
-      "study": "Study",
-      "review": "Review",
-      "assignment": "Assignment"
-    },
-    "deleteItem": "Remove",
     "today": "Study today",
     "weekdaysShort": {
       "0": "Su",
@@ -1264,6 +1229,80 @@
       "4": "Th",
       "5": "Fr",
       "6": "Sa"
+    }
+  },
+  "plan": {
+    "weekdaysShort": {
+      "0": "Su",
+      "1": "Mo",
+      "2": "Tu",
+      "3": "We",
+      "4": "Th",
+      "5": "Fr",
+      "6": "Sa"
+    },
+    "phases": {
+      "1": "Now",
+      "2": "Next",
+      "3": "Later"
+    },
+    "tasks": {
+      "title": "Tasks",
+      "empty": "No tasks yet. Generate them from your goals or add some manually.",
+      "generate": "Generate from goals",
+      "generated": "{count} tasks created.",
+      "add": "Add task",
+      "edit": "Edit task",
+      "delete": "Delete",
+      "reorder": "Reorder",
+      "titleField": "Title",
+      "description": "Description",
+      "estimatedMinutes": "Duration (min)",
+      "dueDate": "Due date",
+      "due": "by",
+      "scheduled": "Scheduled",
+      "goal": "Goal",
+      "noGoal": "No goal"
+    },
+    "prefs": {
+      "title": "Planning settings",
+      "active": "Active in study plan",
+      "weight": "Weight",
+      "weeklyHours": "Weekly hours",
+      "phase": "Phase",
+      "weekdays": "Preferred weekdays",
+      "save": "Save",
+      "saved": "Saved.",
+      "linkToSemester": "To semester coordination"
+    },
+    "sessions": {
+      "title": "Upcoming sessions",
+      "empty": "No sessions scheduled yet.",
+      "linkToSemester": "To semester plan",
+      "taskCount": "{count} tasks"
+    },
+    "strategy": {
+      "title": "Strategy board",
+      "compute": "Compute plan",
+      "computed": "{count} sessions scheduled.",
+      "needAvailability": "Set your availability first.",
+      "noModules": "No modules in this semester.",
+      "warning": {
+        "deadline_unreachable": "Deadline unreachable",
+        "no_capacity": "No capacity"
+      }
+    },
+    "preview": {
+      "title": "Preview",
+      "empty": "No plan computed yet.",
+      "week": "Week {week}",
+      "taskCount": "{count} tasks"
+    },
+    "session": {
+      "title": "Study session",
+      "done": "Done",
+      "tasks": "Tasks",
+      "noTasks": "No tasks in this session."
     }
   },
   "learnSession": {

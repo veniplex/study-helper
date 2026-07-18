@@ -1,7 +1,14 @@
-import { asc, eq, ne, and, isNotNull } from "drizzle-orm"
+import { asc, eq, ne, and, isNotNull, inArray } from "drizzle-orm"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import { assignment, degreeProgram, semesterPlan, studyEvent, userPrefs } from "@/db/schema"
+import {
+  assignment,
+  degreeProgram,
+  planSession,
+  semesterPlan,
+  studyEvent,
+  userPrefs,
+} from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { env } from "@/lib/env"
 import { expandAbsences } from "@/lib/plan/absences"
@@ -19,7 +26,13 @@ export default async function CalendarPage() {
   const session = await requireSession()
   const t = await getTranslations("calendar")
 
-  const [allEvents, prefs, programs, planItems, plans, dueAssignments] = await Promise.all([
+  const userPlans = await db.query.semesterPlan.findMany({
+    where: eq(semesterPlan.userId, session.user.id),
+    columns: { id: true, availability: true },
+  })
+  const planIds = userPlans.map((p) => p.id)
+
+  const [allEvents, prefs, programs, planSessions, dueAssignments] = await Promise.all([
     db.query.studyEvent.findMany({
       where: eq(studyEvent.userId, session.user.id),
       orderBy: [asc(studyEvent.startsAt)],
@@ -30,28 +43,18 @@ export default async function CalendarPage() {
       where: eq(degreeProgram.userId, session.user.id),
       with: { semesters: { with: { modules: true } } },
     }),
-    db.query.semesterPlanItem.findMany({
-      where: (item, { exists, and: a, eq: e }) =>
-        exists(
-          db
-            .select()
-            .from(semesterPlan)
-            .where(a(e(semesterPlan.id, item.planId), e(semesterPlan.userId, session.user.id)))
-        ),
-      columns: {
-        id: true,
-        title: true,
-        date: true,
-        startTime: true,
-        durationMinutes: true,
-        done: true,
-        moduleId: true,
-      },
-    }),
-    db.query.semesterPlan.findMany({
-      where: eq(semesterPlan.userId, session.user.id),
-      columns: { availability: true },
-    }),
+    planIds.length
+      ? db.query.planSession.findMany({
+          where: inArray(planSession.semesterPlanId, planIds),
+          with: {
+            module: { columns: { name: true } },
+            tasks: {
+              orderBy: (task, { asc: a }) => [a(task.sortOrder)],
+              columns: { id: true, title: true, done: true },
+            },
+          },
+        })
+      : Promise.resolve([]),
     db.query.assignment.findMany({
       where: and(
         eq(assignment.userId, session.user.id),
@@ -71,7 +74,7 @@ export default async function CalendarPage() {
   from.setMonth(from.getMonth() - 6)
   const to = new Date()
   to.setMonth(to.getMonth() + 6)
-  const absences = plans.flatMap((p) => expandAbsences(p.availability, from, to))
+  const absences = userPlans.flatMap((p) => expandAbsences(p.availability, from, to))
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
@@ -98,7 +101,16 @@ export default async function CalendarPage() {
           recurrenceWeekdays: e.recurrenceWeekdays,
           recurrenceInterval: e.recurrenceInterval,
         }))}
-        planItems={planItems}
+        planSessions={planSessions.map((s) => ({
+          id: s.id,
+          date: s.date,
+          startTime: s.startTime,
+          durationMinutes: s.durationMinutes,
+          done: s.done,
+          moduleId: s.moduleId,
+          moduleName: s.module?.name ?? null,
+          tasks: s.tasks.map((task) => ({ id: task.id, title: task.title, done: task.done })),
+        }))}
         assignments={dueAssignments.map((a) => ({
           id: a.id,
           title: a.title,
