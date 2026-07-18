@@ -25,6 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { createQuiz, generateQuiz, updateQuiz } from "@/app/[locale]/(app)/quiz-actions"
 import { startCompleteQuiz } from "@/app/[locale]/(app)/generation-actions"
+import { FormDialog } from "@/components/form-dialog"
 import { ModuleSelect, type ModuleOption } from "./module-select"
 import { GenerationProgress } from "./generation-progress"
 
@@ -43,60 +44,35 @@ export function EditQuizDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const t = useTranslations("learn.quizzes")
-  const tCommon = useTranslations("common")
   const router = useRouter()
-  const [pending, setPending] = React.useState(false)
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
-    setPending(true)
-    try {
-      await updateQuiz(quizId, {
-        title: String(form.get("title")),
-        description: String(form.get("description") || "") || null,
-      })
-      onOpenChange(false)
-      router.refresh()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-    } finally {
-      setPending(false)
-    }
-  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("edit")}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="eq-title">{t("title")}</Label>
-            <Input id="eq-title" name="title" defaultValue={initialTitle} required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="eq-desc">{t("description")}</Label>
-            <Textarea
-              id="eq-desc"
-              name="description"
-              rows={2}
-              defaultValue={initialDescription ?? ""}
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {tCommon("cancel")}
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending && <Loader2 className="size-4 animate-spin" />}
-              {tCommon("save")}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      title={t("edit")}
+      open={open}
+      onOpenChange={onOpenChange}
+      onSubmit={async (form) => {
+        await updateQuiz(quizId, {
+          title: String(form.get("title")),
+          description: String(form.get("description") || "") || null,
+        })
+        router.refresh()
+      }}
+    >
+      <div className="space-y-1.5">
+        <Label htmlFor="eq-title">{t("title")}</Label>
+        <Input id="eq-title" name="title" defaultValue={initialTitle} required />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="eq-desc">{t("description")}</Label>
+        <Textarea
+          id="eq-desc"
+          name="description"
+          rows={2}
+          defaultValue={initialDescription ?? ""}
+        />
+      </div>
+    </FormDialog>
   )
 }
 
@@ -111,67 +87,43 @@ export function QuizDialog({
 }) {
   const t = useTranslations("learn.quizzes")
   const tLearn = useTranslations("learn")
-  const tCommon = useTranslations("common")
   const router = useRouter()
-  const [open, setOpen] = React.useState(false)
-  const [pending, setPending] = React.useState(false)
   const [moduleId, setModuleId] = React.useState(fixedModuleId ?? "")
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
-    setPending(true)
-    try {
-      const result = await createQuiz({
-        title: String(form.get("title")),
-        description: String(form.get("description") || "") || null,
-        moduleId: moduleId || null,
-      })
-      setOpen(false)
-      router.push(`${basePath}/quizzes/${result.id}`)
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-      setPending(false)
-    }
-  }
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" />}>
-        <Plus className="size-4" />
-        {t("new")}
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("new")}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="q-title">{t("title")}</Label>
-            <Input id="q-title" name="title" required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="q-desc">{t("description")}</Label>
-            <Textarea id="q-desc" name="description" rows={2} />
-          </div>
-          {!fixedModuleId && (
-            <div className="space-y-1.5">
-              <Label>{tLearn("module")}</Label>
-              <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              {tCommon("cancel")}
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending && <Loader2 className="size-4 animate-spin" />}
-              {tCommon("save")}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      title={t("new")}
+      triggerVariant="outline"
+      trigger={
+        <>
+          <Plus className="size-4" />
+          {t("new")}
+        </>
+      }
+      onSubmit={async (form) => {
+        const result = await createQuiz({
+          title: String(form.get("title")),
+          description: String(form.get("description") || "") || null,
+          moduleId: moduleId || null,
+        })
+        router.push(`${basePath}/quizzes/${result.id}`)
+      }}
+    >
+      <div className="space-y-1.5">
+        <Label htmlFor="q-title">{t("title")}</Label>
+        <Input id="q-title" name="title" required />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="q-desc">{t("description")}</Label>
+        <Textarea id="q-desc" name="description" rows={2} />
+      </div>
+      {!fixedModuleId && (
+        <div className="space-y-1.5">
+          <Label>{tLearn("module")}</Label>
+          <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
+        </div>
+      )}
+    </FormDialog>
   )
 }
 

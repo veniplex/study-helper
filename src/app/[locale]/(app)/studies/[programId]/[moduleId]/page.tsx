@@ -50,34 +50,33 @@ export default async function ModuleOverviewPage({
     notFound()
   }
 
-  const resources = await db.query.externalResource.findMany({
-    where: eq(externalResource.moduleId, moduleId),
-    orderBy: (r) => [asc(r.createdAt)],
-  })
-
-  const contacts = await db.query.moduleContact.findMany({
-    where: eq(moduleContact.moduleId, moduleId),
-    orderBy: (c) => [asc(c.sortOrder), asc(c.createdAt)],
-  })
-
   const gradingSystem = mod.semester.program.gradingSystem
-  const finalGrade = await getModuleFinalGrade(moduleId)
-  const stats = await getModuleStats(session.user.id, moduleId)
-  const aiAvailable = await isAiAvailable()
-  const tStats = await getTranslations("stats")
-
-  const [decks, quizzes] = await Promise.all([
-    db.query.deck.findMany({
-      where: (d, { and: a, eq: e }) =>
-        a(e(d.userId, session.user.id), e(d.moduleId, moduleId)),
-      columns: { id: true, name: true },
-    }),
-    db.query.quiz.findMany({
-      where: (q, { and: a, eq: e }) =>
-        a(e(q.userId, session.user.id), e(q.moduleId, moduleId)),
-      columns: { id: true, title: true },
-    }),
-  ])
+  // Independent lookups — fetch them concurrently to keep TTFB low.
+  const [resources, contacts, finalGrade, stats, aiAvailable, tStats, decks, quizzes] =
+    await Promise.all([
+      db.query.externalResource.findMany({
+        where: eq(externalResource.moduleId, moduleId),
+        orderBy: (r) => [asc(r.createdAt)],
+      }),
+      db.query.moduleContact.findMany({
+        where: eq(moduleContact.moduleId, moduleId),
+        orderBy: (c) => [asc(c.sortOrder), asc(c.createdAt)],
+      }),
+      getModuleFinalGrade(moduleId),
+      getModuleStats(session.user.id, moduleId),
+      isAiAvailable(),
+      getTranslations("stats"),
+      db.query.deck.findMany({
+        where: (d, { and: a, eq: e }) =>
+          a(e(d.userId, session.user.id), e(d.moduleId, moduleId)),
+        columns: { id: true, name: true },
+      }),
+      db.query.quiz.findMany({
+        where: (q, { and: a, eq: e }) =>
+          a(e(q.userId, session.user.id), e(q.moduleId, moduleId)),
+        columns: { id: true, title: true },
+      }),
+    ])
 
   return (
     <div className="space-y-6">

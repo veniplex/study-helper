@@ -2,16 +2,8 @@
 
 import { useTranslations } from "next-intl"
 import { Link, usePathname } from "@/i18n/navigation"
+import { visibleModuleTabs } from "@/config/module-tabs"
 import { cn } from "@/lib/utils"
-
-const tabs = [
-  { key: "overview", segment: "" },
-  { key: "materials", segment: "/materials" },
-  { key: "assignments", segment: "/assignments" },
-  { key: "decks", segment: "/decks" },
-  { key: "quizzes", segment: "/quizzes" },
-  { key: "chat", segment: "/chat" },
-] as const
 
 export function ModuleTabs({
   basePath,
@@ -26,7 +18,7 @@ export function ModuleTabs({
   const t = useTranslations("moduleTabs")
   const pathname = usePathname()
 
-  const visible = tabs.filter((tab) => aiAvailable || tab.key !== "chat")
+  const visible = visibleModuleTabs(aiAvailable)
 
   return (
     <nav className="flex gap-1 overflow-x-auto border-b pb-px">
