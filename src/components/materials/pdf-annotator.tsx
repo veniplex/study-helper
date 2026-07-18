@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Trash2 } from "lucide-react"
+import { Loader2, Sparkles, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import {
@@ -9,7 +9,9 @@ import {
   deleteAnnotation,
   updateAnnotationNote,
 } from "@/app/[locale]/(app)/materials-actions"
+import { explainSnippet } from "@/app/[locale]/(app)/ai/actions"
 import type { AnnotationColor, AnnotationRect } from "@/db/schema/materials"
+import { Markdown } from "@/components/ai/markdown"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -133,6 +135,67 @@ export function PdfAnnotator({
     }
   }
 
+  const [explaining, setExplaining] = React.useState(false)
+  const [explanation, setExplanation] = React.useState<string | null>(null)
+
+  /** Text of the page region covered by an annotation (pdf.js text layer). */
+  async function extractRectText(annotation: PdfAnnotation): Promise<{
+    snippet: string
+    pageText: string
+  }> {
+    const pdf = pdfRef.current as {
+      getPage: (n: number) => Promise<{
+        getViewport: (o: { scale: number }) => { width: number; height: number }
+        getTextContent: () => Promise<{
+          items: { str?: string; transform?: number[]; width?: number; height?: number }[]
+        }>
+      }>
+    } | null
+    if (!pdf) return { snippet: "", pageText: "" }
+    const page = await pdf.getPage(annotation.page)
+    const viewport = page.getViewport({ scale: 1 })
+    const content = await page.getTextContent()
+    const parts: string[] = []
+    const all: string[] = []
+    const r = annotation.rect
+    for (const item of content.items) {
+      if (!item.str || !item.transform) continue
+      all.push(item.str)
+      // transform[4]/[5] are the item's origin in PDF units (bottom-left based);
+      // annotation rects are normalized with y from the top.
+      const cx = (item.transform[4] + (item.width ?? 0) / 2) / viewport.width
+      const cy = 1 - item.transform[5] / viewport.height
+      const pad = 0.01
+      if (
+        cx >= r.x - pad &&
+        cx <= r.x + r.w + pad &&
+        cy >= r.y - pad &&
+        cy <= r.y + r.h + pad
+      ) {
+        parts.push(item.str)
+      }
+    }
+    return { snippet: parts.join(" ").trim(), pageText: all.join(" ").trim() }
+  }
+
+  async function onExplain() {
+    if (!selected) return
+    setExplaining(true)
+    setExplanation(null)
+    try {
+      const { snippet, pageText } = await extractRectText(selected)
+      // A rect over a diagram may cover no text — fall back to the note or page.
+      const effective = snippet || selected.note || pageText.slice(0, 1000)
+      if (!effective) throw new Error(t("explainEmpty"))
+      const result = await explainSnippet(materialId, effective, pageText)
+      setExplanation(result.explanation)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err))
+    } finally {
+      setExplaining(false)
+    }
+  }
+
   if (error) {
     return <p className="text-destructive py-8 text-center text-sm">{error}</p>
   }
@@ -177,6 +240,7 @@ export function PdfAnnotator({
             onSelect={(a) => {
               setSelected(a)
               setNote(a.note ?? "")
+              setExplanation(null)
             }}
           />
         ))}
@@ -184,6 +248,11 @@ export function PdfAnnotator({
 
       {selected && (
         <div className="bg-background fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md space-y-2 rounded-lg border p-3 shadow-lg">
+          {explanation && (
+            <div className="max-h-60 overflow-y-auto rounded-md border p-2 text-sm">
+              <Markdown>{explanation}</Markdown>
+            </div>
+          )}
           <Textarea
             rows={2}
             value={note}
@@ -200,6 +269,19 @@ export function PdfAnnotator({
             >
               <Trash2 className="size-4" />
               <span className="sr-only">{tCommon("delete")}</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={explaining}
+              onClick={() => void onExplain()}
+            >
+              {explaining ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="size-3.5" />
+              )}
+              {t("explain")}
             </Button>
             <Button variant="outline" size="sm" className="ml-auto" onClick={() => setSelected(null)}>
               {tCommon("cancel")}

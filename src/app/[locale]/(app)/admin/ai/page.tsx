@@ -50,7 +50,7 @@ export default async function AdminAiPage() {
   return (
     <div className="space-y-6">
       <AiSettingsForm
-        initial={ai ?? { providers: [], monthlyTokenLimitPerUser: 0, useBatchApi: false }}
+        initial={ai ?? { providers: [], monthlyTokenLimitPerUser: 0, useBatchApi: false, rerank: false }}
       />
       <ReembedCard
         initialState={reembed ?? { status: "idle" }}

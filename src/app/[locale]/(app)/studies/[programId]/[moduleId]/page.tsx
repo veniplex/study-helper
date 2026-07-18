@@ -81,7 +81,9 @@ export default async function ModuleOverviewPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap justify-end gap-2">
-        {aiAvailable && <AnalyzeButton moduleId={moduleId} />}
+        {aiAvailable && (
+          <AnalyzeButton moduleId={moduleId} basePath={`/studies/${programId}/${moduleId}`} />
+        )}
         <SessionStartDialog
           basePath={`/studies/${programId}/${moduleId}`}
           moduleId={moduleId}

@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth/session"
 import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
 import { assertWithinLimit } from "@/lib/ai/usage"
 import { normalizeUsage, recordAiAudit, recordAiUsage } from "@/lib/ai/run"
-import { searchChunks } from "@/lib/ai/rag"
+import { searchChunks, searchChunksInMaterials } from "@/lib/ai/rag"
 import { MODE_PROMPTS, type ChatMode } from "@/lib/ai/modes"
 import { writeToolDescriptions, writeToolSchemas, WRITE_TOOL_NAMES } from "@/lib/ai/tools"
 import { mergeToolOutputs } from "@/lib/ai/chat-history"
@@ -34,7 +34,8 @@ function buildSystemPrompt(
   ragEnabled: boolean,
   mode: ChatMode,
   pageContext?: string,
-  locale?: string
+  locale?: string,
+  documentName?: string | null
 ): string {
   const language = locale ? LOCALE_NAMES[locale] : undefined
   return [
@@ -47,8 +48,11 @@ function buildSystemPrompt(
       ? `The current conversation is about the module "${moduleName}"${moduleId ? ` (moduleId: ${moduleId})` : ""}. Use this moduleId for write tools that target this module.`
       : "",
     MODE_PROMPTS[mode] ?? "",
+    documentName
+      ? `This conversation is about ONE specific document: "${documentName}". The searchMaterials tool searches only inside this document — use it for every content question, and answer from this document rather than general knowledge.`
+      : "",
     ragEnabled
-      ? "You can search the user's uploaded study materials with the searchMaterials tool. Use it whenever a question may relate to their course content, and cite the source material names in your answer."
+      ? "You can search the user's uploaded study materials with the searchMaterials tool. Use it whenever a question may relate to their course content. Each search result carries an index; when your answer uses a result, cite it inline as [n] with that index."
       : "",
     pageContext
       ? `The user is currently looking at this page in the app: ${pageContext}. Use this as context when the question refers to "this module", "this page", or similar. If the page context contains a moduleId, use it directly as the moduleId for write tools (decks, quizzes, events, assignments) unless the user names a different module.`
@@ -77,6 +81,8 @@ export async function POST(request: Request) {
     model: string
     pageContext?: string
     locale?: string
+    /** Set by the AI SDK transport: "submit-message" | "regenerate-message". */
+    trigger?: string
   } | null
   if (
     !body ||
@@ -102,7 +108,7 @@ export async function POST(request: Request) {
       eq(aiConversation.id, body.conversationId),
       eq(aiConversation.userId, session.user.id)
     ),
-    with: { module: true },
+    with: { module: true, material: { columns: { id: true, name: true } } },
   })
   if (!conversation) return new Response("Not found", { status: 404 })
 
@@ -127,7 +133,35 @@ export async function POST(request: Request) {
   const history: UIMessage[] = stored.map((m) => ({ id: m.id, role: m.role, parts: m.parts }))
 
   const lastMessage = body.messages.at(-1)
-  if (lastMessage?.role === "user") {
+  if (body.trigger === "regenerate-message") {
+    // Regenerate the last answer: drop the trailing assistant message(s) and
+    // re-stream from the preceding user turn. Refused when an executed write
+    // tool is part of that answer — its side effect (deck/quiz/event) already
+    // exists and would be offered again.
+    const { isWriteToolPart } = await import("@/lib/ai/chat-history")
+    const poppedIds: string[] = []
+    while (history.length > 0 && history.at(-1)!.role === "assistant") {
+      const popped = history.pop()!
+      const executed = popped.parts.some(
+        (p) =>
+          isWriteToolPart(p) &&
+          p.state === "output-available" &&
+          (p.output as { status?: string } | undefined)?.status === "executed"
+      )
+      if (executed) {
+        return new Response("Cannot regenerate an answer with executed actions", { status: 409 })
+      }
+      poppedIds.push(popped.id)
+    }
+    if (poppedIds.length === 0 || history.at(-1)?.role !== "user") {
+      return new Response("Nothing to regenerate", { status: 400 })
+    }
+    await db.delete(aiMessage).where(inArray(aiMessage.id, poppedIds))
+    await db
+      .update(aiConversation)
+      .set({ model: body.model, updatedAt: new Date() })
+      .where(eq(aiConversation.id, conversation.id))
+  } else if (lastMessage?.role === "user") {
     // New user turn: keep only text parts and bound their size.
     const textParts = lastMessage.parts.filter(
       (p): p is { type: "text"; text: string } => p.type === "text" && typeof p.text === "string"
@@ -145,7 +179,8 @@ export async function POST(request: Request) {
       .returning({ id: aiMessage.id })
     history.push({ id: inserted.id, role: "user", parts: textParts })
 
-    // Derive a title from the first user message
+    // Derive a placeholder title from the first user message; upgraded to an
+    // AI-written title after the first exchange completes (see onFinish).
     if (conversation.title === "New conversation") {
       const text = textParts
         .map((p) => p.text)
@@ -189,6 +224,10 @@ export async function POST(request: Request) {
   const ragEnabled = Boolean(ai?.defaultEmbeddingModel)
   const userId = session.user.id
   const moduleId = conversation.moduleId
+  const scopedMaterialId = conversation.materialId
+  // Citation counter shared across all searchMaterials calls of this response
+  // so [n] indices stay unique within one assistant turn.
+  let citationIndex = 0
 
   const result = streamText({
     model,
@@ -199,7 +238,8 @@ export async function POST(request: Request) {
       ragEnabled,
       (conversation.mode as ChatMode) ?? "general",
       pageContext,
-      locale
+      locale,
+      conversation.material?.name ?? null
     ),
     // Incomplete write-tool calls (user typed on without confirming) are
     // dropped so providers don't reject the dangling tool_use.
@@ -217,7 +257,11 @@ export async function POST(request: Request) {
                 query: z.string().describe("Search query in the language of the materials"),
               }),
               execute: async ({ query }) => {
-                const hits = await searchChunks(userId, query, { moduleId, limit: 6 })
+                // Document-scoped conversations retrieve from that one material;
+                // otherwise search the conversation's module (or everything).
+                const hits = scopedMaterialId
+                  ? await searchChunksInMaterials(userId, query, [scopedMaterialId], { limit: 6 })
+                  : await searchChunks(userId, query, { moduleId, limit: 6 })
                 if (hits.length > 0) {
                   const { logAudit } = await import("@/lib/audit")
                   await logAudit({
@@ -230,8 +274,12 @@ export async function POST(request: Request) {
                     conversationId: conversation.id,
                   })
                 }
+                // The index lets the model cite [n]; materialId lets the UI
+                // render the citation as a link to the source material.
                 return hits.map((h) => ({
+                  index: ++citationIndex,
                   source: h.materialName,
+                  materialId: h.materialId,
                   excerpt: h.content.slice(0, 1500),
                 }))
               },
@@ -359,6 +407,40 @@ export async function POST(request: Request) {
         role: "assistant",
         parts: responseMessage.parts,
       })
+      // First exchange of a fresh conversation: replace the truncated
+      // placeholder title with a short AI-written one (best-effort).
+      if (conversation.title === "New conversation") {
+        const firstUser = windowedHistory.find((m) => m.role === "user")
+        const userText = firstUser?.parts
+          .filter((p): p is { type: "text"; text: string } => p.type === "text")
+          .map((p) => p.text)
+          .join(" ")
+        const answerText = responseMessage.parts
+          .filter((p): p is { type: "text"; text: string } => p.type === "text")
+          .map((p) => p.text)
+          .join(" ")
+        if (userText) {
+          try {
+            const { generateText } = await import("ai")
+            const { UTILITY_PARAMS } = await import("@/lib/ai/params")
+            const { text } = await generateText({
+              model,
+              ...UTILITY_PARAMS,
+              maxOutputTokens: 30,
+              prompt: `Write a short title (max 6 words, no quotes, same language as the conversation) for this chat.\nUser: ${userText.slice(0, 500)}\nAssistant: ${answerText.slice(0, 500)}`,
+            })
+            const title = text.trim().replace(/^["'«»\s]+|["'«»\s.]+$/g, "").slice(0, 80)
+            if (title) {
+              await db
+                .update(aiConversation)
+                .set({ title })
+                .where(eq(aiConversation.id, conversation.id))
+            }
+          } catch (error) {
+            console.error("[chat] title generation failed", error)
+          }
+        }
+      }
     },
   })
 }

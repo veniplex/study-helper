@@ -102,6 +102,12 @@ export const aiSettingsSchema = z.object({
    * OpenAI provider; otherwise the synchronous live path is used. Default off.
    */
   useBatchApi: z.boolean().default(false),
+  /**
+   * Re-rank hybrid-search candidates with the default chat model before
+   * returning them. Improves retrieval precision at the cost of one extra
+   * (small) model call per search — opt-in.
+   */
+  rerank: z.boolean().default(false),
 })
 
 export type AiSettings = z.infer<typeof aiSettingsSchema>
@@ -169,7 +175,7 @@ const defaults: { [K in SettingKey]: SettingValue<K> } = {
   smtp: undefined as never, // no default — unset means email disabled
   branding: { appName: "StudyHelper" },
   uploads: { maxUploadMb: 200, storageQuotaMbPerUser: 0 },
-  ai: { providers: [], monthlyTokenLimitPerUser: 0, useBatchApi: false },
+  ai: { providers: [], monthlyTokenLimitPerUser: 0, useBatchApi: false, rerank: false },
   "ai.ann": { status: "idle" },
   "ai.reembed": { status: "idle" },
   "push.vapid": undefined as never, // generated on first use

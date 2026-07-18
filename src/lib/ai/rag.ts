@@ -5,7 +5,7 @@ import { db } from "@/db"
 import { material, materialChunk, type ExtractionStatus } from "@/db/schema"
 import { getSetting } from "@/lib/settings"
 import { deleteFile, readStoredText, saveText } from "@/lib/storage"
-import { getEmbeddingModel } from "./registry"
+import { getEmbeddingModel, getLanguageModel, resolveModelForUser } from "./registry"
 import { recordAiAudit, runAi } from "./run"
 import { extractText } from "./extract"
 import { annDimensionFor, populateAnn } from "./ann"
@@ -405,7 +405,70 @@ async function hybridSearch(
     .orderBy(distExpr)
     .limit(pool)
 
+  // Optional precision pass: let the chat model re-rank a wider candidate set.
+  if (ai?.rerank) {
+    const candidates = rrfFuse(vector, lexical, Math.min(pool, limit * 3))
+    if (candidates.length > limit) return rerankHits(userId, query, candidates, limit)
+    return candidates
+  }
   return rrfFuse(vector, lexical, limit)
+}
+
+/**
+ * LLM re-ranking (admin opt-in): scores the fused candidates against the query
+ * with the user's default model and keeps the top `limit`. Best-effort — any
+ * failure falls back to the RRF order.
+ */
+async function rerankHits(
+  userId: string,
+  query: string,
+  candidates: RagHit[],
+  limit: number
+): Promise<RagHit[]> {
+  try {
+    const modelRef = await resolveModelForUser(userId)
+    if (!modelRef) return candidates.slice(0, limit)
+    const model = await getLanguageModel(modelRef, userId)
+    const { generateObject } = await import("ai")
+    const { z } = await import("zod")
+    const numbered = candidates
+      .map((c, i) => `[${i}] ${c.content.slice(0, 500)}`)
+      .join("\n---\n")
+    const { object } = await runAi(
+      {
+        userId,
+        model: modelRef,
+        feature: "rerank",
+        operation: "ai_embed",
+        audit: false,
+      },
+      () =>
+        generateObject({
+          model,
+          temperature: 0,
+          maxOutputTokens: 200,
+          schema: z.object({ ranking: z.array(z.number().int()).max(candidates.length) }),
+          prompt: `Rank these excerpts by relevance to the query. Return the indices of the ${limit} most relevant, best first.\nQuery: ${query}\n\nExcerpts:\n${numbered}`,
+        })
+    )
+    const seen = new Set<number>()
+    const ranked: RagHit[] = []
+    for (const i of object.ranking) {
+      if (Number.isInteger(i) && i >= 0 && i < candidates.length && !seen.has(i)) {
+        seen.add(i)
+        ranked.push(candidates[i])
+        if (ranked.length === limit) break
+      }
+    }
+    // Fill up from the RRF order if the model returned too few valid indices.
+    for (let i = 0; ranked.length < limit && i < candidates.length; i++) {
+      if (!seen.has(i)) ranked.push(candidates[i])
+    }
+    return ranked
+  } catch (error) {
+    console.warn("[rag] rerank failed — falling back to RRF order", error)
+    return candidates.slice(0, limit)
+  }
 }
 
 /** Hybrid (vector + lexical, RRF-fused) search over the user's material chunks. */

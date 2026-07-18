@@ -211,7 +211,9 @@
       "usageCalls": "Aufrufe",
       "testConnection": "Verbindung testen",
       "testOk": "Verbindung erfolgreich — der API-Key funktioniert.",
-      "testFailed": "Verbindungstest fehlgeschlagen: {error}"
+      "testFailed": "Verbindungstest fehlgeschlagen: {error}",
+      "rerank": "LLM-Reranking der Suche",
+      "rerankHint": "Sortiert Suchtreffer vor der Nutzung mit dem Standard-Modell neu — präzisere Ergebnisse, kostet einen kleinen Zusatzaufruf pro Suche."
     },
     "email": {
       "title": "E-Mail (SMTP)",
@@ -371,7 +373,9 @@
       "input": "Input",
       "output": "Output",
       "limit": "Limit",
-      "unlimited": "unbegrenzt"
+      "unlimited": "unbegrenzt",
+      "utilization": "Auslastung (dieser Monat)",
+      "byFeature": "Nach Feature (dieser Monat)"
     },
     "security": {
       "title": "Sicherheit",
@@ -788,7 +792,9 @@
     "annotator": {
       "hint": "Auf der Seite ziehen zum Markieren; Markierung anklicken für Notiz oder Löschen.",
       "notePlaceholder": "Notiz zu dieser Markierung …",
-      "fileMissing": "Die Datei fehlt auf dem Server — vermutlich ging sie bei einem früheren Redeploy verloren. Bitte lade sie neu hoch."
+      "fileMissing": "Die Datei fehlt auf dem Server — vermutlich ging sie bei einem früheren Redeploy verloren. Bitte lade sie neu hoch.",
+      "explain": "Erklären",
+      "explainEmpty": "In der Markierung wurde kein Text gefunden."
     },
     "stats": {
       "files": "{count, plural, =1 {# Datei} other {# Dateien}}",
@@ -825,7 +831,8 @@
     "notIndexedHint": "Es ist kein Embedding-Modell konfiguriert — Materialien werden nicht für die AI-Suche indexiert. Ein Admin kann das unter Admin → AI einrichten.",
     "uploadRateLimited": "Zu viele Uploads in kurzer Zeit — bitte kurz warten.",
     "uploadNetworkError": "Netzwerkfehler beim Upload — Verbindung prüfen und erneut versuchen.",
-    "uploadServerError": "{name}: Serverfehler beim Speichern. Prüfe im Admin-Bereich, ob der Datei-Speicher beschreibbar ist."
+    "uploadServerError": "{name}: Serverfehler beim Speichern. Prüfe im Admin-Bereich, ob der Datei-Speicher beschreibbar ist.",
+    "askDocument": "Im Chat fragen"
   },
   "search": {
     "modules": "Module",
@@ -913,7 +920,17 @@
     },
     "errorGeneric": "Die Anfrage ist fehlgeschlagen. Bitte versuche es erneut.",
     "errorLimit": "Dein monatliches AI-Kontingent ist aufgebraucht.",
-    "errorAuth": "Der AI-Anbieter hat die Anfrage abgelehnt (API-Key ungültig oder abgelaufen). Bitte prüfe die AI-Einstellungen."
+    "errorAuth": "Der AI-Anbieter hat die Anfrage abgelehnt (API-Key ungültig oder abgelaufen). Bitte prüfe die AI-Einstellungen.",
+    "sources": "Quellen",
+    "regenerate": "Antwort neu generieren",
+    "stop": "Stoppen",
+    "modeLabel": "Modus",
+    "voice": {
+      "start": "Spracheingabe starten",
+      "stop": "Aufnahme beenden",
+      "empty": "Keine Sprache erkannt.",
+      "micDenied": "Mikrofonzugriff wurde verweigert."
+    }
   },
   "learn": {
     "title": "Lernen",
@@ -1228,7 +1245,10 @@
     "analyzeTitle": "KI-Auswertung",
     "analyzing": "Analysiere deine Lernhistorie …",
     "capped": "Session mit {shown} — insgesamt {total} fällig",
-    "swipeHint": "Nach rechts wischen = Gut, nach links = Nochmal"
+    "swipeHint": "Nach rechts wischen = Gut, nach links = Nochmal",
+    "weakTopicsQuiz": "Quiz aus Schwachthemen",
+    "weakTopicsDeck": "Deck aus Schwachthemen",
+    "weakTopicsDeckName": "Schwachthemen-Wiederholung"
   },
   "moduleTabs": {
     "overview": "Übersicht",

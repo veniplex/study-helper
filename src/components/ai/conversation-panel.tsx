@@ -22,11 +22,13 @@ import {
   getConversationMessages,
   listConversations,
   renameConversation,
+  updateConversationMode,
   updateConversationModule,
 } from "@/app/[locale]/(app)/ai/actions"
 import { Chat } from "@/components/ai/chat"
 import { usePageContext } from "@/components/ai/page-context"
 import { ModuleSelect, type ModuleOption } from "@/components/learn/module-select"
+import { CHAT_MODES } from "@/lib/ai/modes"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -45,6 +47,8 @@ export type ConversationMeta = {
   title: string
   moduleName: string | null
   moduleId: string | null
+  /** Tutor mode; older callers may omit it — treated as "general". */
+  mode?: string
 }
 
 /**
@@ -125,6 +129,7 @@ export function ConversationPanel({
         title: t("newConversation"),
         moduleId,
         moduleName: pageContext.moduleName ?? null,
+        mode: "general",
       }
       setConversations([meta, ...(list ?? conversations)])
       setInitialMessages([])
@@ -204,6 +209,16 @@ export function ConversationPanel({
       window.localStorage.removeItem(LAST_CHAT_KEY)
       if (rest[0]) await switchTo(rest[0])
       else await startNew(rest)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  async function onModeChange(mode: string) {
+    if (!current) return
+    try {
+      await updateConversationMode(current.id, mode)
+      setCurrent({ ...current, mode })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
     }
@@ -347,13 +362,26 @@ export function ConversationPanel({
         onConfirm={onDelete}
       />
 
-      <div className="flex items-center gap-2 border-b px-3 py-1.5">
+      <div className="flex flex-wrap items-center gap-2 border-b px-3 py-1.5">
         <span className="text-muted-foreground text-xs">{t("module")}</span>
         <ModuleSelect
           modules={modules}
           value={current?.moduleId ?? ""}
           onChange={(v) => void onModuleChange(v)}
         />
+        <span className="text-muted-foreground ml-2 text-xs">{t("modeLabel")}</span>
+        <select
+          value={current?.mode ?? "general"}
+          onChange={(e) => void onModeChange(e.target.value)}
+          className="border-input bg-background h-7 rounded-md border px-1.5 text-xs"
+          aria-label={t("modeLabel")}
+        >
+          {CHAT_MODES.map((m) => (
+            <option key={m} value={m}>
+              {t(`modes.${m}.label`)}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="min-h-0 flex-1 p-3">

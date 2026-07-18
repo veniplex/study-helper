@@ -380,5 +380,15 @@ Data (JSON): ${JSON.stringify(data).slice(0, 20000)}`,
       })
   )
 
-  return { ok: true as const, analysis: text }
+  // Compact weak-topic list (recent wrong questions + most-lapsed cards) so
+  // the UI can offer one-click "generate a review quiz/deck on my weak spots".
+  const wrongQuestions = [
+    ...new Set(
+      data.quizzes.flatMap((q) => q.attempts.slice(0, 3).flatMap((a) => a.wrongQuestions))
+    ),
+  ].slice(0, 20)
+  const lapsedFronts = data.problemFlashcards.slice(0, 10).map((c) => c.front)
+  const weakTopics = [...wrongQuestions, ...lapsedFronts].join("\n").slice(0, 1500)
+
+  return { ok: true as const, analysis: text, weakTopics }
 }

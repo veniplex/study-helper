@@ -8,6 +8,7 @@ import { material, materialAnnotation } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { fileSize } from "@/lib/storage"
 import { Link } from "@/i18n/navigation"
+import { AskDocumentButton } from "@/components/materials/ask-document-button"
 import { MediaPlayer } from "@/components/materials/media-player"
 import { PdfAnnotator } from "@/components/materials/pdf-annotator"
 import { Button } from "@/components/ui/button"
@@ -65,6 +66,7 @@ export default async function MaterialViewerPage({
           <h1 className="truncate font-heading text-lg font-semibold tracking-tight">{row.name}</h1>
           <p className="text-muted-foreground text-xs">{row.module.name}</p>
         </div>
+        <AskDocumentButton materialId={row.id} />
         <Button variant="outline" size="sm" nativeButton={false} render={<a href={fileUrl} download={row.name} />}>
           <Download className="size-3.5" />
           {t("download")}

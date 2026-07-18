@@ -53,6 +53,7 @@ export default async function ConversationPage({
             title: conversation.title,
             moduleId: conversation.moduleId,
             moduleName: conversation.module?.name ?? null,
+            mode: conversation.mode,
           }}
           initialMessages={initialMessages}
         />

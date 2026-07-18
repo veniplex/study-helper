@@ -67,6 +67,7 @@ export function AiSettingsForm({ initial }: { initial: AiSettings }) {
   )
   const [monthlyLimit, setMonthlyLimit] = React.useState(initial.monthlyTokenLimitPerUser)
   const [useBatchApi, setUseBatchApi] = React.useState(initial.useBatchApi ?? false)
+  const [rerank, setRerank] = React.useState(initial.rerank ?? false)
 
   const modelOptions = providers.flatMap((p) =>
     p.modelsText
@@ -133,6 +134,7 @@ export function AiSettingsForm({ initial }: { initial: AiSettings }) {
         defaultEmbeddingModel: defaultEmbeddingModel || undefined,
         monthlyTokenLimitPerUser: monthlyLimit,
         useBatchApi,
+        rerank,
       })
       toast.success(t("saved"))
     } catch (error) {
@@ -319,6 +321,13 @@ export function AiSettingsForm({ initial }: { initial: AiSettings }) {
               <Label htmlFor="useBatchApi">{t("useBatchApi")}</Label>
             </div>
             <p className="text-muted-foreground text-xs">{t("useBatchApiHint")}</p>
+          </div>
+          <div className="col-span-full space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Switch id="rerank" checked={rerank} onCheckedChange={setRerank} />
+              <Label htmlFor="rerank">{t("rerank")}</Label>
+            </div>
+            <p className="text-muted-foreground text-xs">{t("rerankHint")}</p>
           </div>
         </div>
       </CardContent>

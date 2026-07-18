@@ -1,6 +1,7 @@
 import { bigint, index, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { user } from "./auth"
+import { material } from "./materials"
 import { studyModule } from "./studies"
 
 export const aiConversation = pgTable(
@@ -13,6 +14,9 @@ export const aiConversation = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     moduleId: text("module_id").references(() => studyModule.id, { onDelete: "set null" }),
+    /** When set, the conversation is scoped to ONE material ("chat with this
+     *  document"): searchMaterials retrieves from this material only. */
+    materialId: text("material_id").references(() => material.id, { onDelete: "set null" }),
     title: text("title").notNull().default("New conversation"),
     /** "providerId:modelId" of the last used model */
     model: text("model"),
@@ -83,6 +87,10 @@ export const aiConversationRelations = relations(aiConversation, ({ many, one })
   module: one(studyModule, {
     fields: [aiConversation.moduleId],
     references: [studyModule.id],
+  }),
+  material: one(material, {
+    fields: [aiConversation.materialId],
+    references: [material.id],
   }),
 }))
 

@@ -211,7 +211,9 @@
       "usageCalls": "Calls",
       "testConnection": "Test connection",
       "testOk": "Connection successful — the API key works.",
-      "testFailed": "Connection test failed: {error}"
+      "testFailed": "Connection test failed: {error}",
+      "rerank": "LLM re-ranking for search",
+      "rerankHint": "Re-orders search hits with the default model before use — more precise results at the cost of one small extra call per search."
     },
     "email": {
       "title": "Email (SMTP)",
@@ -371,7 +373,9 @@
       "input": "Input",
       "output": "Output",
       "limit": "Limit",
-      "unlimited": "unlimited"
+      "unlimited": "unlimited",
+      "utilization": "Utilization (this month)",
+      "byFeature": "By feature (this month)"
     },
     "security": {
       "title": "Security",
@@ -788,7 +792,9 @@
     "annotator": {
       "hint": "Drag on a page to highlight; click a highlight to add a note or delete it.",
       "notePlaceholder": "Note for this highlight …",
-      "fileMissing": "The file is missing on the server — it was probably lost in an earlier redeploy. Please upload it again."
+      "fileMissing": "The file is missing on the server — it was probably lost in an earlier redeploy. Please upload it again.",
+      "explain": "Explain",
+      "explainEmpty": "No text found in the highlighted area."
     },
     "stats": {
       "files": "{count, plural, =1 {# file} other {# files}}",
@@ -825,7 +831,8 @@
     "notIndexedHint": "No embedding model is configured — materials are not indexed for AI search. An admin can set this up under Admin → AI.",
     "uploadRateLimited": "Too many uploads in a short time — please wait a moment.",
     "uploadNetworkError": "Network error during upload — check your connection and try again.",
-    "uploadServerError": "{name}: Server error while saving. Check in the admin area whether file storage is writable."
+    "uploadServerError": "{name}: Server error while saving. Check in the admin area whether file storage is writable.",
+    "askDocument": "Ask in chat"
   },
   "search": {
     "modules": "Modules",
@@ -913,7 +920,17 @@
     },
     "errorGeneric": "The request failed. Please try again.",
     "errorLimit": "Your monthly AI quota is used up.",
-    "errorAuth": "The AI provider rejected the request (API key invalid or expired). Please check the AI settings."
+    "errorAuth": "The AI provider rejected the request (API key invalid or expired). Please check the AI settings.",
+    "sources": "Sources",
+    "regenerate": "Regenerate answer",
+    "stop": "Stop",
+    "modeLabel": "Mode",
+    "voice": {
+      "start": "Start voice input",
+      "stop": "Stop recording",
+      "empty": "No speech detected.",
+      "micDenied": "Microphone access was denied."
+    }
   },
   "learn": {
     "title": "Learn",
@@ -1228,7 +1245,10 @@
     "analyzeTitle": "AI analysis",
     "analyzing": "Analyzing your learning history …",
     "capped": "session of {shown} — {total} due in total",
-    "swipeHint": "Swipe right = good, left = again"
+    "swipeHint": "Swipe right = good, left = again",
+    "weakTopicsQuiz": "Quiz from weak topics",
+    "weakTopicsDeck": "Deck from weak topics",
+    "weakTopicsDeckName": "Weak-topics review"
   },
   "moduleTabs": {
     "overview": "Overview",
