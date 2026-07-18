@@ -3,17 +3,19 @@ import { asc, eq } from "drizzle-orm"
 import { ExternalLink, KeyRound } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import { externalResource, moduleContact, studyModule } from "@/db/schema"
+import { assignment, externalResource, moduleContact, studyModule } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { isAiAvailable } from "@/lib/ai/registry"
 import { decrypt } from "@/lib/crypto"
+import { gradeGoalResult } from "@/lib/grades"
 import { getModuleFinalGrade } from "@/lib/studies/grades-server"
 import { getModuleStats } from "@/lib/learning/stats-server"
 import { deleteResource } from "@/app/[locale]/(app)/studies/actions"
 import { DeleteButton } from "@/components/studies/delete-button"
 import { ResourceDialog } from "@/components/studies/resource-dialog"
 import { AnalyzeButton } from "@/components/learn/analyze-button"
-import { ModuleAssessmentCard } from "@/components/learn/module-assessment-card"
+import type { GoalCardData } from "@/components/learn/goal-card"
+import { ModuleGradeSummaryCard } from "@/components/learn/module-grade-summary-card"
 import { ModuleContactsCard } from "@/components/learn/module-contacts-card"
 import { ModuleGoalsCard } from "@/components/studies/module-goals-card"
 import { SessionStartDialog } from "@/components/learn/session-start-dialog"
@@ -54,15 +56,14 @@ export default async function ModuleOverviewPage({
     notFound()
   }
 
-  // Phase 1 renders a single grade goal (per-goal cards come later). Pick the
-  // module's grade goal (else the first goal) and its bonus goal for display.
+  // The grade goal's title still labels the module meta line.
   const gradeGoal = mod.goals.find((g) => g.gradingRole === "grade") ?? mod.goals[0] ?? null
-  const bonus = mod.goals.find((g) => g.gradingRole === "bonus")?.config.bonus ?? null
   const examTypeLabel = gradeGoal?.title ?? null
 
   const gradingSystem = mod.semester.program.gradingSystem
+  const gradeScale = mod.semester.program.gradeScale
   // Independent lookups — fetch them concurrently to keep TTFB low.
-  const [resources, contacts, finalGrade, stats, aiAvailable, tStats, decks, quizzes] =
+  const [resources, contacts, finalGrade, stats, assignments, aiAvailable, tStats, decks, quizzes] =
     await Promise.all([
       db.query.externalResource.findMany({
         where: eq(externalResource.moduleId, moduleId),
@@ -74,6 +75,10 @@ export default async function ModuleOverviewPage({
       }),
       getModuleFinalGrade(moduleId),
       getModuleStats(session.user.id, moduleId),
+      db.query.assignment.findMany({
+        where: eq(assignment.moduleId, moduleId),
+        columns: { id: true, goalId: true, title: true, status: true, dueDate: true },
+      }),
       isAiAvailable(),
       getTranslations("stats"),
       db.query.deck.findMany({
@@ -87,6 +92,69 @@ export default async function ModuleOverviewPage({
         columns: { id: true, title: true },
       }),
     ])
+
+  // Attribute assignments without a goal to the module's first assignments goal.
+  const firstAssignmentGoalId =
+    mod.goals.find((g) => g.type === "assignments")?.id ?? null
+  const assignmentStatsFor = (goalId: string) => {
+    const own = assignments.filter(
+      (a) => a.goalId === goalId || (a.goalId == null && goalId === firstAssignmentGoalId)
+    )
+    const nextDue = own
+      .filter((a) => a.status === "open" && a.dueDate != null)
+      .sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : 1))[0]
+    return {
+      open: own.filter((a) => a.status === "open").length,
+      submitted: own.filter((a) => a.status === "submitted").length,
+      graded: own.filter((a) => a.status === "graded").length,
+      nextDue: nextDue ? { title: nextDue.title, dueDate: nextDue.dueDate! } : null,
+    }
+  }
+
+  const basePath = `/studies/${programId}/${moduleId}`
+  const hasBonusGoal = mod.goals.some((g) => g.gradingRole === "bonus")
+  const readinessStats = { dueCards: stats.dueCards, lastQuizScore: stats.lastQuizScore }
+
+  const goalCards: GoalCardData[] = mod.goals.map((g) => {
+    const attempts = g.attempts.map((a) => ({
+      id: a.id,
+      attempt: a.attempt,
+      resultPercent: a.resultPercent,
+      date: a.date,
+      passed: a.passed,
+      note: a.note,
+    }))
+    const goalResult =
+      g.gradingRole === "grade"
+        ? gradeGoalResult(
+            { weight: Number(g.weight), passFail: g.passFail, attempts: g.attempts },
+            gradeScale
+          )
+        : null
+    return {
+      goal: {
+        id: g.id,
+        type: g.type,
+        title: g.title,
+        gradingRole: g.gradingRole,
+        weight: g.weight,
+        maxAttempts: g.maxAttempts,
+        passFail: g.passFail,
+        dueDate: g.dueDate,
+        config: g.config,
+      },
+      attempts,
+      goalResult: goalResult
+        ? {
+            grade: goalResult.grade,
+            percent: goalResult.percent,
+            passed: goalResult.passed,
+            attempt: goalResult.attempt,
+          }
+        : null,
+      assignmentStats: g.type === "assignments" ? assignmentStatsFor(g.id) : null,
+    }
+  })
 
   return (
     <div className="space-y-6">
@@ -133,51 +201,29 @@ export default async function ModuleOverviewPage({
 
       <ModuleGoalsCard
         moduleId={mod.id}
-        goals={mod.goals.map((g) => ({
-          id: g.id,
-          type: g.type,
-          title: g.title,
-          gradingRole: g.gradingRole,
-          weight: g.weight,
-          maxAttempts: g.maxAttempts,
-          passFail: g.passFail,
-          dueDate: g.dueDate,
-          config: g.config,
-        }))}
+        basePath={basePath}
+        cards={goalCards}
+        gradingSystem={gradingSystem}
+        stats={readinessStats}
+        bonus={finalGrade?.bonus ?? null}
       />
 
-      {finalGrade && (
-        <ModuleAssessmentCard
-          moduleId={mod.id}
-          assessmentType={gradeGoal?.type ?? "exam"}
-          maxAttempts={gradeGoal?.maxAttempts ?? 3}
-          passFail={gradeGoal?.passFail ?? false}
-          gradingSystem={gradingSystem}
-          attempts={(gradeGoal?.attempts ?? []).map((a) => ({
-            id: a.id,
-            attempt: a.attempt,
-            resultPercent: a.resultPercent,
-            date: a.date,
-            passed: a.passed,
-            note: a.note,
-          }))}
-          final={finalGrade}
-          legacyGrades={mod.grades.map((g) => ({
-            id: g.id,
-            value: g.value,
-            weight: g.weight,
-            attempt: g.attempt,
-            gradedAt: g.gradedAt,
-            note: g.note,
-          }))}
-          bonusType={bonus?.type ?? "none"}
-          bonusValue={bonus?.value != null ? String(bonus.value) : null}
-          bonusMinAvgPercent={bonus?.minAvgPercent != null ? String(bonus.minAvgPercent) : null}
-          bonusMinCompletedShare={
-            bonus?.minCompletedShare != null ? String(bonus.minCompletedShare) : null
-          }
-        />
-      )}
+      {finalGrade &&
+        (finalGrade.source != null || mod.grades.length > 0 || hasBonusGoal) && (
+          <ModuleGradeSummaryCard
+            gradingSystem={gradingSystem}
+            final={finalGrade}
+            legacyGrades={mod.grades.map((g) => ({
+              id: g.id,
+              value: g.value,
+              weight: g.weight,
+              attempt: g.attempt,
+              gradedAt: g.gradedAt,
+              note: g.note,
+            }))}
+            hasBonusGoal={hasBonusGoal}
+          />
+        )}
 
       <ModuleContactsCard moduleId={mod.id} contacts={contacts} />
 

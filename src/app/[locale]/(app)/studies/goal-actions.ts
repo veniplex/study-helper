@@ -139,25 +139,6 @@ export async function reorderGoals(moduleId: string, orderedIds: unknown) {
   return { ok: true as const }
 }
 
-/**
- * Ensures the module has a grade goal to attach attempts to, returning it.
- * Falls back to creating a default exam goal for older modules without one.
- * (Full goal CRUD / picking a specific goal arrives in a later phase.)
- */
-async function ensureGradeGoal(moduleId: string) {
-  const existing = await db.query.moduleGoal.findMany({
-    where: eq(moduleGoal.moduleId, moduleId),
-    orderBy: [asc(moduleGoal.sortOrder), asc(moduleGoal.createdAt)],
-  })
-  const gradeGoal = existing.find((g) => g.gradingRole === "grade") ?? existing[0]
-  if (gradeGoal) return gradeGoal
-  const [created] = await db
-    .insert(moduleGoal)
-    .values({ moduleId, type: "exam", gradingRole: "grade" })
-    .returning()
-  return created
-}
-
 /** Resolves an attempt to its owning module (throws if not owned). */
 async function ownAttempt(attemptId: string, userId: string) {
   const row = await db.query.goalAttempt.findFirst({
@@ -174,11 +155,10 @@ async function ownAttempt(attemptId: string, userId: string) {
   return row
 }
 
-export async function addAttempt(moduleId: string, input: unknown) {
+export async function addAttempt(goalId: string, input: unknown) {
   const session = await requireSession()
-  const mod = await ownModule(moduleId, session.user.id)
+  const goal = await ownGoal(goalId, session.user.id)
   const data = attemptSchema.parse(input)
-  const goal = await ensureGradeGoal(moduleId)
 
   const existing = await db.query.goalAttempt.findMany({
     where: eq(goalAttempt.goalId, goal.id),
@@ -198,7 +178,7 @@ export async function addAttempt(moduleId: string, input: unknown) {
     passed: data.passed ?? null,
     note: data.note ?? null,
   })
-  revalidatePath(`/studies/${mod.semester.programId}/${moduleId}`)
+  revalidatePath(`/studies/${goal.module.semester.programId}/${goal.moduleId}`)
   return { ok: true as const }
 }
 

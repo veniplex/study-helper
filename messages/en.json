@@ -1328,6 +1328,35 @@
       }
     }
   },
+  "goalCard": {
+    "countdown": {
+      "none": "No date",
+      "today": "Due today",
+      "inDays": "{days} days left",
+      "overdue": "Overdue by {days} days"
+    },
+    "readiness": "Readiness",
+    "dueCards": "Due cards",
+    "lastScore": "Last quiz score",
+    "noScore": "–",
+    "assignmentStatus": {
+      "open": "Open",
+      "submitted": "Submitted",
+      "graded": "Graded"
+    },
+    "nextDue": "Next due",
+    "expectedCount": "Expected: {count}",
+    "toAssignments": "Go to assignments",
+    "openWriteup": "Open write-up",
+    "duration": "Duration: {minutes} min.",
+    "checklist": "Preparation",
+    "checklistItems": {
+      "outline": "Create an outline",
+      "slides": "Design slides",
+      "rehearse": "Rehearse the talk",
+      "timing": "Keep to time"
+    }
+  },
   "home": {
     "title": "Welcome to StudyHelper",
     "description": "The open-source app for your entire studies: planning, learning materials, AI support and exam preparation — self-hosted and offline-capable."

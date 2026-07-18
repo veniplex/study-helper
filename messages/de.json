@@ -1328,6 +1328,35 @@
       }
     }
   },
+  "goalCard": {
+    "countdown": {
+      "none": "Kein Termin",
+      "today": "Heute fällig",
+      "inDays": "Noch {days} Tage",
+      "overdue": "Überfällig um {days} Tage"
+    },
+    "readiness": "Bereitschaft",
+    "dueCards": "Fällige Karten",
+    "lastScore": "Letzter Quiz-Score",
+    "noScore": "–",
+    "assignmentStatus": {
+      "open": "Offen",
+      "submitted": "Abgegeben",
+      "graded": "Bewertet"
+    },
+    "nextDue": "Nächste Abgabe",
+    "expectedCount": "Erwartet: {count}",
+    "toAssignments": "Zu den Abgaben",
+    "openWriteup": "Zur Ausarbeitung",
+    "duration": "Dauer: {minutes} Min.",
+    "checklist": "Vorbereitung",
+    "checklistItems": {
+      "outline": "Gliederung erstellen",
+      "slides": "Folien gestalten",
+      "rehearse": "Vortrag proben",
+      "timing": "Zeit einhalten"
+    }
+  },
   "home": {
     "title": "Willkommen bei StudyHelper",
     "description": "Die Open-Source-App für dein gesamtes Studium: Planung, Lernmaterialien, KI-Unterstützung und Prüfungsvorbereitung — self-hosted und offline-fähig."

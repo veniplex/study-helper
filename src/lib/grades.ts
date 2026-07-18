@@ -184,7 +184,7 @@ export type FinalGrade = {
   bonus: BonusResult | null
 }
 
-type GoalResult = {
+export type GoalResult = {
   grade: number | null
   percent: number | null
   passed: boolean | null
@@ -194,7 +194,7 @@ type GoalResult = {
 
 /** One grade goal's result from its latest attempt (same math as a single
  * assessment historically: latest attempt → percent → grade scale). */
-function gradeGoalResult(goal: GradeGoalInput, scale: GradeScaleRow[] | null): GoalResult | null {
+export function gradeGoalResult(goal: GradeGoalInput, scale: GradeScaleRow[] | null): GoalResult | null {
   if (goal.attempts.length === 0) return null
   const latest = goal.attempts.reduce((a, b) => (b.attempt >= a.attempt ? b : a))
   const percent = num(latest.resultPercent)
