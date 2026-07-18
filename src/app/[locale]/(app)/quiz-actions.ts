@@ -82,6 +82,9 @@ export async function deleteQuiz(quizId: string) {
   const session = await requireSession()
   const row = await ownQuiz(quizId, session.user.id)
   await db.delete(quiz).where(and(eq(quiz.id, quizId), eq(quiz.userId, session.user.id)))
+  // No FK on the polymorphic targetId — clean generation rows up explicitly.
+  const { deleteGenerationDataForTarget } = await import("@/lib/ai/generation/cleanup")
+  await deleteGenerationDataForTarget(quizId)
   await logAudit({
     userId: session.user.id,
     operation: "delete",

@@ -32,7 +32,12 @@ function readS3Config(): S3Config {
 
 /** Rejects keys that could escape the bucket / configured-prefix namespace. */
 function assertSafeKey(relPath: string): void {
-  if (!relPath || relPath.startsWith("/") || relPath.split("/").includes("..")) {
+  if (
+    !relPath ||
+    relPath.startsWith("/") ||
+    relPath.includes("\\") ||
+    relPath.split("/").includes("..")
+  ) {
     throw new Error("Invalid path")
   }
 }

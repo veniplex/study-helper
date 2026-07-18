@@ -10,6 +10,7 @@ import { ownModule } from "@/lib/studies/access"
 import { findOrCreateFolderPath, ownFolder, splitPath } from "@/lib/materials/folders"
 import { assertStorageWithinLimit } from "@/lib/materials/usage"
 import { isZip } from "@/lib/materials/paths"
+import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit"
 
 // Uploads stream the raw request body straight to disk (see saveStream) instead
 // of buffering the whole file in memory via formData()/arrayBuffer(). Metadata
@@ -19,12 +20,21 @@ export async function POST(request: Request) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const userId = session.user.id
+  // Generous window — a dropped folder uploads each file individually.
+  if (!checkRateLimit(`upload:${userId}`, 300, 10 * 60 * 1000)) {
+    return tooManyRequests()
+  }
 
   const url = new URL(request.url)
   const moduleId = (url.searchParams.get("moduleId") ?? "").trim()
   const folderId = (url.searchParams.get("folderId") ?? "").trim() || null
   const relativePath = (url.searchParams.get("relativePath") ?? "").trim()
-  const fileName = decodeURIComponent(request.headers.get("x-file-name") ?? "").trim()
+  let fileName: string
+  try {
+    fileName = decodeURIComponent(request.headers.get("x-file-name") ?? "").trim()
+  } catch {
+    return NextResponse.json({ error: "Malformed x-file-name header" }, { status: 400 })
+  }
   const mimeType = request.headers.get("content-type")
 
   if (!request.body || !fileName || !moduleId) {

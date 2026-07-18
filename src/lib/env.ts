@@ -6,10 +6,18 @@ function required(name: string, fallback?: string): string {
 
 export const env = {
   get DATABASE_URL() {
-    return required("DATABASE_URL", "postgres://study:study@localhost:5432/study")
+    return required(
+      "DATABASE_URL",
+      process.env.NODE_ENV === "production"
+        ? undefined
+        : "postgres://study:study@localhost:5432/study"
+    )
   },
   get APP_URL() {
-    return required("APP_URL", "http://localhost:3000")
+    return required(
+      "APP_URL",
+      process.env.NODE_ENV === "production" ? undefined : "http://localhost:3000"
+    )
   },
   get BETTER_AUTH_SECRET() {
     return required(

@@ -1,5 +1,5 @@
 import "server-only"
-import { and, eq, gt, isNotNull, lte, ne, or } from "drizzle-orm"
+import { and, eq, gt, gte, isNotNull, isNull, lte, ne, or } from "drizzle-orm"
 import { db } from "@/db"
 import {
   assignment,
@@ -11,7 +11,7 @@ import {
   type NotificationChannels,
 } from "@/db/schema"
 import { sendEmail } from "@/lib/email"
-import { expandOccurrences } from "@/lib/events/recurrence"
+import { expandOccurrences, toIsoDate } from "@/lib/events/recurrence"
 import { sendPushToUser } from "@/lib/push"
 import { getAppName } from "@/lib/settings"
 import { env } from "@/lib/env"
@@ -73,7 +73,14 @@ export async function sendDueReminders(): Promise<void> {
   const events = await db.query.studyEvent.findMany({
     where: or(
       and(gt(studyEvent.startsAt, now), lte(studyEvent.startsAt, horizon)),
-      ne(studyEvent.recurrence, "none")
+      // Recurring series only while they are actually alive: the series has
+      // started (before the horizon) and has not ended yet — without this the
+      // 5-minute cron reloads every recurring event ever created.
+      and(
+        ne(studyEvent.recurrence, "none"),
+        lte(studyEvent.startsAt, horizon),
+        or(isNull(studyEvent.recurrenceUntil), gte(studyEvent.recurrenceUntil, toIsoDate(now)))
+      )
     ),
   })
 
@@ -115,8 +122,17 @@ export async function sendDueReminders(): Promise<void> {
 
 /** Reminds about open assignments 24h before their due date. */
 async function sendAssignmentReminders(now: Date): Promise<void> {
+  // The 24h-before trigger can only fire for due dates around today — bound
+  // the query instead of scanning every open assignment ever created.
+  const windowStart = toIsoDate(new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000))
+  const windowEnd = toIsoDate(new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000))
   const rows = await db.query.assignment.findMany({
-    where: and(isNotNull(assignment.dueDate), ne(assignment.status, "graded")),
+    where: and(
+      isNotNull(assignment.dueDate),
+      ne(assignment.status, "graded"),
+      gte(assignment.dueDate, windowStart),
+      lte(assignment.dueDate, windowEnd)
+    ),
     with: { module: { columns: { name: true } } },
   })
 

@@ -7,8 +7,9 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core"
-import { relations } from "drizzle-orm"
+import { relations, sql } from "drizzle-orm"
 import { user } from "./auth"
 import { studyModule } from "./studies"
 
@@ -54,6 +55,14 @@ export const materialFolder = pgTable(
     index("material_folder_userId_idx").on(t.userId),
     index("material_folder_moduleId_idx").on(t.moduleId),
     index("material_folder_parentId_idx").on(t.parentId),
+    // Sibling names are unique per module; COALESCE folds NULL parents into one
+    // group so root folders are covered too (a plain .unique() would treat NULL
+    // as always-distinct). Mirrors migration 0029_serious_magma.sql.
+    uniqueIndex("material_folder_sibling_uniq").on(
+      t.moduleId,
+      sql`COALESCE(${t.parentId}, '')`,
+      t.name
+    ),
   ]
 )
 

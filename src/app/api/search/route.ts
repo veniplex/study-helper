@@ -13,10 +13,16 @@ import {
   studyModule,
 } from "@/db/schema"
 import { getSession } from "@/lib/auth/session"
+import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit"
 
 export async function GET(request: Request) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  // Debounced typing stays well below this; scripts hammering 7 parallel
+  // ILIKE queries do not.
+  if (!checkRateLimit(`search:${session.user.id}`, 60, 60 * 1000)) {
+    return tooManyRequests()
+  }
 
   const q = new URL(request.url).searchParams.get("q")?.trim() ?? ""
   if (q.length < 2) {

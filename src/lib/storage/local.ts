@@ -19,8 +19,11 @@ import {
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? path.join(process.cwd(), "data", "uploads")
 
 function absolute(relPath: string): string {
-  const abs = path.resolve(UPLOAD_DIR, relPath)
-  if (!abs.startsWith(path.resolve(UPLOAD_DIR))) throw new Error("Invalid path")
+  const root = path.resolve(UPLOAD_DIR)
+  const abs = path.resolve(root, relPath)
+  // Containment check needs the separator suffix — a bare prefix check would
+  // also accept sibling directories like "<root>-evil".
+  if (abs !== root && !abs.startsWith(root + path.sep)) throw new Error("Invalid path")
   return abs
 }
 
