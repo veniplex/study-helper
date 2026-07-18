@@ -15,6 +15,7 @@ import { assertWithinLimit } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 import { logAudit } from "@/lib/audit"
 import { ownModule } from "@/lib/studies/access"
+import { formatExamContext, getModuleGoalContext } from "@/lib/studies/goal-context"
 import { languageNameForLocale } from "@/lib/ai/language"
 
 async function ownQuiz(quizId: string, userId: string) {
@@ -248,6 +249,9 @@ export async function generateQuiz(input: unknown) {
 
   const locale = await getLocale()
   const language = languageNameForLocale(locale)
+  const examContext = data.moduleId
+    ? formatExamContext(await getModuleGoalContext(data.moduleId))
+    : ""
 
   const { object } = await runAi(
     {
@@ -264,7 +268,7 @@ export async function generateQuiz(input: unknown) {
         ...GEN_PARAMS,
         schema: generatedQuizSchema,
         prompt: `Create a quiz with ${data.count} exam-style questions about: ${query}.
-${data.mixed ? "Mix multiple_choice (with exactly 4 plausible options) and free_text questions (about 70/30)." : "Use only multiple_choice questions with exactly 4 plausible options."}
+${data.mixed ? "Mix multiple_choice (with exactly 4 plausible options) and free_text questions (about 70/30)." : "Use only multiple_choice questions with exactly 4 plausible options."}${examContext ? `\n${examContext}` : ""}
 Each question gets a short explanation of the correct answer. Write all questions, options, and explanations in ${language}, regardless of the language of the topic text or source materials.${context}`,
       })
   )

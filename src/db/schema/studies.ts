@@ -34,14 +34,53 @@ export type GradeScaleRow = { minPercent: number; grade: number }
 /** How completed assignments improve a module's final grade. */
 export type BonusType = "none" | "percent_points" | "grade_steps"
 
-/** The graded final deliverable that determines a module's grade. */
-export type AssessmentType =
+/** The kind of graded deliverable a learning goal represents. */
+export type GoalType =
   | "exam"
+  | "assignments"
   | "term_paper"
-  | "oral_presentation"
+  | "presentation"
   | "oral_exam"
   | "project"
+  | "thesis"
   | "other"
+
+/**
+ * What a goal's result means for the module:
+ * grade = counts toward the module grade (weighted) | bonus = improves the
+ * grade (today's bonus system) | practice = feedback/self-assessment only.
+ */
+export type GoalGradingRole = "grade" | "bonus" | "practice"
+
+/** Type-specific goal settings, stored as jsonb on module_goal. */
+export type GoalConfig = {
+  /** assignments: expected number of hand-ins. */
+  expectedCount?: number | null
+  /** bonus goals: the bonus a completed set of graded assignments earns. */
+  bonus?: { type: BonusType; value?: number; minAvgPercent?: number; minCompletedShare?: number }
+  /** term_paper: scientific paper vs. concrete task worked through. */
+  variant?: "scientific" | "task"
+  taskDescription?: string
+  requiresSources?: boolean
+  withPresentation?: boolean
+  /** presentation: talk length in minutes. */
+  durationMinutes?: number
+}
+
+/**
+ * Keys of the module workspace tools that can be force-shown or -hidden per
+ * module via `studyModule.toolOverrides` (matrix ⊕ overrides). Local alias —
+ * the full tool config lives in `@/config/module-tabs` (later phase).
+ */
+export type ModuleToolKey =
+  | "overview"
+  | "materials"
+  | "assignments"
+  | "decks"
+  | "quizzes"
+  | "chat"
+  | "paper"
+  | "plan"
 
 export const degreeProgram = pgTable(
   "degree_program",
@@ -96,22 +135,14 @@ export const studyModule = pgTable(
     code: text("code"),
     ects: integer("ects"),
     instructor: text("instructor"),
-    examType: text("exam_type"), // e.g. written exam, oral, project
     status: text("status").$type<ModuleStatus>().notNull().default("planned"),
-    /** Marks the degree thesis — a special module with grade + ECTS weight. */
-    isThesis: boolean("is_thesis").notNull().default(false),
     icon: text("icon"),
     color: text("color"),
-    /** How many exam attempts (incl. retakes) this module allows. */
-    maxAttempts: integer("max_attempts").notNull().default(3),
-    /** Pass/fail module — no numeric grade. */
-    passFail: boolean("pass_fail").notNull().default(false),
-    bonusType: text("bonus_type").$type<BonusType>().notNull().default("none"),
-    bonusValue: numeric("bonus_value", { precision: 5, scale: 2 }),
-    /** Bonus condition: min average % across graded assignments. */
-    bonusMinAvgPercent: numeric("bonus_min_avg_percent", { precision: 5, scale: 2 }),
-    /** Bonus condition: min share (0..1) of graded assignments completed. */
-    bonusMinCompletedShare: numeric("bonus_min_completed_share", { precision: 5, scale: 2 }),
+    /** Per-module force-show/hide of workspace tools (matrix ⊕ overrides). */
+    toolOverrides: jsonb("tool_overrides")
+      .$type<Partial<Record<ModuleToolKey, boolean>>>()
+      .notNull()
+      .default({}),
     notes: text("notes"),
     sortOrder: integer("sort_order").notNull().default(0),
     ...timestamps,
@@ -119,29 +150,44 @@ export const studyModule = pgTable(
   (t) => [index("module_semesterId_idx").on(t.semesterId)]
 )
 
-/** The single graded final deliverable of a module (config only). */
-export const moduleAssessment = pgTable(
-  "module_assessment",
+/**
+ * A learning goal (Prüfungsleistung) of a module: 1..n per module, freely
+ * combinable, each with its own deadline and grading relevance.
+ */
+export const moduleGoal = pgTable(
+  "module_goal",
   {
     id: id(),
     moduleId: text("module_id")
       .notNull()
-      .unique()
       .references(() => studyModule.id, { onDelete: "cascade" }),
-    type: text("type").$type<AssessmentType>().notNull().default("exam"),
+    type: text("type").$type<GoalType>().notNull(),
+    /** Free-text label (absorbs the former module.examType). */
+    title: text("title"),
+    gradingRole: text("grading_role").$type<GoalGradingRole>().notNull().default("grade"),
+    /** Share among all `grade` goals of the module. */
+    weight: numeric("weight", { precision: 5, scale: 2 }).notNull().default("1"),
+    /** How many attempts (incl. retakes) this goal allows. */
+    maxAttempts: integer("max_attempts").notNull().default(3),
+    /** Pass/fail goal — no numeric grade. */
+    passFail: boolean("pass_fail").notNull().default(false),
+    /** Exam date / submission deadline. */
+    dueDate: date("due_date"),
+    config: jsonb("config").$type<GoalConfig>().notNull().default({}),
+    sortOrder: integer("sort_order").notNull().default(0),
     ...timestamps,
   },
-  (t) => [index("module_assessment_moduleId_idx").on(t.moduleId)]
+  (t) => [index("module_goal_moduleId_idx").on(t.moduleId)]
 )
 
-/** One attempt at a module's final assessment (result in percent). */
-export const assessmentAttempt = pgTable(
-  "assessment_attempt",
+/** One attempt at a module goal (result in percent). */
+export const goalAttempt = pgTable(
+  "goal_attempt",
   {
     id: id(),
-    assessmentId: text("assessment_id")
+    goalId: text("goal_id")
       .notNull()
-      .references(() => moduleAssessment.id, { onDelete: "cascade" }),
+      .references(() => moduleGoal.id, { onDelete: "cascade" }),
     attempt: integer("attempt").notNull().default(1),
     resultPercent: numeric("result_percent", { precision: 5, scale: 2 }),
     date: date("date"),
@@ -149,7 +195,7 @@ export const assessmentAttempt = pgTable(
     note: text("note"),
     ...timestamps,
   },
-  (t) => [index("assessment_attempt_assessmentId_idx").on(t.assessmentId)]
+  (t) => [index("goal_attempt_goalId_idx").on(t.goalId)]
 )
 
 /** Named contact person for a module (lecturer, tutor, examiner, …). */
@@ -269,25 +315,22 @@ export const studyModuleRelations = relations(studyModule, ({ one, many }) => ({
   }),
   grades: many(grade),
   resources: many(externalResource),
-  assessment: one(moduleAssessment, {
-    fields: [studyModule.id],
-    references: [moduleAssessment.moduleId],
-  }),
+  goals: many(moduleGoal),
   contacts: many(moduleContact),
 }))
 
-export const moduleAssessmentRelations = relations(moduleAssessment, ({ one, many }) => ({
+export const moduleGoalRelations = relations(moduleGoal, ({ one, many }) => ({
   module: one(studyModule, {
-    fields: [moduleAssessment.moduleId],
+    fields: [moduleGoal.moduleId],
     references: [studyModule.id],
   }),
-  attempts: many(assessmentAttempt),
+  attempts: many(goalAttempt),
 }))
 
-export const assessmentAttemptRelations = relations(assessmentAttempt, ({ one }) => ({
-  assessment: one(moduleAssessment, {
-    fields: [assessmentAttempt.assessmentId],
-    references: [moduleAssessment.id],
+export const goalAttemptRelations = relations(goalAttempt, ({ one }) => ({
+  goal: one(moduleGoal, {
+    fields: [goalAttempt.goalId],
+    references: [moduleGoal.id],
   }),
 }))
 

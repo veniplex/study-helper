@@ -26,7 +26,7 @@ describe.skipIf(!RUN)("folder helpers (DB)", () => {
     await db.insert(schema.user).values({ id: uid, name: "IT", email: "it@x.de", emailVerified: true }).onConflictDoNothing()
     await db.insert(schema.degreeProgram).values({ id: "itest-prog", userId: uid, name: "P", gradingSystem: "german", sortOrder: 0, thesisMaxAttempts: 1 }).onConflictDoNothing()
     await db.insert(schema.semester).values({ id: "itest-sem", programId: "itest-prog", name: "S", sortOrder: 0 }).onConflictDoNothing()
-    await db.insert(schema.studyModule).values({ id: mid, semesterId: "itest-sem", name: "M", status: "active", sortOrder: 0, maxAttempts: 3, passFail: false, bonusType: "none", isThesis: false }).onConflictDoNothing()
+    await db.insert(schema.studyModule).values({ id: mid, semesterId: "itest-sem", name: "M", status: "active", sortOrder: 0 }).onConflictDoNothing()
   })
 
   afterAll(async () => {

@@ -65,6 +65,10 @@ export const writeToolSchemas = {
     description: z.string().max(4000).nullish(),
     dueDate: z.string().nullish().describe("ISO date, e.g. 2026-08-01"),
     pointsMax: z.number().min(0).nullish(),
+    goalId: z
+      .string()
+      .nullish()
+      .describe("Optional module goal id this sheet belongs to; defaults to the module's assignments goal"),
   }),
 } as const
 
@@ -80,5 +84,5 @@ export const writeToolDescriptions: Record<WriteToolName, string> = {
   createCalendarEvent:
     "Create a calendar event (exam, deadline, lecture or other) for the user.",
   createAssignment:
-    "Create a graded assignment (Abgabe) with deadline for a module. moduleId is required — use getContext to find it.",
+    "Create a graded assignment (Abgabe) with deadline for a module. moduleId is required — use getContext to find it. It is linked to the module's assignments goal automatically; pass goalId only to target a specific goal.",
 }

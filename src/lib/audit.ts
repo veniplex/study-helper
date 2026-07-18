@@ -10,8 +10,7 @@ import {
   question,
   quiz,
   studyEvent,
-  studyPlan,
-  thesisProject,
+  writingProject,
   type AuditActor,
   type AuditOperation,
 } from "@/db/schema"
@@ -26,8 +25,7 @@ const ENTITY_TABLES: Record<string, PgTable> = {
   question,
   event: studyEvent,
   material,
-  plan: studyPlan,
-  thesis: thesisProject,
+  thesis: writingProject,
 }
 
 export type LogAuditInput = {

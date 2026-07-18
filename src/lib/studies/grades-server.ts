@@ -2,6 +2,7 @@ import "server-only"
 import { eq, inArray } from "drizzle-orm"
 import { db } from "@/db"
 import { assignment, degreeProgram, studyModule } from "@/db/schema"
+import type { GoalConfig, GoalGradingRole } from "@/db/schema/studies"
 import { moduleFinalGrade, type BonusAssignment, type FinalGrade } from "@/lib/grades"
 
 /** Percent achieved on an assignment, or null when not fully graded. */
@@ -12,14 +13,16 @@ function assignmentPercent(achieved: string | null, max: string | null): number 
   return (Number(achieved) / m) * 100
 }
 
-type ModuleWithGrading = {
-  id: string
+type GoalWithAttempts = {
+  gradingRole: GoalGradingRole
+  weight: string
   passFail: boolean
-  bonusType: "none" | "percent_points" | "grade_steps"
-  bonusValue: string | null
-  bonusMinAvgPercent: string | null
-  bonusMinCompletedShare: string | null
-  assessment: { attempts: { attempt: number; resultPercent: string | null; passed: boolean | null }[] } | null
+  config: GoalConfig
+  attempts: { attempt: number; resultPercent: string | null; passed: boolean | null }[]
+}
+
+type ModuleWithGrading = {
+  goals: GoalWithAttempts[]
   grades: { value: string; weight: string; attempt: number }[]
 }
 
@@ -28,9 +31,14 @@ function computeFinal(
   assignments: BonusAssignment[],
   scale: { minPercent: number; grade: number }[] | null
 ): FinalGrade {
+  const gradeGoals = mod.goals
+    .filter((g) => g.gradingRole === "grade")
+    .map((g) => ({ weight: Number(g.weight), passFail: g.passFail, attempts: g.attempts }))
+  const bonus = mod.goals.find((g) => g.gradingRole === "bonus")?.config.bonus ?? null
+
   return moduleFinalGrade({
-    module: mod,
-    attempts: mod.assessment?.attempts ?? [],
+    gradeGoals,
+    bonus,
     assignments,
     scale,
     legacyGrades: mod.grades,
@@ -38,7 +46,7 @@ function computeFinal(
 }
 
 /**
- * Computes each module's final grade for a whole program, reusing assessment
+ * Computes each module's final grade for a whole program, reusing goal
  * attempts, graded assignments (for bonus) and legacy grades as a fallback.
  */
 export async function getModuleFinalGrades(programId: string): Promise<Map<string, FinalGrade>> {
@@ -47,7 +55,7 @@ export async function getModuleFinalGrades(programId: string): Promise<Map<strin
     with: {
       semesters: {
         with: {
-          modules: { with: { assessment: { with: { attempts: true } }, grades: true } },
+          modules: { with: { goals: { with: { attempts: true } }, grades: true } },
         },
       },
     },
@@ -86,7 +94,7 @@ export async function getModuleFinalGrade(moduleId: string): Promise<FinalGrade 
   const mod = await db.query.studyModule.findFirst({
     where: eq(studyModule.id, moduleId),
     with: {
-      assessment: { with: { attempts: true } },
+      goals: { with: { attempts: true } },
       grades: true,
       semester: { with: { program: { columns: { gradeScale: true } } } },
     },

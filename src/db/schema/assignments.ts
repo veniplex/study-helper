@@ -11,7 +11,7 @@ import {
 } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { user } from "./auth"
-import { studyModule } from "./studies"
+import { moduleGoal, studyModule } from "./studies"
 import { material } from "./materials"
 
 export type AssignmentStatus = "open" | "submitted" | "graded"
@@ -36,6 +36,8 @@ export const assignment = pgTable(
     moduleId: text("module_id")
       .notNull()
       .references(() => studyModule.id, { onDelete: "cascade" }),
+    /** The learning goal this sheet belongs to (grade/bonus/practice role). */
+    goalId: text("goal_id").references(() => moduleGoal.id, { onDelete: "set null" }),
     title: text("title").notNull(),
     description: text("description"),
     dueDate: date("due_date"),
@@ -73,6 +75,10 @@ export const assignmentRelations = relations(assignment, ({ one, many }) => ({
   module: one(studyModule, {
     fields: [assignment.moduleId],
     references: [studyModule.id],
+  }),
+  goal: one(moduleGoal, {
+    fields: [assignment.goalId],
+    references: [moduleGoal.id],
   }),
   materials: many(assignmentMaterial),
 }))

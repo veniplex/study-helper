@@ -12,13 +12,14 @@ import {
   type BonusAssignment,
 } from "./grades"
 
-const noBonus = {
-  passFail: false,
-  bonusType: "none" as const,
-  bonusValue: null,
-  bonusMinAvgPercent: null,
-  bonusMinCompletedShare: null,
-}
+import type { FinalGradeAttempt, GradeGoalInput } from "./grades"
+
+/** A single non-pass/fail grade goal carrying the given attempts (weight 1). */
+const gradeGoal = (attempts: FinalGradeAttempt[], passFail = false): GradeGoalInput => ({
+  weight: 1,
+  passFail,
+  attempts,
+})
 
 describe("moduleGrade", () => {
   it("returns null without grades", () => {
@@ -110,12 +111,7 @@ describe("effectiveBonus", () => {
 
   it("awards percent points once the condition is met", () => {
     const b = effectiveBonus(
-      {
-        bonusType: "percent_points",
-        bonusValue: "5",
-        bonusMinAvgPercent: "70",
-        bonusMinCompletedShare: null,
-      },
+      { type: "percent_points", value: 5, minAvgPercent: 70 },
       [graded("graded", 80), graded("graded", 90)]
     )
     expect(b.conditionMet).toBe(true)
@@ -124,29 +120,24 @@ describe("effectiveBonus", () => {
   })
 
   it("withholds the bonus when the average is too low", () => {
-    const b = effectiveBonus(
-      {
-        bonusType: "percent_points",
-        bonusValue: "5",
-        bonusMinAvgPercent: "90",
-        bonusMinCompletedShare: null,
-      },
-      [graded("graded", 80)]
-    )
+    const b = effectiveBonus({ type: "percent_points", value: 5, minAvgPercent: 90 }, [
+      graded("graded", 80),
+    ])
+    expect(b.conditionMet).toBe(false)
+    expect(b.percentPoints).toBe(0)
+  })
+
+  it("treats a null bonus config as no bonus", () => {
+    const b = effectiveBonus(null, [graded("graded", 100)])
     expect(b.conditionMet).toBe(false)
     expect(b.percentPoints).toBe(0)
   })
 
   it("ignores practice assignments in the completed share", () => {
-    const b = effectiveBonus(
-      {
-        bonusType: "grade_steps",
-        bonusValue: "0.3",
-        bonusMinAvgPercent: null,
-        bonusMinCompletedShare: "1",
-      },
-      [graded("graded", 100), { kind: "practice", status: "graded", percent: 10 }]
-    )
+    const b = effectiveBonus({ type: "grade_steps", value: 0.3, minCompletedShare: 1 }, [
+      graded("graded", 100),
+      { kind: "practice", status: "graded", percent: 10 },
+    ])
     expect(b.completedShare).toBe(1)
     expect(b.gradeSteps).toBe(0.3)
   })
@@ -155,14 +146,8 @@ describe("effectiveBonus", () => {
 describe("moduleFinalGrade", () => {
   it("derives the grade from the percentage only — a percent-point bonus does not raise it", () => {
     const r = moduleFinalGrade({
-      module: {
-        passFail: false,
-        bonusType: "percent_points",
-        bonusValue: "5",
-        bonusMinAvgPercent: null,
-        bonusMinCompletedShare: null,
-      },
-      attempts: [{ attempt: 1, resultPercent: "78", passed: true }],
+      gradeGoals: [gradeGoal([{ attempt: 1, resultPercent: "78", passed: true }])],
+      bonus: { type: "percent_points", value: 5 },
       assignments: [{ kind: "graded", status: "graded", percent: 100 }],
       scale: null,
     })
@@ -175,14 +160,8 @@ describe("moduleFinalGrade", () => {
 
   it("does not apply grade steps to the final grade", () => {
     const r = moduleFinalGrade({
-      module: {
-        passFail: false,
-        bonusType: "grade_steps",
-        bonusValue: "0.3",
-        bonusMinAvgPercent: null,
-        bonusMinCompletedShare: null,
-      },
-      attempts: [{ attempt: 1, resultPercent: "82", passed: true }],
+      gradeGoals: [gradeGoal([{ attempt: 1, resultPercent: "82", passed: true }])],
+      bonus: { type: "grade_steps", value: 0.3 },
       assignments: [{ kind: "graded", status: "graded", percent: 100 }],
       scale: null,
     })
@@ -194,27 +173,27 @@ describe("moduleFinalGrade", () => {
   it("yields the same final grade with or without a configured bonus", () => {
     const attempts = [{ attempt: 1, resultPercent: "78", passed: true }]
     const withBonus = moduleFinalGrade({
-      module: {
-        passFail: false,
-        bonusType: "percent_points",
-        bonusValue: "5",
-        bonusMinAvgPercent: null,
-        bonusMinCompletedShare: null,
-      },
-      attempts,
+      gradeGoals: [gradeGoal(attempts)],
+      bonus: { type: "percent_points", value: 5 },
       assignments: [{ kind: "graded", status: "graded", percent: 100 }],
       scale: null,
     })
-    const withoutBonus = moduleFinalGrade({ module: noBonus, attempts, assignments: [], scale: null })
+    const withoutBonus = moduleFinalGrade({
+      gradeGoals: [gradeGoal(attempts)],
+      bonus: null,
+      assignments: [],
+      scale: null,
+    })
     expect(withBonus.grade).toBe(withoutBonus.grade)
   })
 
   it("uses the latest attempt", () => {
     const r = moduleFinalGrade({
-      module: noBonus,
-      attempts: [
-        { attempt: 1, resultPercent: "40", passed: false },
-        { attempt: 2, resultPercent: "72", passed: true },
+      gradeGoals: [
+        gradeGoal([
+          { attempt: 1, resultPercent: "40", passed: false },
+          { attempt: 2, resultPercent: "72", passed: true },
+        ]),
       ],
       assignments: [],
       scale: null,
@@ -223,10 +202,37 @@ describe("moduleFinalGrade", () => {
     expect(r.grade).toBe(2.7)
   })
 
-  it("reports only passed for pass/fail modules", () => {
+  it("averages multiple grade goals by weight", () => {
+    // Goal A: 95 % → 1.0 (weight 1); Goal B: 80 % → 2.0 (weight 3).
     const r = moduleFinalGrade({
-      module: { ...noBonus, passFail: true },
-      attempts: [{ attempt: 1, resultPercent: null, passed: true }],
+      gradeGoals: [
+        { weight: 1, passFail: false, attempts: [{ attempt: 1, resultPercent: "95", passed: true }] },
+        { weight: 3, passFail: false, attempts: [{ attempt: 1, resultPercent: "80", passed: true }] },
+      ],
+      assignments: [],
+      scale: null,
+    })
+    // (1.0*1 + 2.0*3) / 4 = 1.75; percent/attempt are null for multi-goal modules.
+    expect(r.grade).toBeCloseTo(1.75)
+    expect(r.percent).toBeNull()
+    expect(r.passed).toBe(true)
+  })
+
+  it("fails the module when any grade goal failed", () => {
+    const r = moduleFinalGrade({
+      gradeGoals: [
+        { weight: 1, passFail: false, attempts: [{ attempt: 1, resultPercent: "95", passed: true }] },
+        { weight: 1, passFail: true, attempts: [{ attempt: 1, resultPercent: null, passed: false }] },
+      ],
+      assignments: [],
+      scale: null,
+    })
+    expect(r.passed).toBe(false)
+  })
+
+  it("reports only passed for pass/fail goals", () => {
+    const r = moduleFinalGrade({
+      gradeGoals: [gradeGoal([{ attempt: 1, resultPercent: null, passed: true }], true)],
       assignments: [],
       scale: null,
     })
@@ -234,10 +240,9 @@ describe("moduleFinalGrade", () => {
     expect(r.passed).toBe(true)
   })
 
-  it("falls back to legacy grades when no attempt exists", () => {
+  it("falls back to legacy grades when no goal has an attempt", () => {
     const r = moduleFinalGrade({
-      module: noBonus,
-      attempts: [],
+      gradeGoals: [gradeGoal([])],
       assignments: [],
       scale: null,
       legacyGrades: [{ value: "2.0", weight: "1", attempt: 1 }],
@@ -247,7 +252,7 @@ describe("moduleFinalGrade", () => {
   })
 
   it("returns nulls without attempts or legacy grades", () => {
-    const r = moduleFinalGrade({ module: noBonus, attempts: [], assignments: [], scale: null })
+    const r = moduleFinalGrade({ gradeGoals: [], assignments: [], scale: null })
     expect(r).toMatchObject({ grade: null, source: null })
   })
 })

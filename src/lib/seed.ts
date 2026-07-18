@@ -1,13 +1,13 @@
 import { eq, inArray } from "drizzle-orm"
 import { db } from "@/db"
 import {
-  assessmentAttempt,
   assignment,
   deck,
   degreeProgram,
   flashcard,
-  moduleAssessment,
+  goalAttempt,
   moduleContact,
+  moduleGoal,
   question,
   quiz,
   semester,
@@ -75,7 +75,6 @@ async function seedStudyContent(userId: string) {
         name: "Mathematik 1",
         code: "MA101",
         ects: 8,
-        examType: "Klausur",
         status: "passed",
         icon: "sigma",
         color: "blue",
@@ -87,7 +86,6 @@ async function seedStudyContent(userId: string) {
         name: "Programmierung 1",
         code: "IN101",
         ects: 10,
-        examType: "Klausur",
         status: "passed",
         icon: "code",
         color: "emerald",
@@ -99,13 +97,9 @@ async function seedStudyContent(userId: string) {
         name: "Mathematik 2",
         code: "MA201",
         ects: 8,
-        examType: "Klausur",
         status: "active",
         icon: "function-square",
         color: "violet",
-        bonusType: "percent_points",
-        bonusValue: "5",
-        bonusMinCompletedShare: "0.5",
         sortOrder: 0,
       },
       {
@@ -113,7 +107,6 @@ async function seedStudyContent(userId: string) {
         name: "Algorithmen & Datenstrukturen",
         code: "IN201",
         ects: 10,
-        examType: "Klausur",
         status: "active",
         icon: "network",
         color: "amber",
@@ -122,27 +115,38 @@ async function seedStudyContent(userId: string) {
     ])
     .returning()
 
-  // Final assessments: passed modules get a graded attempt.
-  const assessments = await db
-    .insert(moduleAssessment)
+  // Learning goals: each module has a graded exam goal (title = former
+  // examType); Mathematik 2 additionally has a bonus assignments goal.
+  const goals = await db
+    .insert(moduleGoal)
     .values([
-      { moduleId: math1.id, type: "exam" },
-      { moduleId: prog1.id, type: "exam" },
-      { moduleId: math2.id, type: "exam" },
-      { moduleId: algo.id, type: "exam" },
+      { moduleId: math1.id, type: "exam", title: "Klausur", gradingRole: "grade" },
+      { moduleId: prog1.id, type: "exam", title: "Klausur", gradingRole: "grade" },
+      { moduleId: math2.id, type: "exam", title: "Klausur", gradingRole: "grade" },
+      {
+        moduleId: math2.id,
+        type: "assignments",
+        gradingRole: "bonus",
+        config: { bonus: { type: "percent_points", value: 5, minCompletedShare: 0.5 } },
+      },
+      { moduleId: algo.id, type: "exam", title: "Klausur", gradingRole: "grade" },
     ])
     .returning()
-  const byModule = new Map(assessments.map((a) => [a.moduleId, a.id]))
-  await db.insert(assessmentAttempt).values([
+
+  // Passed modules get a graded attempt on their grade goal.
+  const gradeGoalByModule = new Map(
+    goals.filter((g) => g.gradingRole === "grade").map((g) => [g.moduleId, g.id])
+  )
+  await db.insert(goalAttempt).values([
     {
-      assessmentId: byModule.get(math1.id)!,
+      goalId: gradeGoalByModule.get(math1.id)!,
       attempt: 1,
       resultPercent: "78",
       passed: true,
       date: iso(addDays(now, -45)),
     },
     {
-      assessmentId: byModule.get(prog1.id)!,
+      goalId: gradeGoalByModule.get(prog1.id)!,
       attempt: 1,
       resultPercent: "91",
       passed: true,

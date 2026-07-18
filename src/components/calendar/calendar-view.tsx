@@ -13,7 +13,9 @@ import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
 import { deleteEvent, moveEvent } from "@/app/[locale]/(app)/calendar/actions"
+import { moveSession } from "@/app/[locale]/(app)/plan/schedule-actions"
 import { EventDialog, type EventData, type ModuleOption } from "./event-dialog"
+import { SessionDialog, type SessionDialogData } from "./session-dialog"
 import type { EventType } from "@/db/schema/studies"
 import type { AbsenceWindow } from "@/lib/plan/absences"
 import { expandOccurrences } from "@/lib/events/recurrence"
@@ -29,14 +31,15 @@ import { cn } from "@/lib/utils"
 
 export type CalendarEvent = EventData & { id: string }
 
-export type PlanCalendarItem = {
+export type PlanCalendarSession = {
   id: string
-  title: string
   date: string
-  startTime: string | null
+  startTime: string
   durationMinutes: number
   done: boolean
   moduleId: string | null
+  moduleName: string | null
+  tasks: { id: string; title: string; done: boolean }[]
 }
 
 export type AssignmentCalendarItem = {
@@ -85,13 +88,13 @@ const CATEGORY_DOT: Record<CategoryKey, string> = {
 export function CalendarView({
   events,
   modules,
-  planItems = [],
+  planSessions = [],
   assignments = [],
   absences = [],
 }: {
   events: CalendarEvent[]
   modules: ModuleOption[]
-  planItems?: PlanCalendarItem[]
+  planSessions?: PlanCalendarSession[]
   assignments?: AssignmentCalendarItem[]
   /** Unavailability windows from the study plans, shown as background. */
   absences?: AbsenceWindow[]
@@ -103,6 +106,8 @@ export function CalendarView({
   const router = useRouter()
   const [selected, setSelected] = React.useState<EventData | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [sessionSel, setSessionSel] = React.useState<SessionDialogData | null>(null)
+  const [sessionOpen, setSessionOpen] = React.useState(false)
   const [moduleFilter, setModuleFilter] = React.useState("")
   const [hidden, setHidden] = React.useState<Set<CategoryKey>>(new Set())
   const [ctxMenu, setCtxMenu] = React.useState<{ id: string; x: number; y: number } | null>(null)
@@ -126,6 +131,10 @@ export function CalendarView({
   }, [ctxMenu])
 
   const byId = React.useMemo(() => new Map(events.map((e) => [e.id, e])), [events])
+  const sessionById = React.useMemo(
+    () => new Map(planSessions.map((s) => [s.id, s])),
+    [planSessions]
+  )
 
   const categoryLabels: Record<CategoryKey, string> = {
     exam: tEvent("typeExam"),
@@ -192,8 +201,25 @@ export function CalendarView({
   }
 
   async function onMove(arg: EventDropArg | EventResizeDoneArg) {
+    const id = arg.event.id
     try {
-      await moveEvent(arg.event.id, {
+      if (id.startsWith("plan:")) {
+        const sessionId = id.slice("plan:".length)
+        const start = arg.event.start!
+        const end = arg.event.end
+        const pad = (n: number) => String(n).padStart(2, "0")
+        const durationMinutes = end
+          ? Math.round((end.getTime() - start.getTime()) / 60000)
+          : (sessionById.get(sessionId)?.durationMinutes ?? 60)
+        await moveSession(sessionId, {
+          date: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
+          startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
+          durationMinutes,
+        })
+        router.refresh()
+        return
+      }
+      await moveEvent(id, {
         startsAt: toLocalInputValue(arg.event.start!),
         endsAt: arg.event.end ? toLocalInputValue(arg.event.end) : null,
       })
@@ -202,6 +228,21 @@ export function CalendarView({
       arg.revert()
       toast.error(error instanceof Error ? error.message : String(error))
     }
+  }
+
+  function openSession(sessionId: string) {
+    const s = sessionById.get(sessionId)
+    if (!s) return
+    setSessionSel({
+      id: s.id,
+      date: s.date,
+      startTime: s.startTime,
+      durationMinutes: s.durationMinutes,
+      done: s.done,
+      moduleName: s.moduleName,
+      tasks: s.tasks,
+    })
+    setSessionOpen(true)
   }
 
   const fcEvents: EventInput[] = [
@@ -251,21 +292,19 @@ export function CalendarView({
         }))
       }),
     ...(!hidden.has("plan")
-      ? planItems
+      ? planSessions
           .filter((p) => matchesModule(p.moduleId))
           .map((p) => {
-            const start = p.startTime ? `${p.date}T${p.startTime}` : p.date
-            const end = p.startTime
-              ? toLocalInputValue(
-                  new Date(new Date(start).getTime() + p.durationMinutes * 60000)
-                )
-              : undefined
+            const start = `${p.date}T${p.startTime}`
+            const end = toLocalInputValue(
+              new Date(new Date(start).getTime() + p.durationMinutes * 60000)
+            )
             return {
               id: `plan:${p.id}`,
-              title: p.title,
+              title: p.moduleName ?? tEvent("typeOther"),
               start,
               end,
-              editable: false,
+              editable: true,
               classNames: ["sh-event-plan", ...(p.done ? ["sh-event-plan-done"] : [])],
             }
           })
@@ -359,6 +398,10 @@ export function CalendarView({
               if (href) router.push(href)
               return
             }
+            if (arg.event.id.startsWith("plan:")) {
+              openSession(arg.event.id.slice("plan:".length))
+              return
+            }
             if (arg.event.id.startsWith("recur:")) {
               // Instances open the base event (edits apply to the whole series).
               editById(arg.event.id.split(":")[1])
@@ -425,6 +468,12 @@ export function CalendarView({
           event={selected ?? undefined}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
+        />
+        <SessionDialog
+          key={sessionSel?.id ?? "no-session"}
+          session={sessionSel}
+          open={sessionOpen}
+          onOpenChange={setSessionOpen}
         />
       </CardContent>
     </Card>

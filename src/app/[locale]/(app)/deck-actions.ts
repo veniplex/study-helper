@@ -15,6 +15,7 @@ import { runAi } from "@/lib/ai/run"
 import { scheduleReview, type ReviewRating } from "@/lib/learning/fsrs"
 import { logAudit } from "@/lib/audit"
 import { ownModule } from "@/lib/studies/access"
+import { formatExamContext, getModuleGoalContext } from "@/lib/studies/goal-context"
 import { languageNameForLocale } from "@/lib/ai/language"
 
 const deckSchema = z.object({
@@ -321,6 +322,9 @@ export async function generateCards(input: unknown) {
 
   const locale = await getLocale()
   const language = languageNameForLocale(locale)
+  const examContext = deckRow.moduleId
+    ? formatExamContext(await getModuleGoalContext(deckRow.moduleId))
+    : ""
 
   const { object } = await runAi(
     {
@@ -337,7 +341,7 @@ export async function generateCards(input: unknown) {
         model,
         schema: generatedCardsSchema,
         prompt: `Create ${data.count} high-quality flashcards for spaced repetition about: ${query}.
-Each card has a concise question/term on the front and a precise answer/definition on the back.
+Each card has a concise question/term on the front and a precise answer/definition on the back.${examContext ? `\n${examContext}` : ""}
 Write all cards in ${language}, regardless of the language of the topic text or source materials.${context}`,
       })
   )

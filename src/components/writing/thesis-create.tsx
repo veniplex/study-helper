@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import type { SemesterOption } from "@/components/thesis/thesis-workspace"
+import type { SemesterOption } from "@/components/writing/writing-workspace"
 import { brainstormTopics, createThesis, updateThesis } from "@/app/[locale]/(app)/thesis/actions"
 
 export function ThesisCreateDialog({

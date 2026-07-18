@@ -14,6 +14,7 @@ import {
   startQuizGeneration,
 } from "@/lib/ai/generation/generate"
 import { ownModule } from "@/lib/studies/access"
+import { formatExamContext, getModuleGoalContext } from "@/lib/studies/goal-context"
 
 const deckInput = z.object({
   deckId: z.string(),
@@ -33,9 +34,11 @@ export async function startCompleteDeck(input: unknown) {
   await ownModule(row.moduleId, session.user.id)
 
   const language = languageNameForLocale(await getLocale())
+  const examContext = formatExamContext(await getModuleGoalContext(row.moduleId))
   const jobId = await startDeckGeneration(session.user.id, data.deckId, row.moduleId, {
     perTopic: data.perTopic,
     language,
+    examContext: examContext || undefined,
   })
   return { ok: true as const, jobId }
 }
@@ -55,9 +58,15 @@ export async function startCompleteQuiz(input: unknown) {
   await ownModule(data.moduleId, session.user.id)
 
   const language = languageNameForLocale(await getLocale())
+  const examContext = formatExamContext(await getModuleGoalContext(data.moduleId))
   const { jobId, quizId } = await startQuizGeneration(session.user.id, data.moduleId, {
     title: data.title,
-    params: { perTopic: data.perTopic, mixed: data.mixed ?? true, language },
+    params: {
+      perTopic: data.perTopic,
+      mixed: data.mixed ?? true,
+      language,
+      examContext: examContext || undefined,
+    },
   })
   return { ok: true as const, jobId, quizId }
 }

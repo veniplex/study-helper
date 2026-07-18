@@ -23,7 +23,10 @@ export async function getModuleDetail(userId: string, moduleId: string) {
     where: eq(studyModule.id, moduleId),
     with: {
       semester: { columns: { name: true, startDate: true, endDate: true } },
-      assessment: { with: { attempts: { orderBy: (a) => [asc(a.attempt)] } } },
+      goals: {
+        orderBy: (g) => [asc(g.sortOrder), asc(g.createdAt)],
+        with: { attempts: { orderBy: (a) => [asc(a.attempt)] } },
+      },
       contacts: { columns: { name: true, email: true, role: true } },
     },
   })
@@ -59,17 +62,14 @@ export async function getModuleDetail(userId: string, moduleId: string) {
     status: a.status,
     percent: assignmentPercent(a.pointsAchieved, a.pointsMax),
   }))
-  const bonus = effectiveBonus(mod, bonusAssignments)
+  const bonusConfig = mod.goals.find((g) => g.gradingRole === "bonus")?.config.bonus ?? null
+  const bonus = effectiveBonus(bonusConfig, bonusAssignments)
 
   return {
     name: mod.name,
     code: mod.code,
     status: mod.status,
     ects: mod.ects,
-    examType: mod.examType,
-    assessmentType: mod.assessment?.type ?? "exam",
-    maxAttempts: mod.maxAttempts,
-    passFail: mod.passFail,
     instructor: mod.instructor,
     semester: mod.semester
       ? { name: mod.semester.name, startDate: mod.semester.startDate, endDate: mod.semester.endDate }
@@ -77,15 +77,23 @@ export async function getModuleDetail(userId: string, moduleId: string) {
     finalGrade: final
       ? { grade: final.grade, percent: final.percent, passed: final.passed, attempt: final.attempt }
       : null,
-    attempts: (mod.assessment?.attempts ?? []).map((a) => ({
-      attempt: a.attempt,
-      resultPercent: a.resultPercent != null ? Number(a.resultPercent) : null,
-      passed: a.passed,
-      date: a.date,
+    goals: mod.goals.map((g) => ({
+      type: g.type,
+      title: g.title,
+      gradingRole: g.gradingRole,
+      passFail: g.passFail,
+      maxAttempts: g.maxAttempts,
+      dueDate: g.dueDate,
+      attempts: g.attempts.map((a) => ({
+        attempt: a.attempt,
+        resultPercent: a.resultPercent != null ? Number(a.resultPercent) : null,
+        passed: a.passed,
+        date: a.date,
+      })),
     })),
     bonus: {
-      type: mod.bonusType,
-      value: mod.bonusValue != null ? Number(mod.bonusValue) : null,
+      type: bonusConfig?.type ?? "none",
+      value: bonusConfig?.value ?? null,
       conditionMet: bonus.conditionMet,
       avgPercent: Math.round(bonus.avgPercent),
       completedShare: Math.round(bonus.completedShare * 100),

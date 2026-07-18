@@ -970,30 +970,6 @@
       "targetDate": "Target date",
       "empty": "No learning goals defined yet."
     },
-    "plans": {
-      "new": "Create study plan",
-      "generate": "Generate with AI",
-      "title": "Title",
-      "description": "Description",
-      "empty": "No study plans yet.",
-      "aiBadge": "AI-generated",
-      "items": "Sessions",
-      "addItem": "Add session",
-      "itemTitle": "Title",
-      "itemDate": "Date",
-      "itemDuration": "Duration (minutes)",
-      "generateDialog": {
-        "title": "Generate study plan with AI",
-        "examDate": "Exam date",
-        "hoursPerWeek": "Hours per week",
-        "topics": "Topics / description (what needs to be learned?)",
-        "useMaterials": "Consider uploaded materials",
-        "submit": "Generate",
-        "generating": "Generating study plan …"
-      },
-      "editItem": "Edit study item",
-      "itemDescription": "Description"
-    },
     "decks": {
       "new": "Create deck",
       "name": "Name",
@@ -1146,6 +1122,49 @@
     "editMilestone": "Edit milestone",
     "typePlaceholder": "Bachelor's thesis"
   },
+  "writing": {
+    "title": "Write-up",
+    "noGoalHint": "This module has no writing goal. Add a Term paper, Thesis or Project goal to get a writing workspace here.",
+    "thesisLinkHint": "This thesis is also available on the thesis page (attempts & new attempt).",
+    "openThesisPage": "Open thesis page",
+    "phase": "Phase",
+    "phases": {
+      "topic": "Topic",
+      "exposé": "Exposé",
+      "research": "Research",
+      "writing": "Writing",
+      "revision": "Revision",
+      "submitted": "Submitted"
+    },
+    "taskPhases": {
+      "briefing": "Understand the task",
+      "working": "Working",
+      "writing": "Drafting",
+      "revision": "Revision",
+      "submitted": "Submitted"
+    },
+    "semester": "Semester",
+    "noSemester": "No semester",
+    "dueDate": "Submission date",
+    "researchQuestion": "Research question",
+    "taskDescription": "Task",
+    "notes": "Notes",
+    "outline": "Outline",
+    "steps": "Processing steps",
+    "generateOutline": "Generate outline with AI",
+    "generateSteps": "Generate steps with AI",
+    "sources": "Sources",
+    "suggestSources": "Suggest source search terms",
+    "searchTerms": "Search terms",
+    "milestones": "Milestones",
+    "addMilestone": "Add milestone",
+    "generateMilestones": "Generate milestone plan with AI",
+    "addToCalendar": "Add milestones to calendar",
+    "milestoneTitle": "Title",
+    "milestoneDate": "Date",
+    "editMilestone": "Edit milestone",
+    "saved": "Saved."
+  },
   "onboarding": {
     "title": "Get started",
     "heroTitle": "Welcome, {name}!",
@@ -1201,17 +1220,6 @@
     "cronDuration": "Duration (min)",
     "save": "Save",
     "saved": "Availability saved.",
-    "generate": "Generate plan (AI)",
-    "regenerate": "Regenerate (done items kept)",
-    "generated": "{count} sessions planned.",
-    "empty": "No plan yet. Set your availability and generate — exams and assignment deadlines are taken into account.",
-    "week": "Week {week}",
-    "kind": {
-      "study": "Study",
-      "review": "Review",
-      "assignment": "Assignment"
-    },
-    "deleteItem": "Remove",
     "today": "Study today",
     "weekdaysShort": {
       "0": "Su",
@@ -1221,6 +1229,80 @@
       "4": "Th",
       "5": "Fr",
       "6": "Sa"
+    }
+  },
+  "plan": {
+    "weekdaysShort": {
+      "0": "Su",
+      "1": "Mo",
+      "2": "Tu",
+      "3": "We",
+      "4": "Th",
+      "5": "Fr",
+      "6": "Sa"
+    },
+    "phases": {
+      "1": "Now",
+      "2": "Next",
+      "3": "Later"
+    },
+    "tasks": {
+      "title": "Tasks",
+      "empty": "No tasks yet. Generate them from your goals or add some manually.",
+      "generate": "Generate from goals",
+      "generated": "{count} tasks created.",
+      "add": "Add task",
+      "edit": "Edit task",
+      "delete": "Delete",
+      "reorder": "Reorder",
+      "titleField": "Title",
+      "description": "Description",
+      "estimatedMinutes": "Duration (min)",
+      "dueDate": "Due date",
+      "due": "by",
+      "scheduled": "Scheduled",
+      "goal": "Goal",
+      "noGoal": "No goal"
+    },
+    "prefs": {
+      "title": "Planning settings",
+      "active": "Active in study plan",
+      "weight": "Weight",
+      "weeklyHours": "Weekly hours",
+      "phase": "Phase",
+      "weekdays": "Preferred weekdays",
+      "save": "Save",
+      "saved": "Saved.",
+      "linkToSemester": "To semester coordination"
+    },
+    "sessions": {
+      "title": "Upcoming sessions",
+      "empty": "No sessions scheduled yet.",
+      "linkToSemester": "To semester plan",
+      "taskCount": "{count} tasks"
+    },
+    "strategy": {
+      "title": "Strategy board",
+      "compute": "Compute plan",
+      "computed": "{count} sessions scheduled.",
+      "needAvailability": "Set your availability first.",
+      "noModules": "No modules in this semester.",
+      "warning": {
+        "deadline_unreachable": "Deadline unreachable",
+        "no_capacity": "No capacity"
+      }
+    },
+    "preview": {
+      "title": "Preview",
+      "empty": "No plan computed yet.",
+      "week": "Week {week}",
+      "taskCount": "{count} tasks"
+    },
+    "session": {
+      "title": "Study session",
+      "done": "Done",
+      "tasks": "Tasks",
+      "noTasks": "No tasks in this session."
     }
   },
   "learnSession": {
@@ -1256,11 +1338,106 @@
     "assignments": "Assignments",
     "decks": "Flashcards",
     "quizzes": "Quizzes",
+    "paper": "Write-up",
+    "plan": "Study plan",
     "chat": "Chat",
-    "thesisPlanner": "Thesis planner"
+    "thesisPlanner": "Thesis planner",
+    "moreTools": "More tools",
+    "comingSoon": "Coming soon"
   },
   "offline": {
     "synced": "{count} offline changes synced."
+  },
+  "goals": {
+    "cardTitle": "Learning goals",
+    "add": "Add learning goal",
+    "edit": "Edit learning goal",
+    "emptyTitle": "Set learning goals",
+    "emptyPrompt": "What do you need to pass in this module?",
+    "setupPrompt": "What do you have to deliver?",
+    "deleteConfirm": "Really delete this learning goal?",
+    "type": "Type",
+    "titleField": "Title",
+    "gradingRole": "Grading",
+    "weight": "Weight",
+    "dueDate": "Date / deadline",
+    "maxAttempts": "Attempts (incl. retakes)",
+    "passFail": "Pass / fail (no grade)",
+    "expectedCount": "Expected count",
+    "durationMinutes": "Duration (min.)",
+    "requiresSources": "External sources required",
+    "withPresentation": "With presentation",
+    "taskDescription": "Task description",
+    "types": {
+      "exam": "Exam",
+      "assignments": "Assignments",
+      "term_paper": "Term paper",
+      "presentation": "Presentation",
+      "oral_exam": "Oral exam",
+      "project": "Project",
+      "thesis": "Thesis",
+      "other": "Other"
+    },
+    "typePlaceholder": {
+      "exam": "Exam",
+      "assignments": "Problem sets",
+      "term_paper": "Term paper",
+      "presentation": "Presentation",
+      "oral_exam": "Oral exam",
+      "project": "Project",
+      "thesis": "Thesis",
+      "other": "Label"
+    },
+    "roles": {
+      "grade": "Counts toward module grade",
+      "bonus": "Bonus",
+      "practice": "Practice / feedback only"
+    },
+    "variant": {
+      "label": "Kind of work",
+      "scientific": "Scientific paper",
+      "task": "Task-based work"
+    },
+    "bonus": {
+      "type": "Bonus type",
+      "value": "Bonus value",
+      "minAvgPercent": "Min. avg. result (%)",
+      "minCompletedShare": "Min. share completed (0–1)",
+      "types": {
+        "none": "No bonus",
+        "percent_points": "Percentage points on result",
+        "grade_steps": "Grade steps better"
+      }
+    }
+  },
+  "goalCard": {
+    "countdown": {
+      "none": "No date",
+      "today": "Due today",
+      "inDays": "{days} days left",
+      "overdue": "Overdue by {days} days"
+    },
+    "readiness": "Readiness",
+    "dueCards": "Due cards",
+    "lastScore": "Last quiz score",
+    "noScore": "–",
+    "assignmentStatus": {
+      "open": "Open",
+      "submitted": "Submitted",
+      "graded": "Graded"
+    },
+    "nextDue": "Next due",
+    "expectedCount": "Expected: {count}",
+    "toAssignments": "Go to assignments",
+    "openWriteup": "Open write-up",
+    "duration": "Duration: {minutes} min.",
+    "checklist": "Preparation",
+    "checklistItems": {
+      "outline": "Create an outline",
+      "slides": "Design slides",
+      "rehearse": "Rehearse the talk",
+      "timing": "Keep to time"
+    }
   },
   "home": {
     "title": "Welcome to StudyHelper",

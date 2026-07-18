@@ -1,14 +1,17 @@
-import { asc, desc, eq } from "drizzle-orm"
+import { and, asc, desc, eq } from "drizzle-orm"
 import { GraduationCap } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import { thesisMilestone, thesisProject } from "@/db/schema"
+import { writingMilestone, writingProject } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { listAvailableModels } from "@/lib/ai/registry"
 import { getStudyContext } from "@/lib/studies/context"
-import { BrainstormDialog, ThesisCreateDialog } from "@/components/thesis/thesis-create"
-import { RetryThesisButton } from "@/components/thesis/retry-thesis-button"
-import { ThesisWorkspace, type ThesisData } from "@/components/thesis/thesis-workspace"
+import { BrainstormDialog, ThesisCreateDialog } from "@/components/writing/thesis-create"
+import { RetryThesisButton } from "@/components/writing/retry-thesis-button"
+import {
+  WritingWorkspace,
+  type WritingProjectData,
+} from "@/components/writing/writing-workspace"
 
 export default async function ThesisPage() {
   const session = await requireSession()
@@ -32,10 +35,10 @@ export default async function ThesisPage() {
 
   // All theses of the active program (the live one + its superseded history).
   const theses = activeProgram
-    ? await db.query.thesisProject.findMany({
-        where: eq(thesisProject.programId, activeProgram.id),
-        orderBy: [desc(thesisProject.attempt)],
-        with: { milestones: { orderBy: [asc(thesisMilestone.dueDate)] } },
+    ? await db.query.writingProject.findMany({
+        where: and(eq(writingProject.programId, activeProgram.id), eq(writingProject.kind, "thesis")),
+        orderBy: [desc(writingProject.attempt)],
+        with: { milestones: { orderBy: [asc(writingMilestone.dueDate)] } },
       })
     : []
   const current = theses.find((th) => th.supersededById == null) ?? null
@@ -75,9 +78,12 @@ export default async function ThesisPage() {
             </span>
             {current.attempt < maxAttempts && <RetryThesisButton thesisId={current.id} />}
           </div>
-          <ThesisWorkspace
-            thesis={current as ThesisData}
+          <WritingWorkspace
+            project={current as WritingProjectData}
+            variant="scientific"
+            kind="thesis"
             aiAvailable={aiAvailable}
+            basePath="/thesis"
             semesters={semesters}
           />
 
@@ -92,9 +98,12 @@ export default async function ThesisPage() {
                     <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
                       {t("attempt", { n: p.attempt })}
                     </span>
-                    <ThesisWorkspace
-                      thesis={p as ThesisData}
+                    <WritingWorkspace
+                      project={p as WritingProjectData}
+                      variant="scientific"
+                      kind="thesis"
                       aiAvailable={aiAvailable}
+                      basePath="/thesis"
                       semesters={semesters}
                     />
                   </div>

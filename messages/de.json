@@ -970,30 +970,6 @@
       "targetDate": "Zieldatum",
       "empty": "Noch keine Lernziele definiert."
     },
-    "plans": {
-      "new": "Lernplan anlegen",
-      "generate": "Mit KI generieren",
-      "title": "Titel",
-      "description": "Beschreibung",
-      "empty": "Noch keine Lernpläne.",
-      "aiBadge": "KI-generiert",
-      "items": "Einheiten",
-      "addItem": "Einheit hinzufügen",
-      "itemTitle": "Titel",
-      "itemDate": "Datum",
-      "itemDuration": "Dauer (Minuten)",
-      "generateDialog": {
-        "title": "Lernplan mit KI generieren",
-        "examDate": "Prüfungsdatum",
-        "hoursPerWeek": "Stunden pro Woche",
-        "topics": "Themen / Beschreibung (was ist zu lernen?)",
-        "useMaterials": "Hochgeladene Materialien berücksichtigen",
-        "submit": "Generieren",
-        "generating": "Generiere Lernplan …"
-      },
-      "editItem": "Lerneinheit bearbeiten",
-      "itemDescription": "Beschreibung"
-    },
     "decks": {
       "new": "Deck anlegen",
       "name": "Name",
@@ -1146,6 +1122,49 @@
     "editMilestone": "Meilenstein bearbeiten",
     "typePlaceholder": "Bachelorarbeit"
   },
+  "writing": {
+    "title": "Ausarbeitung",
+    "noGoalHint": "Für dieses Modul ist kein Schreib-Lernziel hinterlegt. Lege ein Ziel „Hausarbeit“, „Abschlussarbeit“ oder „Projekt“ an, um hier einen Schreib-Workspace zu erhalten.",
+    "thesisLinkHint": "Diese Abschlussarbeit ist auch über die Thesis-Seite erreichbar (Versuche & neuer Versuch).",
+    "openThesisPage": "Zur Thesis-Seite",
+    "phase": "Phase",
+    "phases": {
+      "topic": "Thema",
+      "exposé": "Exposé",
+      "research": "Recherche",
+      "writing": "Schreiben",
+      "revision": "Überarbeitung",
+      "submitted": "Abgegeben"
+    },
+    "taskPhases": {
+      "briefing": "Aufgabe verstehen",
+      "working": "Bearbeitung",
+      "writing": "Ausformulierung",
+      "revision": "Überarbeitung",
+      "submitted": "Abgegeben"
+    },
+    "semester": "Semester",
+    "noSemester": "Kein Semester",
+    "dueDate": "Abgabedatum",
+    "researchQuestion": "Forschungsfrage",
+    "taskDescription": "Aufgabenstellung",
+    "notes": "Notizen",
+    "outline": "Gliederung",
+    "steps": "Bearbeitungsschritte",
+    "generateOutline": "Gliederung mit KI erstellen",
+    "generateSteps": "Bearbeitungsschritte mit KI erstellen",
+    "sources": "Quellen",
+    "suggestSources": "Quellen-Suchbegriffe vorschlagen",
+    "searchTerms": "Suchbegriffe",
+    "milestones": "Meilensteine",
+    "addMilestone": "Meilenstein hinzufügen",
+    "generateMilestones": "Meilensteinplan mit KI erstellen",
+    "addToCalendar": "Meilensteine in den Kalender eintragen",
+    "milestoneTitle": "Titel",
+    "milestoneDate": "Datum",
+    "editMilestone": "Meilenstein bearbeiten",
+    "saved": "Gespeichert."
+  },
   "onboarding": {
     "title": "Erste Schritte",
     "heroTitle": "Willkommen, {name}!",
@@ -1201,17 +1220,6 @@
     "cronDuration": "Dauer (Min.)",
     "save": "Speichern",
     "saved": "Verfügbarkeit gespeichert.",
-    "generate": "Plan generieren (KI)",
-    "regenerate": "Neu generieren (erledigte bleiben)",
-    "generated": "{count} Lerneinheiten geplant.",
-    "empty": "Noch kein Plan. Verfügbarkeit festlegen und generieren — Klausuren und Abgabefristen werden berücksichtigt.",
-    "week": "Woche {week}",
-    "kind": {
-      "study": "Lernen",
-      "review": "Wiederholung",
-      "assignment": "Abgabe"
-    },
-    "deleteItem": "Entfernen",
     "today": "Heute lernen",
     "weekdaysShort": {
       "0": "So",
@@ -1221,6 +1229,80 @@
       "4": "Do",
       "5": "Fr",
       "6": "Sa"
+    }
+  },
+  "plan": {
+    "weekdaysShort": {
+      "0": "So",
+      "1": "Mo",
+      "2": "Di",
+      "3": "Mi",
+      "4": "Do",
+      "5": "Fr",
+      "6": "Sa"
+    },
+    "phases": {
+      "1": "Jetzt",
+      "2": "Danach",
+      "3": "Später"
+    },
+    "tasks": {
+      "title": "Aufgaben",
+      "empty": "Noch keine Aufgaben. Generiere sie aus deinen Lernzielen oder füge manuell welche hinzu.",
+      "generate": "Aus Lernzielen generieren",
+      "generated": "{count} Aufgaben erstellt.",
+      "add": "Aufgabe hinzufügen",
+      "edit": "Aufgabe bearbeiten",
+      "delete": "Löschen",
+      "reorder": "Verschieben",
+      "titleField": "Titel",
+      "description": "Beschreibung",
+      "estimatedMinutes": "Dauer (Min.)",
+      "dueDate": "Frist",
+      "due": "bis",
+      "scheduled": "Verplant",
+      "goal": "Lernziel",
+      "noGoal": "Kein Lernziel"
+    },
+    "prefs": {
+      "title": "Planungs-Einstellungen",
+      "active": "Im Lernplan aktiv",
+      "weight": "Gewicht",
+      "weeklyHours": "Wochenstunden",
+      "phase": "Phase",
+      "weekdays": "Bevorzugte Wochentage",
+      "save": "Speichern",
+      "saved": "Gespeichert.",
+      "linkToSemester": "Zur Semester-Koordination"
+    },
+    "sessions": {
+      "title": "Kommende Termine",
+      "empty": "Noch keine Termine geplant.",
+      "linkToSemester": "Zum Semester-Lernplan",
+      "taskCount": "{count} Aufgaben"
+    },
+    "strategy": {
+      "title": "Strategie-Board",
+      "compute": "Plan berechnen",
+      "computed": "{count} Termine geplant.",
+      "needAvailability": "Lege zuerst deine Verfügbarkeit fest.",
+      "noModules": "Keine Module in diesem Semester.",
+      "warning": {
+        "deadline_unreachable": "Frist nicht erreichbar",
+        "no_capacity": "Keine Kapazität"
+      }
+    },
+    "preview": {
+      "title": "Vorschau",
+      "empty": "Noch kein Plan berechnet.",
+      "week": "Woche {week}",
+      "taskCount": "{count} Aufgaben"
+    },
+    "session": {
+      "title": "Lerneinheit",
+      "done": "Erledigt",
+      "tasks": "Aufgaben",
+      "noTasks": "Keine Aufgaben in dieser Einheit."
     }
   },
   "learnSession": {
@@ -1256,11 +1338,106 @@
     "assignments": "Abgaben",
     "decks": "Karteikarten",
     "quizzes": "Quizze",
+    "paper": "Ausarbeitung",
+    "plan": "Lernplan",
     "chat": "Chat",
-    "thesisPlanner": "Thesis-Planer"
+    "thesisPlanner": "Thesis-Planer",
+    "moreTools": "Weitere Werkzeuge",
+    "comingSoon": "In Arbeit"
   },
   "offline": {
     "synced": "{count} Offline-Änderungen synchronisiert."
+  },
+  "goals": {
+    "cardTitle": "Lernziele",
+    "add": "Lernziel hinzufügen",
+    "edit": "Lernziel bearbeiten",
+    "emptyTitle": "Lernziele festlegen",
+    "emptyPrompt": "Was musst du in diesem Modul bestehen?",
+    "setupPrompt": "Was musst du leisten?",
+    "deleteConfirm": "Dieses Lernziel wirklich löschen?",
+    "type": "Art",
+    "titleField": "Titel",
+    "gradingRole": "Bewertung",
+    "weight": "Gewichtung",
+    "dueDate": "Termin / Frist",
+    "maxAttempts": "Versuche (inkl. Wiederholungen)",
+    "passFail": "Bestanden / Nicht bestanden (ohne Note)",
+    "expectedCount": "Erwartete Anzahl",
+    "durationMinutes": "Dauer (Min.)",
+    "requiresSources": "Externe Quellen nötig",
+    "withPresentation": "Mit Präsentation",
+    "taskDescription": "Aufgabenstellung",
+    "types": {
+      "exam": "Klausur",
+      "assignments": "Abgaben",
+      "term_paper": "Hausarbeit",
+      "presentation": "Referat",
+      "oral_exam": "Mündliche Prüfung",
+      "project": "Projekt",
+      "thesis": "Abschlussarbeit",
+      "other": "Sonstiges"
+    },
+    "typePlaceholder": {
+      "exam": "Klausur",
+      "assignments": "Übungsblätter",
+      "term_paper": "Hausarbeit",
+      "presentation": "Referat",
+      "oral_exam": "Mündliche Prüfung",
+      "project": "Projekt",
+      "thesis": "Abschlussarbeit",
+      "other": "Bezeichnung"
+    },
+    "roles": {
+      "grade": "Zählt zur Modulnote",
+      "bonus": "Bonus",
+      "practice": "Nur Übung / Feedback"
+    },
+    "variant": {
+      "label": "Art der Arbeit",
+      "scientific": "Wissenschaftliche Arbeit",
+      "task": "Aufgabenbearbeitung"
+    },
+    "bonus": {
+      "type": "Bonusart",
+      "value": "Bonuswert",
+      "minAvgPercent": "Mind. Ø-Ergebnis (%)",
+      "minCompletedShare": "Mind. Anteil erledigt (0–1)",
+      "types": {
+        "none": "Kein Bonus",
+        "percent_points": "Prozentpunkte auf Ergebnis",
+        "grade_steps": "Notenschritte besser"
+      }
+    }
+  },
+  "goalCard": {
+    "countdown": {
+      "none": "Kein Termin",
+      "today": "Heute fällig",
+      "inDays": "Noch {days} Tage",
+      "overdue": "Überfällig um {days} Tage"
+    },
+    "readiness": "Bereitschaft",
+    "dueCards": "Fällige Karten",
+    "lastScore": "Letzter Quiz-Score",
+    "noScore": "–",
+    "assignmentStatus": {
+      "open": "Offen",
+      "submitted": "Abgegeben",
+      "graded": "Bewertet"
+    },
+    "nextDue": "Nächste Abgabe",
+    "expectedCount": "Erwartet: {count}",
+    "toAssignments": "Zu den Abgaben",
+    "openWriteup": "Zur Ausarbeitung",
+    "duration": "Dauer: {minutes} Min.",
+    "checklist": "Vorbereitung",
+    "checklistItems": {
+      "outline": "Gliederung erstellen",
+      "slides": "Folien gestalten",
+      "rehearse": "Vortrag proben",
+      "timing": "Zeit einhalten"
+    }
   },
   "home": {
     "title": "Willkommen bei StudyHelper",
