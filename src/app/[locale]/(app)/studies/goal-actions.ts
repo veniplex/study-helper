@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { asc, eq } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
-import { assessmentAttempt, moduleAssessment } from "@/db/schema"
+import { goalAttempt, moduleGoal } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { ownModule } from "@/lib/studies/access"
 
@@ -15,55 +15,59 @@ const attemptSchema = z.object({
   note: z.string().max(1000).optional().nullable(),
 })
 
-/** Ensures a module has an assessment row, returning its id. */
-async function ensureAssessment(moduleId: string): Promise<string> {
-  const existing = await db.query.moduleAssessment.findFirst({
-    where: eq(moduleAssessment.moduleId, moduleId),
-    columns: { id: true },
+/**
+ * Ensures the module has a grade goal to attach attempts to, returning it.
+ * Falls back to creating a default exam goal for older modules without one.
+ * (Full goal CRUD / picking a specific goal arrives in a later phase.)
+ */
+async function ensureGradeGoal(moduleId: string) {
+  const existing = await db.query.moduleGoal.findMany({
+    where: eq(moduleGoal.moduleId, moduleId),
+    orderBy: [asc(moduleGoal.sortOrder), asc(moduleGoal.createdAt)],
   })
-  if (existing) return existing.id
+  const gradeGoal = existing.find((g) => g.gradingRole === "grade") ?? existing[0]
+  if (gradeGoal) return gradeGoal
   const [created] = await db
-    .insert(moduleAssessment)
-    .values({ moduleId })
-    .returning({ id: moduleAssessment.id })
-  return created.id
+    .insert(moduleGoal)
+    .values({ moduleId, type: "exam", gradingRole: "grade" })
+    .returning()
+  return created
 }
 
 /** Resolves an attempt to its owning module (throws if not owned). */
 async function ownAttempt(attemptId: string, userId: string) {
-  const row = await db.query.assessmentAttempt.findFirst({
-    where: eq(assessmentAttempt.id, attemptId),
+  const row = await db.query.goalAttempt.findFirst({
+    where: eq(goalAttempt.id, attemptId),
     with: {
-      assessment: {
+      goal: {
         with: { module: { with: { semester: { with: { program: true } } } } },
       },
     },
   })
-  if (!row || row.assessment.module.semester.program.userId !== userId) {
+  if (!row || row.goal.module.semester.program.userId !== userId) {
     throw new Error("Not found")
   }
   return row
 }
 
-
 export async function addAttempt(moduleId: string, input: unknown) {
   const session = await requireSession()
   const mod = await ownModule(moduleId, session.user.id)
   const data = attemptSchema.parse(input)
-  const assessmentId = await ensureAssessment(moduleId)
+  const goal = await ensureGradeGoal(moduleId)
 
-  const existing = await db.query.assessmentAttempt.findMany({
-    where: eq(assessmentAttempt.assessmentId, assessmentId),
-    orderBy: [asc(assessmentAttempt.attempt)],
+  const existing = await db.query.goalAttempt.findMany({
+    where: eq(goalAttempt.goalId, goal.id),
+    orderBy: [asc(goalAttempt.attempt)],
     columns: { attempt: true },
   })
-  if (existing.length >= mod.maxAttempts) {
+  if (existing.length >= goal.maxAttempts) {
     throw new Error("Maximale Versuchszahl erreicht")
   }
   const nextAttempt = existing.reduce((max, a) => Math.max(max, a.attempt), 0) + 1
 
-  await db.insert(assessmentAttempt).values({
-    assessmentId,
+  await db.insert(goalAttempt).values({
+    goalId: goal.id,
     attempt: nextAttempt,
     resultPercent: data.resultPercent != null ? String(data.resultPercent) : null,
     date: data.date ?? null,
@@ -79,24 +83,24 @@ export async function updateAttempt(attemptId: string, input: unknown) {
   const row = await ownAttempt(attemptId, session.user.id)
   const data = attemptSchema.parse(input)
   await db
-    .update(assessmentAttempt)
+    .update(goalAttempt)
     .set({
       resultPercent: data.resultPercent != null ? String(data.resultPercent) : null,
       date: data.date ?? null,
       passed: data.passed ?? null,
       note: data.note ?? null,
     })
-    .where(eq(assessmentAttempt.id, attemptId))
-  const programId = row.assessment.module.semester.programId
-  revalidatePath(`/studies/${programId}/${row.assessment.moduleId}`)
+    .where(eq(goalAttempt.id, attemptId))
+  const programId = row.goal.module.semester.programId
+  revalidatePath(`/studies/${programId}/${row.goal.moduleId}`)
   return { ok: true as const }
 }
 
 export async function deleteAttempt(attemptId: string) {
   const session = await requireSession()
   const row = await ownAttempt(attemptId, session.user.id)
-  await db.delete(assessmentAttempt).where(eq(assessmentAttempt.id, attemptId))
-  const programId = row.assessment.module.semester.programId
-  revalidatePath(`/studies/${programId}/${row.assessment.moduleId}`)
+  await db.delete(goalAttempt).where(eq(goalAttempt.id, attemptId))
+  const programId = row.goal.module.semester.programId
+  revalidatePath(`/studies/${programId}/${row.goal.moduleId}`)
   return { ok: true as const }
 }

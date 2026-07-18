@@ -8,6 +8,7 @@ import { studyModule } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { isAiAvailable } from "@/lib/ai/registry"
 import { formatGrade, moduleGrade } from "@/lib/grades"
+import { hasGoal } from "@/lib/studies/goals"
 import { PageContextSetter } from "@/components/ai/page-context"
 import { ModuleTabs } from "@/components/studies/module-tabs"
 import { Badge } from "@/components/ui/badge"
@@ -32,7 +33,11 @@ export default async function ModuleWorkspaceLayout({
 
   const mod = await db.query.studyModule.findFirst({
     where: eq(studyModule.id, moduleId),
-    with: { semester: { with: { program: true } }, grades: true },
+    with: {
+      semester: { with: { program: true } },
+      grades: true,
+      goals: { columns: { type: true } },
+    },
   })
   if (
     !mod ||
@@ -87,7 +92,7 @@ export default async function ModuleWorkspaceLayout({
       <ModuleTabs
         basePath={`/studies/${programId}/${moduleId}`}
         aiAvailable={aiAvailable}
-        isThesis={mod.isThesis}
+        isThesis={hasGoal(mod.goals, "thesis")}
       />
       {children}
     </div>

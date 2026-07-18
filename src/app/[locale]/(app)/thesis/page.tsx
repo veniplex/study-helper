@@ -1,8 +1,8 @@
-import { asc, desc, eq } from "drizzle-orm"
+import { and, asc, desc, eq } from "drizzle-orm"
 import { GraduationCap } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import { thesisMilestone, thesisProject } from "@/db/schema"
+import { writingMilestone, writingProject } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { listAvailableModels } from "@/lib/ai/registry"
 import { getStudyContext } from "@/lib/studies/context"
@@ -32,10 +32,10 @@ export default async function ThesisPage() {
 
   // All theses of the active program (the live one + its superseded history).
   const theses = activeProgram
-    ? await db.query.thesisProject.findMany({
-        where: eq(thesisProject.programId, activeProgram.id),
-        orderBy: [desc(thesisProject.attempt)],
-        with: { milestones: { orderBy: [asc(thesisMilestone.dueDate)] } },
+    ? await db.query.writingProject.findMany({
+        where: and(eq(writingProject.programId, activeProgram.id), eq(writingProject.kind, "thesis")),
+        orderBy: [desc(writingProject.attempt)],
+        with: { milestones: { orderBy: [asc(writingMilestone.dueDate)] } },
       })
     : []
   const current = theses.find((th) => th.supersededById == null) ?? null

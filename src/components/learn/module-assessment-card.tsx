@@ -9,8 +9,8 @@ import {
   addAttempt,
   deleteAttempt,
   updateAttempt,
-} from "@/app/[locale]/(app)/studies/assessment-actions"
-import type { AssessmentType, BonusType, GradingSystem } from "@/db/schema/studies"
+} from "@/app/[locale]/(app)/studies/goal-actions"
+import type { BonusType, GoalType, GradingSystem } from "@/db/schema/studies"
 import { formatGrade } from "@/lib/grades"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,12 +25,15 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 
-const ASSESSMENT_LABEL_KEY: Record<AssessmentType, string> = {
+/** Maps a goal type to the (existing) assessment-type i18n label key. */
+const GOAL_LABEL_KEY: Record<GoalType, string> = {
   exam: "assessmentExam",
+  assignments: "assessmentOther",
   term_paper: "assessmentTermPaper",
-  oral_presentation: "assessmentOralPresentation",
+  presentation: "assessmentOralPresentation",
   oral_exam: "assessmentOralExam",
   project: "assessmentProject",
+  thesis: "assessmentTermPaper",
   other: "assessmentOther",
 }
 
@@ -84,7 +87,7 @@ export function ModuleAssessmentCard({
   bonusMinCompletedShare,
 }: {
   moduleId: string
-  assessmentType: AssessmentType
+  assessmentType: GoalType
   maxAttempts: number
   passFail: boolean
   gradingSystem: GradingSystem
@@ -174,7 +177,7 @@ export function ModuleAssessmentCard({
         <div className="space-y-0.5">
           <CardTitle>{t("title")}</CardTitle>
           <p className="text-muted-foreground text-sm">
-            {tDialog(ASSESSMENT_LABEL_KEY[assessmentType])} ·{" "}
+            {tDialog(GOAL_LABEL_KEY[assessmentType])} ·{" "}
             {t("attemptOf", { n: attempts.length, max: maxAttempts })}
           </p>
         </div>

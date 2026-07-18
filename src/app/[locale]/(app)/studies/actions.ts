@@ -7,7 +7,7 @@ import { db } from "@/db"
 import {
   degreeProgram,
   externalResource,
-  moduleAssessment,
+  moduleGoal,
   semester,
   studyModule,
 } from "@/db/schema"
@@ -124,36 +124,18 @@ export async function deleteSemester(semesterId: string) {
 
 // ---- Modules -----------------------------------------------------------------
 
-const ASSESSMENT_TYPES = [
-  "exam",
-  "term_paper",
-  "oral_presentation",
-  "oral_exam",
-  "project",
-  "other",
-] as const
-
 const moduleSchema = z.object({
   name: z.string().min(1).max(200),
   code: z.string().max(50).optional().nullable(),
   ects: z.number().int().min(0).max(60).optional().nullable(),
   instructor: z.string().max(200).optional().nullable(),
-  examType: z.string().max(100).optional().nullable(),
   status: z.enum(["planned", "active", "passed", "failed"]).default("planned"),
-  isThesis: z.boolean().default(false),
   notes: z.string().max(5000).optional().nullable(),
   icon: z.string().max(40).optional().nullable(),
   color: z.string().max(40).optional().nullable(),
-  maxAttempts: z.number().int().min(1).max(10).default(3),
-  passFail: z.boolean().default(false),
-  bonusType: z.enum(["none", "percent_points", "grade_steps"]).default("none"),
-  bonusValue: z.number().min(0).max(100).optional().nullable(),
-  bonusMinAvgPercent: z.number().min(0).max(100).optional().nullable(),
-  bonusMinCompletedShare: z.number().min(0).max(1).optional().nullable(),
-  assessmentType: z.enum(ASSESSMENT_TYPES).default("exam"),
 })
 
-/** Splits parsed module input into module-table columns (numbers→strings). */
+/** Splits parsed module input into module-table columns. */
 function moduleValues(data: z.infer<typeof moduleSchema>) {
   const m = data
   return {
@@ -161,27 +143,11 @@ function moduleValues(data: z.infer<typeof moduleSchema>) {
     code: m.code ?? null,
     ects: m.ects ?? null,
     instructor: m.instructor ?? null,
-    examType: m.examType ?? null,
     status: m.status,
-    isThesis: m.isThesis,
     notes: m.notes ?? null,
     icon: m.icon ?? null,
     color: m.color ?? null,
-    maxAttempts: m.maxAttempts,
-    passFail: m.passFail,
-    bonusType: m.bonusType,
-    bonusValue: m.bonusValue == null ? null : String(m.bonusValue),
-    bonusMinAvgPercent: m.bonusMinAvgPercent == null ? null : String(m.bonusMinAvgPercent),
-    bonusMinCompletedShare:
-      m.bonusMinCompletedShare == null ? null : String(m.bonusMinCompletedShare),
   }
-}
-
-async function upsertAssessmentType(moduleId: string, type: (typeof ASSESSMENT_TYPES)[number]) {
-  await db
-    .insert(moduleAssessment)
-    .values({ moduleId, type })
-    .onConflictDoUpdate({ target: moduleAssessment.moduleId, set: { type } })
 }
 
 export async function createModule(semesterId: string, input: unknown) {
@@ -192,7 +158,9 @@ export async function createModule(semesterId: string, input: unknown) {
     .insert(studyModule)
     .values({ ...moduleValues(data), semesterId })
     .returning({ id: studyModule.id })
-  await upsertAssessmentType(created.id, data.assessmentType)
+  // Every module starts with one default exam goal so it is immediately
+  // gradable; goal setup (chips / CRUD) arrives in a later phase.
+  await db.insert(moduleGoal).values({ moduleId: created.id, type: "exam", gradingRole: "grade" })
   revalidatePath(`/studies/${sem.programId}`)
   return { ok: true as const }
 }
@@ -201,17 +169,15 @@ export async function updateModule(moduleId: string, input: unknown) {
   const session = await requireSession()
   const mod = await ownModule(moduleId, session.user.id)
   const data = moduleSchema.partial().parse(input)
-  const { assessmentType, ...rest } = data
-  const values = moduleValues({ ...moduleSchema.parse({ name: mod.name, ...rest }) })
+  const values = moduleValues({ ...moduleSchema.parse({ name: mod.name, ...data }) })
   // Only set the columns the caller actually provided.
   const patch: Record<string, unknown> = {}
-  for (const key of Object.keys(rest) as (keyof typeof rest)[]) {
+  for (const key of Object.keys(data) as (keyof typeof data)[]) {
     patch[key] = (values as Record<string, unknown>)[key]
   }
   if (Object.keys(patch).length > 0) {
     await db.update(studyModule).set(patch).where(eq(studyModule.id, moduleId))
   }
-  if (assessmentType) await upsertAssessmentType(moduleId, assessmentType)
   revalidatePath(`/studies/${mod.semester.programId}`)
   return { ok: true as const }
 }

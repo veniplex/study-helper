@@ -107,7 +107,7 @@ export async function generateSemesterPlan(semesterId: string) {
 
   const modules = await db.query.studyModule.findMany({
     where: (m, { eq: e }) => e(m.semesterId, semesterId),
-    columns: { id: true, name: true, examType: true },
+    columns: { id: true, name: true },
   })
   if (modules.length === 0) throw new Error("No modules in semester")
   const moduleIds = modules.map((m) => m.id)
@@ -146,7 +146,7 @@ export async function generateSemesterPlan(semesterId: string) {
     today,
     semester: { name: sem.name, start: sem.startDate, end: sem.endDate },
     blockedWindows,
-    modules: modules.map((m) => ({ name: m.name, examType: m.examType })),
+    modules: modules.map((m) => ({ name: m.name })),
     exams: exams.map((e) => ({
       module: e.moduleId ? nameById.get(e.moduleId) : null,
       title: e.title,

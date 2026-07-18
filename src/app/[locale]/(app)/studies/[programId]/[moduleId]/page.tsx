@@ -39,7 +39,10 @@ export default async function ModuleOverviewPage({
     with: {
       semester: { with: { program: true } },
       grades: { orderBy: (g) => [asc(g.attempt), asc(g.createdAt)] },
-      assessment: { with: { attempts: { orderBy: (a) => [asc(a.attempt)] } } },
+      goals: {
+        orderBy: (g) => [asc(g.sortOrder), asc(g.createdAt)],
+        with: { attempts: { orderBy: (a) => [asc(a.attempt)] } },
+      },
     },
   })
   if (
@@ -49,6 +52,12 @@ export default async function ModuleOverviewPage({
   ) {
     notFound()
   }
+
+  // Phase 1 renders a single grade goal (per-goal cards come later). Pick the
+  // module's grade goal (else the first goal) and its bonus goal for display.
+  const gradeGoal = mod.goals.find((g) => g.gradingRole === "grade") ?? mod.goals[0] ?? null
+  const bonus = mod.goals.find((g) => g.gradingRole === "bonus")?.config.bonus ?? null
+  const examTypeLabel = gradeGoal?.title ?? null
 
   const gradingSystem = mod.semester.program.gradingSystem
   // Independent lookups — fetch them concurrently to keep TTFB low.
@@ -111,11 +120,11 @@ export default async function ModuleOverviewPage({
           </Card>
         ))}
       </dl>
-      {(mod.instructor || mod.examType || mod.notes) && (
+      {(mod.instructor || examTypeLabel || mod.notes) && (
         <div>
           <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-sm">
             {mod.instructor && <span>{mod.instructor}</span>}
-            {mod.examType && <span>{mod.examType}</span>}
+            {examTypeLabel && <span>{examTypeLabel}</span>}
           </div>
           {mod.notes && <p className="mt-2 text-sm whitespace-pre-wrap">{mod.notes}</p>}
         </div>
@@ -124,11 +133,11 @@ export default async function ModuleOverviewPage({
       {finalGrade && (
         <ModuleAssessmentCard
           moduleId={mod.id}
-          assessmentType={mod.assessment?.type ?? (mod.isThesis ? "term_paper" : "exam")}
-          maxAttempts={mod.maxAttempts}
-          passFail={mod.passFail}
+          assessmentType={gradeGoal?.type ?? "exam"}
+          maxAttempts={gradeGoal?.maxAttempts ?? 3}
+          passFail={gradeGoal?.passFail ?? false}
           gradingSystem={gradingSystem}
-          attempts={(mod.assessment?.attempts ?? []).map((a) => ({
+          attempts={(gradeGoal?.attempts ?? []).map((a) => ({
             id: a.id,
             attempt: a.attempt,
             resultPercent: a.resultPercent,
@@ -145,10 +154,12 @@ export default async function ModuleOverviewPage({
             gradedAt: g.gradedAt,
             note: g.note,
           }))}
-          bonusType={mod.bonusType}
-          bonusValue={mod.bonusValue}
-          bonusMinAvgPercent={mod.bonusMinAvgPercent}
-          bonusMinCompletedShare={mod.bonusMinCompletedShare}
+          bonusType={bonus?.type ?? "none"}
+          bonusValue={bonus?.value != null ? String(bonus.value) : null}
+          bonusMinAvgPercent={bonus?.minAvgPercent != null ? String(bonus.minAvgPercent) : null}
+          bonusMinCompletedShare={
+            bonus?.minCompletedShare != null ? String(bonus.minCompletedShare) : null
+          }
         />
       )}
 

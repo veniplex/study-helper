@@ -5,7 +5,7 @@ import { and, eq, isNull } from "drizzle-orm"
 import { generateObject, generateText } from "ai"
 import { z } from "zod"
 import { db } from "@/db"
-import { studyEvent, thesisMilestone, thesisProject } from "@/db/schema"
+import { studyEvent, writingMilestone, writingProject } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { ownProgram } from "@/lib/studies/access"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
@@ -13,8 +13,8 @@ import { assertWithinLimit } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 
 async function ownThesis(thesisId: string, userId: string) {
-  const row = await db.query.thesisProject.findFirst({
-    where: and(eq(thesisProject.id, thesisId), eq(thesisProject.userId, userId)),
+  const row = await db.query.writingProject.findFirst({
+    where: and(eq(writingProject.id, thesisId), eq(writingProject.userId, userId)),
   })
   if (!row) throw new Error("Not found")
   return row
@@ -52,11 +52,11 @@ export async function createThesis(input: unknown) {
 
   // One active (non-superseded) thesis per program.
   if (data.programId) {
-    const existing = await db.query.thesisProject.findFirst({
+    const existing = await db.query.writingProject.findFirst({
       where: and(
-        eq(thesisProject.userId, session.user.id),
-        eq(thesisProject.programId, data.programId),
-        isNull(thesisProject.supersededById)
+        eq(writingProject.userId, session.user.id),
+        eq(writingProject.programId, data.programId),
+        isNull(writingProject.supersededById)
       ),
       columns: { id: true },
     })
@@ -66,7 +66,7 @@ export async function createThesis(input: unknown) {
   }
 
   const [created] = await db
-    .insert(thesisProject)
+    .insert(writingProject)
     .values({
       userId: session.user.id,
       title: data.title,
@@ -75,7 +75,7 @@ export async function createThesis(input: unknown) {
       semesterId: data.semesterId ?? null,
       programId: data.programId ?? null,
     })
-    .returning({ id: thesisProject.id })
+    .returning({ id: writingProject.id })
   revalidatePath("/thesis")
   return { ok: true as const, id: created.id }
 }
@@ -93,7 +93,7 @@ export async function retryThesis(thesisId: string) {
   }
 
   const [created] = await db
-    .insert(thesisProject)
+    .insert(writingProject)
     .values({
       userId: session.user.id,
       title: prev.title,
@@ -103,11 +103,11 @@ export async function retryThesis(thesisId: string) {
       attempt: prev.attempt + 1,
       phase: "topic",
     })
-    .returning({ id: thesisProject.id })
+    .returning({ id: writingProject.id })
   await db
-    .update(thesisProject)
+    .update(writingProject)
     .set({ supersededById: created.id })
-    .where(eq(thesisProject.id, thesisId))
+    .where(eq(writingProject.id, thesisId))
   revalidatePath("/thesis")
   return { ok: true as const, id: created.id }
 }
@@ -124,7 +124,7 @@ export async function updateThesis(thesisId: string, input: unknown) {
   await ownThesis(thesisId, session.user.id)
   const data = thesisUpdateSchema.parse(input)
   if (data.semesterId) await assertOwnSemester(data.semesterId, session.user.id)
-  await db.update(thesisProject).set(data).where(eq(thesisProject.id, thesisId))
+  await db.update(writingProject).set(data).where(eq(writingProject.id, thesisId))
   revalidatePath("/thesis")
   return { ok: true as const }
 }
@@ -132,7 +132,7 @@ export async function updateThesis(thesisId: string, input: unknown) {
 export async function deleteThesis(thesisId: string) {
   const session = await requireSession()
   await ownThesis(thesisId, session.user.id)
-  await db.delete(thesisProject).where(eq(thesisProject.id, thesisId))
+  await db.delete(writingProject).where(eq(writingProject.id, thesisId))
   revalidatePath("/thesis")
   return { ok: true as const }
 }
@@ -147,8 +147,8 @@ export async function addMilestone(thesisId: string, input: unknown) {
   const session = await requireSession()
   await ownThesis(thesisId, session.user.id)
   const data = milestoneSchema.parse(input)
-  await db.insert(thesisMilestone).values({
-    thesisId,
+  await db.insert(writingMilestone).values({
+    projectId: thesisId,
     title: data.title,
     description: data.description ?? null,
     dueDate: data.dueDate ?? null,
@@ -159,44 +159,44 @@ export async function addMilestone(thesisId: string, input: unknown) {
 
 export async function toggleMilestone(milestoneId: string, done: boolean) {
   const session = await requireSession()
-  const row = await db.query.thesisMilestone.findFirst({
-    where: eq(thesisMilestone.id, milestoneId),
-    with: { thesis: true },
+  const row = await db.query.writingMilestone.findFirst({
+    where: eq(writingMilestone.id, milestoneId),
+    with: { project: true },
   })
-  if (!row || row.thesis.userId !== session.user.id) throw new Error("Not found")
-  await db.update(thesisMilestone).set({ done }).where(eq(thesisMilestone.id, milestoneId))
+  if (!row || row.project.userId !== session.user.id) throw new Error("Not found")
+  await db.update(writingMilestone).set({ done }).where(eq(writingMilestone.id, milestoneId))
   revalidatePath("/thesis")
   return { ok: true as const }
 }
 
 export async function updateMilestone(milestoneId: string, input: unknown) {
   const session = await requireSession()
-  const row = await db.query.thesisMilestone.findFirst({
-    where: eq(thesisMilestone.id, milestoneId),
-    with: { thesis: true },
+  const row = await db.query.writingMilestone.findFirst({
+    where: eq(writingMilestone.id, milestoneId),
+    with: { project: true },
   })
-  if (!row || row.thesis.userId !== session.user.id) throw new Error("Not found")
+  if (!row || row.project.userId !== session.user.id) throw new Error("Not found")
   const data = milestoneSchema.parse(input)
   await db
-    .update(thesisMilestone)
+    .update(writingMilestone)
     .set({
       title: data.title,
       description: data.description ?? null,
       dueDate: data.dueDate ?? null,
     })
-    .where(eq(thesisMilestone.id, milestoneId))
+    .where(eq(writingMilestone.id, milestoneId))
   revalidatePath("/thesis")
   return { ok: true as const }
 }
 
 export async function deleteMilestone(milestoneId: string) {
   const session = await requireSession()
-  const row = await db.query.thesisMilestone.findFirst({
-    where: eq(thesisMilestone.id, milestoneId),
-    with: { thesis: true },
+  const row = await db.query.writingMilestone.findFirst({
+    where: eq(writingMilestone.id, milestoneId),
+    with: { project: true },
   })
-  if (!row || row.thesis.userId !== session.user.id) throw new Error("Not found")
-  await db.delete(thesisMilestone).where(eq(thesisMilestone.id, milestoneId))
+  if (!row || row.project.userId !== session.user.id) throw new Error("Not found")
+  await db.delete(writingMilestone).where(eq(writingMilestone.id, milestoneId))
   revalidatePath("/thesis")
   return { ok: true as const }
 }
@@ -255,7 +255,7 @@ Notes: ${thesis.notes ?? "-"}
 Write in the language of the title.`,
       })
   )
-  await db.update(thesisProject).set({ outline: text }).where(eq(thesisProject.id, thesisId))
+  await db.update(writingProject).set({ outline: text }).where(eq(writingProject.id, thesisId))
   revalidatePath("/thesis")
   return { ok: true as const }
 }
@@ -299,9 +299,9 @@ Cover: literature research, exposé, methodology, data/implementation (if applic
 
   const valid = object.milestones.filter((m) => /^\d{4}-\d{2}-\d{2}$/.test(m.dueDate))
   if (valid.length > 0) {
-    await db.insert(thesisMilestone).values(
+    await db.insert(writingMilestone).values(
       valid.map((m) => ({
-        thesisId,
+        projectId: thesisId,
         title: m.title,
         description: m.description,
         dueDate: m.dueDate,

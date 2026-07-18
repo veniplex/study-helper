@@ -65,9 +65,11 @@ export async function SemesterOverviewCard({
   const gradeLabel = new Map<string, string>()
   for (const m of allModules) {
     const final = finalGrades.get(m.id)
+    const gradeGoal = m.goals.find((g) => g.gradingRole === "grade") ?? m.goals[0]
+    const passFail = gradeGoal?.passFail ?? false
     const label = !final
       ? "–"
-      : m.passFail
+      : passFail
         ? final.passed == null
           ? "–"
           : final.passed

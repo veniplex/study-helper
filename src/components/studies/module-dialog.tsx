@@ -22,9 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { createModule, updateModule } from "@/app/[locale]/(app)/studies/actions"
-import type { AssessmentType, BonusType, ModuleStatus } from "@/db/schema/studies"
+import type { ModuleStatus } from "@/db/schema/studies"
 import {
   getModuleColorClasses,
   getModuleIcon,
@@ -32,29 +31,6 @@ import {
   MODULE_ICON_KEYS,
 } from "@/lib/module-visuals"
 import { cn } from "@/lib/utils"
-
-const ASSESSMENT_TYPES: AssessmentType[] = [
-  "exam",
-  "term_paper",
-  "oral_presentation",
-  "oral_exam",
-  "project",
-  "other",
-]
-const ASSESSMENT_LABEL_KEY: Record<AssessmentType, string> = {
-  exam: "assessmentExam",
-  term_paper: "assessmentTermPaper",
-  oral_presentation: "assessmentOralPresentation",
-  oral_exam: "assessmentOralExam",
-  project: "assessmentProject",
-  other: "assessmentOther",
-}
-const BONUS_TYPES: BonusType[] = ["none", "percent_points", "grade_steps"]
-const BONUS_LABEL_KEY: Record<BonusType, string> = {
-  none: "bonusNone",
-  percent_points: "bonusPercentPoints",
-  grade_steps: "bonusGradeSteps",
-}
 
 /** Renders a module icon from its stored key (stable, module-scope). */
 function IconGlyph({ iconKey, className }: { iconKey?: string | null; className?: string }) {
@@ -67,18 +43,9 @@ type ModuleData = {
   code: string | null
   ects: number | null
   instructor: string | null
-  examType: string | null
   status: ModuleStatus
-  isThesis?: boolean
   icon?: string | null
   color?: string | null
-  maxAttempts?: number
-  passFail?: boolean
-  bonusType?: BonusType
-  bonusValue?: string | number | null
-  bonusMinAvgPercent?: string | number | null
-  bonusMinCompletedShare?: string | number | null
-  assessmentType?: AssessmentType
 }
 
 export function ModuleDialog({
@@ -106,14 +73,8 @@ export function ModuleDialog({
   }
   const [pending, setPending] = React.useState(false)
   const [status, setStatus] = React.useState<ModuleStatus>(module?.status ?? "planned")
-  const [isThesis, setIsThesis] = React.useState(module?.isThesis ?? false)
   const [icon, setIcon] = React.useState<string | null>(module?.icon ?? null)
   const [color, setColor] = React.useState<string | null>(module?.color ?? null)
-  const [passFail, setPassFail] = React.useState(module?.passFail ?? false)
-  const [assessmentType, setAssessmentType] = React.useState<AssessmentType>(
-    module?.assessmentType ?? "exam"
-  )
-  const [bonusType, setBonusType] = React.useState<BonusType>(module?.bonusType ?? "none")
   const isEdit = Boolean(module?.id)
 
   const statusLabels: Record<ModuleStatus, string> = {
@@ -135,18 +96,9 @@ export function ModuleDialog({
       code: String(form.get("code") || "") || null,
       ects: numOrNull("ects"),
       instructor: String(form.get("instructor") || "") || null,
-      examType: String(form.get("examType") || "") || null,
       status,
-      isThesis,
       icon,
       color,
-      maxAttempts: Number(form.get("maxAttempts")) || 3,
-      passFail,
-      assessmentType,
-      bonusType,
-      bonusValue: bonusType === "none" ? null : numOrNull("bonusValue"),
-      bonusMinAvgPercent: bonusType === "none" ? null : numOrNull("bonusMinAvgPercent"),
-      bonusMinCompletedShare: bonusType === "none" ? null : numOrNull("bonusMinCompletedShare"),
     }
     setPending(true)
     try {
@@ -224,10 +176,6 @@ export function ModuleDialog({
               <Input id="m-instructor" name="instructor" defaultValue={module?.instructor ?? ""} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="m-exam">{t("module.examType")}</Label>
-              <Input id="m-exam" name="examType" defaultValue={module?.examType ?? ""} />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
               <Label>{t("module.status")}</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as ModuleStatus)}>
                 <SelectTrigger className="w-full">
@@ -282,129 +230,6 @@ export function ModuleDialog({
                 />
               ))}
             </div>
-          </div>
-
-          {/* Grading: assessment, attempts, pass/fail */}
-          <div className="space-y-3 border-t pt-4">
-            <Label className="text-sm font-semibold">{tDialog("grading")}</Label>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="m-assessment">{tDialog("assessmentType")}</Label>
-                <Select
-                  value={assessmentType}
-                  onValueChange={(v) => setAssessmentType(v as AssessmentType)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue>{tDialog(ASSESSMENT_LABEL_KEY[assessmentType])}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ASSESSMENT_TYPES.map((key) => (
-                      <SelectItem key={key} value={key}>
-                        {tDialog(ASSESSMENT_LABEL_KEY[key])}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="m-attempts">{tDialog("maxAttempts")}</Label>
-                <Input
-                  id="m-attempts"
-                  name="maxAttempts"
-                  type="number"
-                  min={1}
-                  max={10}
-                  defaultValue={module?.maxAttempts ?? 3}
-                />
-              </div>
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <Switch checked={passFail} onCheckedChange={setPassFail} />
-              {tDialog("passFail")}
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Switch
-                checked={isThesis}
-                onCheckedChange={(on) => {
-                  setIsThesis(on)
-                  // Convenience: a fresh thesis is a written paper, not an exam.
-                  if (on && assessmentType === "exam") setAssessmentType("term_paper")
-                }}
-              />
-              {tDialog("isThesis")}
-            </label>
-          </div>
-
-          {/* Bonus */}
-          <div className="space-y-3 border-t pt-4">
-            <Label className="text-sm font-semibold">{tDialog("bonus")}</Label>
-            <div className="space-y-1.5">
-              <Label>{tDialog("bonusType")}</Label>
-              <Select value={bonusType} onValueChange={(v) => setBonusType(v as BonusType)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue>{tDialog(BONUS_LABEL_KEY[bonusType])}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {BONUS_TYPES.map((key) => (
-                    <SelectItem key={key} value={key}>
-                      {tDialog(BONUS_LABEL_KEY[key])}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {bonusType !== "none" && (
-              <>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="m-bonus-value">{tDialog("bonusValue")}</Label>
-                    <Input
-                      id="m-bonus-value"
-                      name="bonusValue"
-                      type="number"
-                      step="0.1"
-                      min={0}
-                      placeholder={
-                        bonusType === "percent_points"
-                          ? tDialog("bonusValueHintPercent")
-                          : tDialog("bonusValueHintSteps")
-                      }
-                      defaultValue={module?.bonusValue != null ? String(module.bonusValue) : ""}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="m-bonus-avg">{tDialog("bonusMinAvg")}</Label>
-                    <Input
-                      id="m-bonus-avg"
-                      name="bonusMinAvgPercent"
-                      type="number"
-                      min={0}
-                      max={100}
-                      defaultValue={
-                        module?.bonusMinAvgPercent != null ? String(module.bonusMinAvgPercent) : ""
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="m-bonus-share">{tDialog("bonusMinShare")}</Label>
-                    <Input
-                      id="m-bonus-share"
-                      name="bonusMinCompletedShare"
-                      type="number"
-                      step="0.1"
-                      min={0}
-                      max={1}
-                      defaultValue={
-                        module?.bonusMinCompletedShare != null
-                          ? String(module.bonusMinCompletedShare)
-                          : ""
-                      }
-                    />
-                  </div>
-                </div>
-                <p className="text-muted-foreground text-xs">{tDialog("bonusHint")}</p>
-              </>
-            )}
           </div>
 
           <div className="flex justify-end gap-2">

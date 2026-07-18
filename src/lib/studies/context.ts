@@ -1,7 +1,17 @@
 import "server-only"
-import { asc, eq, sql } from "drizzle-orm"
+import { and, asc, eq, sql } from "drizzle-orm"
 import { db } from "@/db"
-import { degreeProgram, thesisProject, userPrefs } from "@/db/schema"
+import { degreeProgram, userPrefs, writingProject } from "@/db/schema"
+import type { GoalGradingRole, GoalType } from "@/db/schema/studies"
+import { hasGoal } from "@/lib/studies/goals"
+
+export type SemesterModuleGoal = {
+  type: GoalType
+  title: string | null
+  gradingRole: GoalGradingRole
+  passFail: boolean
+  dueDate: string | null
+}
 
 export type SemesterModule = {
   id: string
@@ -9,19 +19,16 @@ export type SemesterModule = {
   code: string | null
   ects: number | null
   instructor: string | null
-  examType: string | null
   status: "planned" | "active" | "passed" | "failed"
-  isThesis: boolean
   notes: string | null
   icon: string | null
   color: string | null
-  maxAttempts: number
-  passFail: boolean
-  bonusType: "none" | "percent_points" | "grade_steps"
-  bonusValue: string | null
-  bonusMinAvgPercent: string | null
-  bonusMinCompletedShare: string | null
-  assessmentType: "exam" | "term_paper" | "oral_presentation" | "oral_exam" | "project" | "other"
+  /** The module's learning goals (drives workspace + thesis derivation). */
+  goals: SemesterModuleGoal[]
+  /** Derived label for compact lists: the primary grade goal's title. */
+  examType: string | null
+  /** Derived: the module carries a `thesis` goal (special module). */
+  isThesis: boolean
 }
 
 export type SemesterNode = {
@@ -80,27 +87,30 @@ export async function getStudyContext(userId: string): Promise<StudyContext> {
                 code: true,
                 ects: true,
                 instructor: true,
-                examType: true,
                 status: true,
-                isThesis: true,
                 notes: true,
                 icon: true,
                 color: true,
-                maxAttempts: true,
-                passFail: true,
-                bonusType: true,
-                bonusValue: true,
-                bonusMinAvgPercent: true,
-                bonusMinCompletedShare: true,
               },
-              with: { assessment: { columns: { type: true } } },
+              with: {
+                goals: {
+                  orderBy: (g) => [asc(g.sortOrder), asc(g.createdAt)],
+                  columns: {
+                    type: true,
+                    title: true,
+                    gradingRole: true,
+                    passFail: true,
+                    dueDate: true,
+                  },
+                },
+              },
             },
           },
         },
       },
     }),
-    db.query.thesisProject.findMany({
-      where: eq(thesisProject.userId, userId),
+    db.query.writingProject.findMany({
+      where: and(eq(writingProject.userId, userId), eq(writingProject.kind, "thesis")),
       columns: { id: true, title: true, semesterId: true },
     }),
   ])
@@ -136,26 +146,23 @@ export async function getStudyContext(userId: string): Promise<StudyContext> {
       name: s.name,
       startDate: s.startDate,
       endDate: s.endDate,
-      modules: s.modules.map((m) => ({
-        id: m.id,
-        name: m.name,
-        code: m.code,
-        ects: m.ects,
-        instructor: m.instructor,
-        examType: m.examType,
-        status: m.status,
-        isThesis: m.isThesis,
-        notes: m.notes,
-        icon: m.icon,
-        color: m.color,
-        maxAttempts: m.maxAttempts,
-        passFail: m.passFail,
-        bonusType: m.bonusType,
-        bonusValue: m.bonusValue,
-        bonusMinAvgPercent: m.bonusMinAvgPercent,
-        bonusMinCompletedShare: m.bonusMinCompletedShare,
-        assessmentType: m.assessment?.type ?? "exam",
-      })),
+      modules: s.modules.map((m) => {
+        const gradeGoal = m.goals.find((g) => g.gradingRole === "grade") ?? m.goals[0] ?? null
+        return {
+          id: m.id,
+          name: m.name,
+          code: m.code,
+          ects: m.ects,
+          instructor: m.instructor,
+          status: m.status,
+          notes: m.notes,
+          icon: m.icon,
+          color: m.color,
+          goals: m.goals,
+          examType: gradeGoal?.title ?? null,
+          isThesis: hasGoal(m.goals, "thesis"),
+        }
+      }),
       theses: theses
         .filter((t) => t.semesterId === s.id)
         .map((t) => ({ id: t.id, title: t.title })),

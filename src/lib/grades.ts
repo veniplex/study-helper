@@ -92,11 +92,12 @@ export function percentToGrade(scale: GradeScaleRow[] | null, percent: number): 
   return FAIL_GRADE
 }
 
-export type BonusModule = {
-  bonusType: BonusType
-  bonusValue: string | number | null
-  bonusMinAvgPercent: string | number | null
-  bonusMinCompletedShare: string | number | null
+/** The bonus a module's bonus-goal grants, read from its `config.bonus`. */
+export type BonusConfig = {
+  type: BonusType
+  value?: number | null
+  minAvgPercent?: number | null
+  minCompletedShare?: number | null
 }
 
 export type BonusAssignment = {
@@ -121,7 +122,7 @@ const num = (v: string | number | null | undefined): number | null =>
 
 /** Computes the bonus a module's completed graded assignments earn. */
 export function effectiveBonus(
-  module: BonusModule,
+  bonus: BonusConfig | null | undefined,
   assignments: BonusAssignment[]
 ): BonusResult {
   const graded = assignments.filter((a) => a.kind === "graded")
@@ -131,17 +132,18 @@ export function effectiveBonus(
     : 0
   const completedShare = graded.length ? completed.length / graded.length : 0
 
-  const minAvg = num(module.bonusMinAvgPercent)
-  const minShare = num(module.bonusMinCompletedShare)
-  const value = num(module.bonusValue) ?? 0
+  const type = bonus?.type ?? "none"
+  const minAvg = bonus?.minAvgPercent ?? null
+  const minShare = bonus?.minCompletedShare ?? null
+  const value = bonus?.value ?? 0
   const conditionMet =
-    module.bonusType !== "none" &&
+    type !== "none" &&
     (minAvg == null || avgPercent >= minAvg) &&
     (minShare == null || completedShare >= minShare)
 
   return {
-    percentPoints: conditionMet && module.bonusType === "percent_points" ? value : 0,
-    gradeSteps: conditionMet && module.bonusType === "grade_steps" ? value : 0,
+    percentPoints: conditionMet && type === "percent_points" ? value : 0,
+    gradeSteps: conditionMet && type === "grade_steps" ? value : 0,
     conditionMet,
     avgPercent,
     completedShare,
@@ -156,9 +158,18 @@ export type FinalGradeAttempt = {
   passed: boolean | null
 }
 
-export type FinalGradeInput = {
-  module: { passFail: boolean } & BonusModule
+/** One `grade`-role goal of a module: its weight, pass/fail flag and attempts. */
+export type GradeGoalInput = {
+  weight: number
+  passFail: boolean
   attempts: FinalGradeAttempt[]
+}
+
+export type FinalGradeInput = {
+  /** The module's `grade`-role goals (weighted average). */
+  gradeGoals: GradeGoalInput[]
+  /** The bonus goal's config, if any (reported, never shifts the grade). */
+  bonus?: BonusConfig | null
   assignments: BonusAssignment[]
   scale: GradeScaleRow[] | null
   legacyGrades?: ModuleForStats["grades"]
@@ -173,58 +184,80 @@ export type FinalGrade = {
   bonus: BonusResult | null
 }
 
+type GoalResult = {
+  grade: number | null
+  percent: number | null
+  passed: boolean | null
+  attempt: number | null
+  weight: number
+}
+
+/** One grade goal's result from its latest attempt (same math as a single
+ * assessment historically: latest attempt → percent → grade scale). */
+function gradeGoalResult(goal: GradeGoalInput, scale: GradeScaleRow[] | null): GoalResult | null {
+  if (goal.attempts.length === 0) return null
+  const latest = goal.attempts.reduce((a, b) => (b.attempt >= a.attempt ? b : a))
+  const percent = num(latest.resultPercent)
+
+  if (goal.passFail) {
+    return { grade: null, percent, passed: latest.passed, attempt: latest.attempt, weight: goal.weight }
+  }
+  if (percent != null) {
+    const grade = percentToGrade(scale, percent)
+    return { grade, percent, passed: grade <= PASS_THRESHOLD, attempt: latest.attempt, weight: goal.weight }
+  }
+  // Attempt exists but no percentage recorded yet.
+  return { grade: null, percent: null, passed: latest.passed, attempt: latest.attempt, weight: goal.weight }
+}
+
+/** Combines the per-goal passed flags: all-passed → true, any-failed → false. */
+function aggregatePassed(results: GoalResult[]): boolean | null {
+  if (results.length === 0) return null
+  if (results.some((r) => r.passed === false)) return false
+  if (results.every((r) => r.passed === true)) return true
+  return null
+}
+
 /**
- * Computes a module's final grade from its latest assessment attempt (achieved
- * percentage → grade scale), falling back to legacy free-form grades when no
- * attempt exists. The assignment bonus is computed and returned for display but
- * does not alter the final grade. Pass/fail modules yield only a passed flag.
+ * Computes a module's final grade as the weighted average over its `grade`-role
+ * goals (each goal's result from its latest attempt's percentage → grade
+ * scale), falling back to legacy free-form grades when no goal has an attempt.
+ * The assignment bonus is computed and returned for display but never shifts
+ * the grade. A module with a single grade goal behaves exactly as a single
+ * assessment did historically. Pass/fail goals yield only a passed flag.
  */
 export function moduleFinalGrade(input: FinalGradeInput): FinalGrade {
-  const { module, attempts, assignments, scale, legacyGrades } = input
+  const { gradeGoals, bonus, assignments, scale, legacyGrades } = input
 
-  if (attempts.length > 0) {
-    const latest = attempts.reduce((a, b) => (b.attempt >= a.attempt ? b : a))
-    const bonus = effectiveBonus(module, assignments)
+  const results = gradeGoals
+    .map((g) => gradeGoalResult(g, scale))
+    .filter((r): r is GoalResult => r !== null)
 
-    if (module.passFail) {
-      return {
-        grade: null,
-        percent: num(latest.resultPercent),
-        passed: latest.passed,
-        attempt: latest.attempt,
-        source: "assessment",
-        bonus,
-      }
-    }
+  if (results.length > 0) {
+    const bonusResult = effectiveBonus(bonus, assignments)
 
-    const basePercent = num(latest.resultPercent)
-    if (basePercent != null) {
-      // The final grade is derived purely from the achieved percentage via the
-      // grade scale. A configured assignment bonus is reported for information
-      // only (see `bonus` below) and never shifts the final grade.
-      const grade = percentToGrade(scale, basePercent)
-      return {
-        grade,
-        percent: basePercent,
-        passed: grade <= PASS_THRESHOLD,
-        attempt: latest.attempt,
-        source: "assessment",
-        bonus,
-      }
-    }
+    const numeric = results.filter((r) => r.grade != null)
+    const totalWeight = numeric.reduce((s, r) => s + r.weight, 0)
+    const grade =
+      numeric.length > 0 && totalWeight > 0
+        ? numeric.reduce((s, r) => s + (r.grade as number) * r.weight, 0) / totalWeight
+        : null
 
-    // Attempt exists but no percentage recorded yet.
+    // percent/attempt are only meaningful for a single-goal module; multi-goal
+    // modules report them as null (the per-goal detail lives on the goals).
+    const single = results.length === 1 ? results[0] : null
+
     return {
-      grade: null,
-      percent: null,
-      passed: latest.passed,
-      attempt: latest.attempt,
+      grade,
+      percent: single ? single.percent : null,
+      passed: aggregatePassed(results),
+      attempt: single ? single.attempt : null,
       source: "assessment",
-      bonus,
+      bonus: bonusResult,
     }
   }
 
-  // Legacy fallback: pre-Runde-8 free-form grade rows.
+  // Legacy fallback: pre-goal free-form grade rows.
   if (legacyGrades && legacyGrades.length > 0) {
     const grade = moduleGrade(legacyGrades)
     return {
