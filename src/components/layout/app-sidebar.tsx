@@ -142,7 +142,7 @@ function SidebarModule({
                 <button
                   type="button"
                   className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
-                  aria-label={mod.name}
+                  aria-label={`${tCommon("moreOptions")}: ${mod.name}`}
                 />
               }
             >
@@ -163,7 +163,7 @@ function SidebarModule({
             type="button"
             onClick={onToggle}
             className="text-muted-foreground hover:text-foreground mr-1 rounded p-1"
-            aria-label={mod.name}
+            aria-label={`${tCommon("toggleExpand")}: ${mod.name}`}
             aria-expanded={open}
           >
             <ChevronRight className={cn("size-4 transition-transform", open && "rotate-90")} />
@@ -303,7 +303,7 @@ function SidebarSemester({
                 <button
                   type="button"
                   className="text-muted-foreground hover:text-foreground mr-1 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
-                  aria-label={semester.name}
+                  aria-label={`${tCommon("moreOptions")}: ${semester.name}`}
                 />
               }
             >

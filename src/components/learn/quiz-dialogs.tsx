@@ -216,7 +216,7 @@ export function GenerateQuizDialog({
     try {
       if (complete) {
         const targetModule = moduleId || fixedModuleId
-        if (!targetModule) throw new Error(tLearn("module"))
+        if (!targetModule) throw new Error(tLearn("selectModuleFirst"))
         const res = await startCompleteQuiz({
           moduleId: targetModule,
           title: String(form.get("title") || "").trim() || "Quiz",

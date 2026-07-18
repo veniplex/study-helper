@@ -107,17 +107,21 @@ export function CalendarView({
   const [hidden, setHidden] = React.useState<Set<CategoryKey>>(new Set())
   const [ctxMenu, setCtxMenu] = React.useState<{ id: string; x: number; y: number } | null>(null)
 
-  // Close the right-click menu on any outside interaction.
+  // Close the right-click menu on outside interaction or Escape. Other keys
+  // (Tab/Enter/arrows) must keep working so the menu is keyboard-operable.
   React.useEffect(() => {
     if (!ctxMenu) return
     const close = () => setCtxMenu(null)
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close()
+    }
     window.addEventListener("click", close)
     window.addEventListener("scroll", close, true)
-    window.addEventListener("keydown", close)
+    window.addEventListener("keydown", onKeyDown)
     return () => {
       window.removeEventListener("click", close)
       window.removeEventListener("scroll", close, true)
-      window.removeEventListener("keydown", close)
+      window.removeEventListener("keydown", onKeyDown)
     }
   }, [ctxMenu])
 
@@ -379,13 +383,20 @@ export function CalendarView({
         />
         {ctxMenu && (
           <div
+            role="menu"
             className="bg-popover text-popover-foreground fixed z-50 min-w-40 rounded-lg border p-1 shadow-md ring-1 ring-foreground/10"
-            style={{ top: ctxMenu.y, left: ctxMenu.x }}
+            style={{
+              // Clamp so the menu stays inside the viewport near the edges.
+              top: Math.min(ctxMenu.y, (typeof window !== "undefined" ? window.innerHeight : 0) - 96),
+              left: Math.min(ctxMenu.x, (typeof window !== "undefined" ? window.innerWidth : 0) - 176),
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
-              className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+              role="menuitem"
+              autoFocus
+              className="hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-none"
               onClick={() => {
                 editById(ctxMenu.id)
                 setCtxMenu(null)
@@ -396,7 +407,8 @@ export function CalendarView({
             </button>
             <button
               type="button"
-              className="text-destructive hover:bg-destructive/10 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+              role="menuitem"
+              className="text-destructive hover:bg-destructive/10 focus-visible:bg-destructive/10 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-none"
               onClick={() => {
                 void deleteById(ctxMenu.id)
                 setCtxMenu(null)

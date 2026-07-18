@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useTranslations } from "next-intl"
 
 const MIN = 200
 const MAX = 400
@@ -11,6 +12,7 @@ const MAX = 400
  * server layout can render it without a flash on the next load.
  */
 export function SidebarResizeHandle() {
+  const t = useTranslations("common")
   const dragging = React.useRef(false)
 
   React.useEffect(() => {
@@ -41,7 +43,7 @@ export function SidebarResizeHandle() {
     <div
       role="separator"
       aria-orientation="vertical"
-      aria-label="Resize sidebar"
+      aria-label={t("resizeSidebar")}
       onPointerDown={() => {
         dragging.current = true
         document.body.style.userSelect = "none"

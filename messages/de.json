@@ -36,7 +36,11 @@
     "back": "Zurück",
     "aiGenerated": "KI",
     "aiGeneratedHint": "Von der KI erstellt",
-    "comingSoon": "Bald verfügbar"
+    "comingSoon": "Bald verfügbar",
+    "moreOptions": "Weitere Optionen",
+    "toggleExpand": "Auf- oder zuklappen",
+    "dragHandle": "Verschieben",
+    "resizeSidebar": "Seitenleistenbreite ändern"
   },
   "commandPalette": {
     "placeholder": "Suche oder Befehl eingeben …",
@@ -55,7 +59,10 @@
       "register": "Registrieren",
       "orContinueWith": "oder weiter mit",
       "passkey": "Mit Passkey anmelden",
-      "error": "Anmeldung fehlgeschlagen. Prüfe E-Mail und Passwort."
+      "error": "Anmeldung fehlgeschlagen. Prüfe E-Mail und Passwort.",
+      "errorUnverified": "Deine E-Mail-Adresse ist noch nicht bestätigt. Prüfe dein Postfach.",
+      "errorRateLimit": "Zu viele Versuche. Bitte warte kurz und versuche es erneut.",
+      "errorPasskey": "Passkey-Anmeldung fehlgeschlagen."
     },
     "register": {
       "title": "Registrieren",
@@ -1037,7 +1044,8 @@
       "completed": "Fertig — {count} Elemente, {total} Themen abgedeckt.",
       "failed": "Fehlgeschlagen: {error}",
       "close": "Schließen"
-    }
+    },
+    "selectModuleFirst": "Bitte wähle zuerst ein Modul aus."
   },
   "thesis": {
     "title": "Abschlussarbeit",
@@ -1083,7 +1091,8 @@
     "previousAttempts": "Frühere Versuche ({count})",
     "noProgram": "Lege zuerst einen Studiengang an, um eine Abschlussarbeit zu planen.",
     "attemptOf": "Versuch {n} von {max}",
-    "editMilestone": "Meilenstein bearbeiten"
+    "editMilestone": "Meilenstein bearbeiten",
+    "typePlaceholder": "Bachelorarbeit"
   },
   "onboarding": {
     "title": "Erste Schritte",
