@@ -40,6 +40,15 @@ export type PlanAvailability = {
 
 export type SemesterPlanItemKind = "study" | "review" | "assignment"
 
+/**
+ * Scheduler tuning for a semester plan. Missing/null is treated as
+ * `{ maxSessionsPerDay: 2, sessionMinutes: { min: 45, max: 180 } }`.
+ */
+export type SemesterPlanConfig = {
+  maxSessionsPerDay?: number
+  sessionMinutes?: { min: number; max: number }
+}
+
 /** One AI-generated study plan per semester, based on the user's availability,
  * exam dates and assignment deadlines. */
 export const semesterPlan = pgTable(
@@ -56,6 +65,8 @@ export const semesterPlan = pgTable(
       .unique()
       .references(() => semester.id, { onDelete: "cascade" }),
     availability: jsonb("availability").$type<PlanAvailability>().notNull(),
+    /** Scheduler tuning; null → default (2 sessions/day, 45–180 min). */
+    config: jsonb("config").$type<SemesterPlanConfig>(),
     generatedAt: timestamp("generated_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
