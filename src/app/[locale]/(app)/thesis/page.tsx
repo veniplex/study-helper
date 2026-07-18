@@ -8,7 +8,10 @@ import { listAvailableModels } from "@/lib/ai/registry"
 import { getStudyContext } from "@/lib/studies/context"
 import { BrainstormDialog, ThesisCreateDialog } from "@/components/thesis/thesis-create"
 import { RetryThesisButton } from "@/components/thesis/retry-thesis-button"
-import { ThesisWorkspace, type ThesisData } from "@/components/thesis/thesis-workspace"
+import {
+  WritingWorkspace,
+  type WritingProjectData,
+} from "@/components/writing/writing-workspace"
 
 export default async function ThesisPage() {
   const session = await requireSession()
@@ -75,9 +78,12 @@ export default async function ThesisPage() {
             </span>
             {current.attempt < maxAttempts && <RetryThesisButton thesisId={current.id} />}
           </div>
-          <ThesisWorkspace
-            thesis={current as ThesisData}
+          <WritingWorkspace
+            project={current as WritingProjectData}
+            variant="scientific"
+            kind="thesis"
             aiAvailable={aiAvailable}
+            basePath="/thesis"
             semesters={semesters}
           />
 
@@ -92,9 +98,12 @@ export default async function ThesisPage() {
                     <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
                       {t("attempt", { n: p.attempt })}
                     </span>
-                    <ThesisWorkspace
-                      thesis={p as ThesisData}
+                    <WritingWorkspace
+                      project={p as WritingProjectData}
+                      variant="scientific"
+                      kind="thesis"
                       aiAvailable={aiAvailable}
+                      basePath="/thesis"
                       semesters={semesters}
                     />
                   </div>

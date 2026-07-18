@@ -6,10 +6,10 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
 import {
-  deleteMilestone,
-  toggleMilestone,
-  updateMilestone,
-} from "@/app/[locale]/(app)/thesis/actions"
+  deleteWritingMilestone,
+  toggleWritingMilestone,
+  updateWritingMilestone,
+} from "@/app/[locale]/(app)/studies/writing-actions"
 import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 import { EntityContextMenu, type ContextMenuAction } from "@/components/entity-context-menu"
 import { Button } from "@/components/ui/button"
@@ -24,12 +24,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
-export function ThesisMilestoneRow({
+export function WritingMilestoneRow({
   milestone,
 }: {
   milestone: { id: string; title: string; dueDate: string | null; done: boolean }
 }) {
-  const t = useTranslations("thesis")
+  const t = useTranslations("writing")
   const tCommon = useTranslations("common")
   const router = useRouter()
   const [editOpen, setEditOpen] = React.useState(false)
@@ -38,7 +38,7 @@ export function ThesisMilestoneRow({
 
   async function onToggle() {
     try {
-      await toggleMilestone(milestone.id, !milestone.done)
+      await toggleWritingMilestone(milestone.id, !milestone.done)
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
@@ -50,7 +50,7 @@ export function ThesisMilestoneRow({
     const form = new FormData(e.currentTarget)
     setPending(true)
     try {
-      await updateMilestone(milestone.id, {
+      await updateWritingMilestone(milestone.id, {
         title: String(form.get("title")),
         dueDate: String(form.get("dueDate") || "") || null,
       })
@@ -146,7 +146,7 @@ export function ThesisMilestoneRow({
         onOpenChange={setDeleteOpen}
         label={milestone.title}
         onConfirm={async () => {
-          await deleteMilestone(milestone.id)
+          await deleteWritingMilestone(milestone.id)
           router.refresh()
         }}
       />
