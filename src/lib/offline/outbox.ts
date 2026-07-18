@@ -31,11 +31,19 @@ export async function pendingCount(): Promise<number> {
   return db.outbox.count()
 }
 
-/** True for errors that indicate the network is unavailable. */
+/**
+ * True for errors that indicate the network is unavailable. Deliberately
+ * narrow: only fetch-shaped failures (or an offline browser) count. Treating
+ * every TypeError as "offline" would silently queue genuine client bugs into
+ * the outbox instead of surfacing them.
+ */
 export function isNetworkError(error: unknown): boolean {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return true
   return (
-    error instanceof TypeError ||
-    (error instanceof Error && /fetch failed|network|Failed to fetch/i.test(error.message))
+    error instanceof Error &&
+    /fetch failed|networkerror|network request failed|load failed|failed to fetch/i.test(
+      error.message
+    )
   )
 }
 

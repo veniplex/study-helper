@@ -105,6 +105,8 @@ async function runTool(
       const input = writeToolSchemas.createCalendarEvent.parse(rawInput)
       const startsAt = new Date(input.startsAt)
       if (Number.isNaN(startsAt.getTime())) throw new Error("Invalid startsAt")
+      const endsAt = input.endsAt ? new Date(input.endsAt) : null
+      if (endsAt && Number.isNaN(endsAt.getTime())) throw new Error("Invalid endsAt")
       const mod = await resolveModule(input.moduleId, userId)
       const [created] = await db
         .insert(studyEvent)
@@ -113,7 +115,7 @@ async function runTool(
           title: input.title,
           type: input.type,
           startsAt,
-          endsAt: input.endsAt ? new Date(input.endsAt) : null,
+          endsAt,
           location: input.location ?? null,
           notes: input.notes ?? null,
           moduleId: mod?.id ?? null,

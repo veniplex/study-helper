@@ -36,7 +36,11 @@
     "back": "Back",
     "aiGenerated": "AI",
     "aiGeneratedHint": "Created by AI",
-    "comingSoon": "Coming soon"
+    "comingSoon": "Coming soon",
+    "moreOptions": "More options",
+    "toggleExpand": "Expand or collapse",
+    "dragHandle": "Move",
+    "resizeSidebar": "Resize sidebar"
   },
   "commandPalette": {
     "placeholder": "Type a search or command …",
@@ -55,7 +59,10 @@
       "register": "Sign up",
       "orContinueWith": "or continue with",
       "passkey": "Sign in with passkey",
-      "error": "Sign-in failed. Check your email and password."
+      "error": "Sign-in failed. Check your email and password.",
+      "errorUnverified": "Your email address is not verified yet. Check your inbox.",
+      "errorRateLimit": "Too many attempts. Please wait a moment and try again.",
+      "errorPasskey": "Passkey sign-in failed."
     },
     "register": {
       "title": "Sign up",
@@ -338,7 +345,9 @@
       "pushEnabled": "Push enabled.",
       "pushDisabled": "Push disabled.",
       "unsupported": "This browser does not support push notifications.",
-      "denied": "Notifications are blocked in the browser."
+      "denied": "Notifications are blocked in the browser.",
+      "swUnavailable": "The background service for push is unavailable. Reload the page and try again.",
+      "saveFailed": "The setting could not be saved."
     },
     "usage": {
       "title": "Your token usage (30 days)",
@@ -867,7 +876,9 @@
       "generateQuiz": "Generate quiz",
       "ragHint": "The chat knows your uploaded materials and uses them in its answers.",
       "history": "History"
-    }
+    },
+    "errorGeneric": "The request failed. Please try again.",
+    "errorLimit": "Your monthly AI quota is used up."
   },
   "learn": {
     "title": "Learn",
@@ -1033,7 +1044,8 @@
       "completed": "Done — {count} items, {total} topics covered.",
       "failed": "Failed: {error}",
       "close": "Close"
-    }
+    },
+    "selectModuleFirst": "Please select a module first."
   },
   "thesis": {
     "title": "Thesis",
@@ -1079,7 +1091,8 @@
     "previousAttempts": "Previous attempts ({count})",
     "noProgram": "Create a degree program first to plan a thesis.",
     "attemptOf": "Attempt {n} of {max}",
-    "editMilestone": "Edit milestone"
+    "editMilestone": "Edit milestone",
+    "typePlaceholder": "Bachelor's thesis"
   },
   "onboarding": {
     "title": "Get started",

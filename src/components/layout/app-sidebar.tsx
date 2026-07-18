@@ -2,16 +2,10 @@
 
 import * as React from "react"
 import {
-  BrainCircuit,
   CalendarClock,
   ChevronRight,
-  ClipboardCheck,
-  FileText,
   GraduationCap,
-  Layers,
-  LayoutList,
   LogOut,
-  MessageSquare,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -19,11 +13,11 @@ import {
   Settings,
   Shield,
   Trash2,
-  type LucideIcon,
 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Link, usePathname, useRouter } from "@/i18n/navigation"
 import { navItems } from "@/config/nav"
+import { visibleModuleTabs } from "@/config/module-tabs"
 import { deleteModule, deleteSemester } from "@/app/[locale]/(app)/studies/actions"
 import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 import { EntityContextMenu } from "@/components/entity-context-menu"
@@ -50,15 +44,6 @@ import { cn } from "@/lib/utils"
 function ModuleGlyph({ iconKey, className }: { iconKey?: string | null; className?: string }) {
   return React.createElement(getModuleIcon(iconKey), { className })
 }
-
-const moduleTabs: { key: string; segment: string; icon: LucideIcon }[] = [
-  { key: "overview", segment: "", icon: LayoutList },
-  { key: "materials", segment: "/materials", icon: FileText },
-  { key: "assignments", segment: "/assignments", icon: ClipboardCheck },
-  { key: "decks", segment: "/decks", icon: Layers },
-  { key: "quizzes", segment: "/quizzes", icon: BrainCircuit },
-  { key: "chat", segment: "/chat", icon: MessageSquare },
-]
 
 const itemClass = (active: boolean) =>
   cn(
@@ -142,7 +127,7 @@ function SidebarModule({
                 <button
                   type="button"
                   className="text-muted-foreground hover:text-foreground rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
-                  aria-label={mod.name}
+                  aria-label={`${tCommon("moreOptions")}: ${mod.name}`}
                 />
               }
             >
@@ -163,7 +148,7 @@ function SidebarModule({
             type="button"
             onClick={onToggle}
             className="text-muted-foreground hover:text-foreground mr-1 rounded p-1"
-            aria-label={mod.name}
+            aria-label={`${tCommon("toggleExpand")}: ${mod.name}`}
             aria-expanded={open}
           >
             <ChevronRight className={cn("size-4 transition-transform", open && "rotate-90")} />
@@ -172,8 +157,7 @@ function SidebarModule({
       </EntityContextMenu>
       {open && (
         <div className="mt-0.5 mb-1 ml-4 space-y-0.5 border-l pl-2">
-          {moduleTabs
-            .filter((tab) => aiAvailable || tab.key !== "chat")
+          {visibleModuleTabs(aiAvailable)
             .map((tab) => {
               const tabHref = `${href}${tab.segment}`
               const active = tab.segment === "" ? pathname === href : pathname.startsWith(tabHref)
@@ -303,7 +287,7 @@ function SidebarSemester({
                 <button
                   type="button"
                   className="text-muted-foreground hover:text-foreground mr-1 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 data-popup-open:opacity-100"
-                  aria-label={semester.name}
+                  aria-label={`${tCommon("moreOptions")}: ${semester.name}`}
                 />
               }
             >

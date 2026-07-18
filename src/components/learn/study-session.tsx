@@ -81,7 +81,11 @@ export function StudySession({
       moduleId: moduleId ?? null,
       durationMinutes: minutes,
       kind: "cards",
-    }).catch(() => {})
+    }).catch((error: unknown) => {
+      // Non-blocking background logging, but never fully silent — a persistent
+      // failure here quietly under-counts the study statistics.
+      console.error("[study-session] failed to log session", error)
+    })
   }, [current, reviewed, moduleId, startedAt])
 
   async function rate(rating: ReviewRating) {

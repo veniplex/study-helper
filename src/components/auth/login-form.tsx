@@ -34,7 +34,15 @@ export function LoginForm({ sso }: { sso: SsoOptions }) {
     })
     setPending(false)
     if (error) {
-      toast.error(t("error"))
+      // Differentiate the actionable causes; anything else stays generic so
+      // credentials-vs-account-existence is not leaked.
+      if (error.status === 403 && error.code === "EMAIL_NOT_VERIFIED") {
+        toast.error(t("errorUnverified"))
+      } else if (error.status === 429) {
+        toast.error(t("errorRateLimit"))
+      } else {
+        toast.error(t("error"))
+      }
       return
     }
     if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
@@ -48,7 +56,7 @@ export function LoginForm({ sso }: { sso: SsoOptions }) {
   async function onPasskey() {
     const result = await authClient.signIn.passkey()
     if (result?.error) {
-      toast.error(result.error.message)
+      toast.error(t("errorPasskey"))
       return
     }
     router.push("/")

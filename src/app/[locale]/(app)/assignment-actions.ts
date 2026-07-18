@@ -35,12 +35,21 @@ async function ownAssignment(assignmentId: string, userId: string) {
   return row
 }
 
-async function setMaterials(assignmentId: string, moduleId: string, materialIds: string[]) {
+async function setMaterials(
+  assignmentId: string,
+  moduleId: string,
+  userId: string,
+  materialIds: string[]
+) {
   await db.delete(assignmentMaterial).where(eq(assignmentMaterial.assignmentId, assignmentId))
   if (materialIds.length === 0) return
-  // Only materials of the same module can be linked
+  // Only the user's own materials of the same module can be linked
   const valid = await db.query.material.findMany({
-    where: and(inArray(material.id, materialIds), eq(material.moduleId, moduleId)),
+    where: and(
+      inArray(material.id, materialIds),
+      eq(material.moduleId, moduleId),
+      eq(material.userId, userId)
+    ),
     columns: { id: true },
   })
   if (valid.length > 0) {
@@ -69,7 +78,7 @@ export async function createAssignment(moduleId: string, input: unknown) {
       subtasks: data.subtasks?.length ? data.subtasks : null,
     })
     .returning()
-  await setMaterials(created.id, moduleId, data.materialIds)
+  await setMaterials(created.id, moduleId, session.user.id, data.materialIds)
   await logAudit({
     userId: session.user.id,
     operation: "create",
@@ -99,7 +108,7 @@ export async function updateAssignment(assignmentId: string, input: unknown) {
       subtasks: data.subtasks?.length ? data.subtasks : null,
     })
     .where(eq(assignment.id, assignmentId))
-  await setMaterials(assignmentId, before.moduleId, data.materialIds)
+  await setMaterials(assignmentId, before.moduleId, session.user.id, data.materialIds)
   await logAudit({
     userId: session.user.id,
     operation: "update",

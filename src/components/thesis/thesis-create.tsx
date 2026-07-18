@@ -79,7 +79,7 @@ export function ThesisCreateDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="tc-type">{t("type")}</Label>
-              <Input id="tc-type" name="thesisType" placeholder="Bachelorarbeit" />
+              <Input id="tc-type" name="thesisType" placeholder={t("typePlaceholder")} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="tc-due">{t("dueDate")}</Label>

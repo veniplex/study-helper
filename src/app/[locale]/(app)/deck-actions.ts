@@ -73,6 +73,9 @@ export async function deleteDeck(deckId: string) {
   const session = await requireSession()
   const row = await ownDeck(deckId, session.user.id)
   await db.delete(deck).where(and(eq(deck.id, deckId), eq(deck.userId, session.user.id)))
+  // No FK on the polymorphic targetId — clean generation rows up explicitly.
+  const { deleteGenerationDataForTarget } = await import("@/lib/ai/generation/cleanup")
+  await deleteGenerationDataForTarget(deckId)
   await logAudit({
     userId: session.user.id,
     operation: "delete",

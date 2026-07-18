@@ -38,6 +38,7 @@ export async function populateAnn(materialId: string, embeddingRef: string): Pro
       WHERE material_id = ${materialId}
         AND embedding_model = ${embeddingRef}
         AND embedding IS NOT NULL
+        AND vector_dims(embedding) = ${dim}
         AND ${sql.raw(ANN_COLUMN)} IS NULL
     `)
   } catch (error) {
@@ -84,11 +85,27 @@ export async function reindexVectors(): Promise<void> {
     await db.execute(
       sql`ALTER TABLE material_chunk ADD COLUMN ${sql.raw(ANN_COLUMN)} vector(${dimLit})`
     )
+    // Only rows whose stored embedding actually has the inferred dimension —
+    // a mixed-dimension leftover (model swapped without re-embedding) would
+    // otherwise fail the cast and abort the whole rebuild.
     await db.execute(sql`
       UPDATE material_chunk
       SET ${sql.raw(ANN_COLUMN)} = embedding::text::vector(${dimLit})
-      WHERE embedding_model = ${embeddingRef} AND embedding IS NOT NULL
+      WHERE embedding_model = ${embeddingRef}
+        AND embedding IS NOT NULL
+        AND vector_dims(embedding) = ${dim}
     `)
+    const skippedRows = await db.execute<{ count: number }>(sql`
+      SELECT count(*)::int AS count
+      FROM material_chunk
+      WHERE embedding_model = ${embeddingRef}
+        AND embedding IS NOT NULL
+        AND vector_dims(embedding) <> ${dim}
+    `)
+    const skipped = Number(skippedRows[0]?.count ?? 0)
+    if (skipped > 0) {
+      console.warn(`[ann] ${skipped} chunk(s) skipped — embedding dimension mismatch`)
+    }
     await db.execute(
       sql`CREATE INDEX ${sql.raw(ANN_INDEX)} ON material_chunk USING hnsw (${sql.raw(ANN_COLUMN)} vector_cosine_ops)`
     )

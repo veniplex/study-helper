@@ -303,11 +303,21 @@ export async function persistQuestions(
   embeddingRef: string | null,
   questions: Question[]
 ): Promise<number> {
-  const keys = questions.map((q) => q.prompt)
+  // A multiple-choice question whose answer key can't point at one of its own
+  // options is unanswerable — drop it rather than persisting a broken quiz item.
+  const valid = questions.filter(
+    (q) =>
+      q.kind !== "multiple_choice" ||
+      (q.options.length >= 2 && q.correctIndex >= 0 && q.correctIndex < q.options.length)
+  )
+  if (valid.length < questions.length) {
+    console.warn(`[generation] dropped ${questions.length - valid.length} invalid MC question(s)`)
+  }
+  const keys = valid.map((q) => q.prompt)
   const vecs =
     embeddingRef && keys.length > 0 ? await embedTexts(userId, embeddingRef, keys) : undefined
   const fresh = deduper.filter(
-    questions.map((q) => ({ key: q.prompt, item: q })),
+    valid.map((q) => ({ key: q.prompt, item: q })),
     vecs
   )
   if (fresh.length > 0) {
@@ -423,7 +433,16 @@ async function trySubmitBatchGeneration(
  */
 export async function runCoverageGeneration(jobId: string): Promise<void> {
   const job = await db.query.generationJob.findFirst({ where: eq(generationJob.id, jobId) })
-  if (!job || job.status === "completed" || job.status === "canceled") return
+  // "applying": a batch poller is ingesting this job's results right now — a
+  // retried generate-coverage run must not restart it underneath the poller.
+  if (
+    !job ||
+    job.status === "completed" ||
+    job.status === "canceled" ||
+    job.status === "applying"
+  ) {
+    return
+  }
 
   await db
     .update(generationJob)

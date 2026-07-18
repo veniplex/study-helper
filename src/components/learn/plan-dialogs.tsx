@@ -6,13 +6,6 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -22,6 +15,7 @@ import {
   generateStudyPlan,
   updatePlanItem,
 } from "@/app/[locale]/(app)/learn-actions"
+import { FormDialog } from "@/components/form-dialog"
 import { ModuleSelect, type ModuleOption } from "./module-select"
 
 /** Controlled edit dialog for a study-plan item (used by the row menu). */
@@ -37,74 +31,49 @@ export function EditPlanItemDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const t = useTranslations("learn.plans")
-  const tCommon = useTranslations("common")
   const router = useRouter()
-  const [pending, setPending] = React.useState(false)
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
-    setPending(true)
-    try {
-      await updatePlanItem(itemId, {
-        title: String(form.get("title")),
-        description: String(form.get("description") || "") || null,
-        scheduledDate: String(form.get("scheduledDate") || "") || null,
-        durationMinutes: form.get("durationMinutes") ? Number(form.get("durationMinutes")) : null,
-      })
-      onOpenChange(false)
-      router.refresh()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-    } finally {
-      setPending(false)
-    }
-  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("editItem")}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="epi-title">{t("itemTitle")}</Label>
-            <Input id="epi-title" name="title" defaultValue={initial.title} required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="epi-desc">{t("itemDescription")}</Label>
-            <Textarea id="epi-desc" name="description" rows={2} defaultValue={initial.description ?? ""} />
-          </div>
-          <div className="flex gap-3">
-            <div className="flex-1 space-y-1.5">
-              <Label htmlFor="epi-date">{t("itemDate")}</Label>
-              <Input id="epi-date" name="scheduledDate" type="date" defaultValue={initial.scheduledDate ?? ""} />
-            </div>
-            <div className="w-28 space-y-1.5">
-              <Label htmlFor="epi-duration">{t("itemDuration")}</Label>
-              <Input
-                id="epi-duration"
-                name="durationMinutes"
-                type="number"
-                min={5}
-                step={5}
-                defaultValue={initial.durationMinutes ?? ""}
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {tCommon("cancel")}
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending && <Loader2 className="size-4 animate-spin" />}
-              {tCommon("save")}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      title={t("editItem")}
+      open={open}
+      onOpenChange={onOpenChange}
+      onSubmit={async (form) => {
+        await updatePlanItem(itemId, {
+          title: String(form.get("title")),
+          description: String(form.get("description") || "") || null,
+          scheduledDate: String(form.get("scheduledDate") || "") || null,
+          durationMinutes: form.get("durationMinutes") ? Number(form.get("durationMinutes")) : null,
+        })
+        router.refresh()
+      }}
+    >
+      <div className="space-y-1.5">
+        <Label htmlFor="epi-title">{t("itemTitle")}</Label>
+        <Input id="epi-title" name="title" defaultValue={initial.title} required />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="epi-desc">{t("itemDescription")}</Label>
+        <Textarea id="epi-desc" name="description" rows={2} defaultValue={initial.description ?? ""} />
+      </div>
+      <div className="flex gap-3">
+        <div className="flex-1 space-y-1.5">
+          <Label htmlFor="epi-date">{t("itemDate")}</Label>
+          <Input id="epi-date" name="scheduledDate" type="date" defaultValue={initial.scheduledDate ?? ""} />
+        </div>
+        <div className="w-28 space-y-1.5">
+          <Label htmlFor="epi-duration">{t("itemDuration")}</Label>
+          <Input
+            id="epi-duration"
+            name="durationMinutes"
+            type="number"
+            min={5}
+            step={5}
+            defaultValue={initial.durationMinutes ?? ""}
+          />
+        </div>
+      </div>
+    </FormDialog>
   )
 }
 
@@ -119,67 +88,43 @@ export function PlanDialog({
 }) {
   const t = useTranslations("learn.plans")
   const tLearn = useTranslations("learn")
-  const tCommon = useTranslations("common")
   const router = useRouter()
-  const [open, setOpen] = React.useState(false)
-  const [pending, setPending] = React.useState(false)
   const [moduleId, setModuleId] = React.useState(fixedModuleId ?? "")
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
-    setPending(true)
-    try {
-      const result = await createPlan({
-        title: String(form.get("title")),
-        description: String(form.get("description") || "") || null,
-        moduleId: moduleId || null,
-      })
-      setOpen(false)
-      router.push(`${basePath}/plans/${result.id}`)
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-      setPending(false)
-    }
-  }
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" />}>
-        <Plus className="size-4" />
-        {t("new")}
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("new")}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="p-title">{t("title")}</Label>
-            <Input id="p-title" name="title" required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="p-desc">{t("description")}</Label>
-            <Textarea id="p-desc" name="description" rows={2} />
-          </div>
-          {!fixedModuleId && (
-            <div className="space-y-1.5">
-              <Label>{tLearn("module")}</Label>
-              <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              {tCommon("cancel")}
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending && <Loader2 className="size-4 animate-spin" />}
-              {tCommon("save")}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      title={t("new")}
+      triggerVariant="outline"
+      trigger={
+        <>
+          <Plus className="size-4" />
+          {t("new")}
+        </>
+      }
+      onSubmit={async (form) => {
+        const result = await createPlan({
+          title: String(form.get("title")),
+          description: String(form.get("description") || "") || null,
+          moduleId: moduleId || null,
+        })
+        router.push(`${basePath}/plans/${result.id}`)
+      }}
+    >
+      <div className="space-y-1.5">
+        <Label htmlFor="p-title">{t("title")}</Label>
+        <Input id="p-title" name="title" required />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="p-desc">{t("description")}</Label>
+        <Textarea id="p-desc" name="description" rows={2} />
+      </div>
+      {!fixedModuleId && (
+        <div className="space-y-1.5">
+          <Label>{tLearn("module")}</Label>
+          <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
+        </div>
+      )}
+    </FormDialog>
   )
 }
 
@@ -197,85 +142,62 @@ export function GeneratePlanDialog({
   const t = useTranslations("learn.plans.generateDialog")
   const tPlans = useTranslations("learn.plans")
   const tLearn = useTranslations("learn")
-  const tCommon = useTranslations("common")
   const router = useRouter()
-  const [open, setOpen] = React.useState(false)
-  const [pending, setPending] = React.useState(false)
   const [moduleId, setModuleId] = React.useState(fixedModuleId ?? "")
 
   if (!aiAvailable) return null
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
-    setPending(true)
-    try {
-      const result = await generateStudyPlan({
-        moduleId: moduleId || null,
-        examDate: String(form.get("examDate")),
-        hoursPerWeek: Number(form.get("hoursPerWeek")),
-        topics: String(form.get("topics")),
-        useMaterials: true,
-      })
-      setOpen(false)
-      router.push(`${basePath}/plans/${result.id}`)
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-      setPending(false)
-    }
-  }
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>
-        <Sparkles className="size-4" />
-        {tPlans("generate")}
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("title")}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="gen-exam">{t("examDate")}</Label>
-              <Input id="gen-exam" name="examDate" type="date" required />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="gen-hours">{t("hoursPerWeek")}</Label>
-              <Input
-                id="gen-hours"
-                name="hoursPerWeek"
-                type="number"
-                min={1}
-                max={80}
-                defaultValue={10}
-                required
-              />
-            </div>
-          </div>
-          {!fixedModuleId && (
-            <div className="space-y-1.5">
-              <Label>{tLearn("module")}</Label>
-              <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
-            </div>
-          )}
-          <div className="space-y-1.5">
-            <Label htmlFor="gen-topics">{t("topics")}</Label>
-            <Textarea id="gen-topics" name="topics" rows={4} required />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              {tCommon("cancel")}
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending && <Loader2 className="size-4 animate-spin" />}
-              {pending ? t("generating") : t("submit")}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      title={t("title")}
+      submitLabel={t("submit")}
+      pendingLabel={t("generating")}
+      trigger={
+        <>
+          <Sparkles className="size-4" />
+          {tPlans("generate")}
+        </>
+      }
+      onSubmit={async (form) => {
+        const result = await generateStudyPlan({
+          moduleId: moduleId || null,
+          examDate: String(form.get("examDate")),
+          hoursPerWeek: Number(form.get("hoursPerWeek")),
+          topics: String(form.get("topics")),
+          useMaterials: true,
+        })
+        router.push(`${basePath}/plans/${result.id}`)
+      }}
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="gen-exam">{t("examDate")}</Label>
+          <Input id="gen-exam" name="examDate" type="date" required />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="gen-hours">{t("hoursPerWeek")}</Label>
+          <Input
+            id="gen-hours"
+            name="hoursPerWeek"
+            type="number"
+            min={1}
+            max={80}
+            defaultValue={10}
+            required
+          />
+        </div>
+      </div>
+      {!fixedModuleId && (
+        <div className="space-y-1.5">
+          <Label>{tLearn("module")}</Label>
+          <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
+        </div>
+      )}
+      <div className="space-y-1.5">
+        <Label htmlFor="gen-topics">{t("topics")}</Label>
+        <Textarea id="gen-topics" name="topics" rows={4} required />
+      </div>
+    </FormDialog>
   )
 }
 

@@ -174,7 +174,7 @@ function FolderItem({
   const menu = (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={<button type="button" className="text-muted-foreground hover:text-foreground rounded p-1" aria-label={folder.name} />}
+        render={<button type="button" className="text-muted-foreground hover:text-foreground rounded p-1" aria-label={`${tCommon("moreOptions")}: ${folder.name}`} />}
       >
         <MoreHorizontal className="size-4" />
       </DropdownMenuTrigger>
@@ -189,7 +189,7 @@ function FolderItem({
   )
 
   const grip = (
-    <button type="button" className="text-muted-foreground/50 hover:text-muted-foreground cursor-grab touch-none" {...attributes} {...listeners} aria-label={folder.name}>
+    <button type="button" className="text-muted-foreground/50 hover:text-muted-foreground cursor-grab touch-none" {...attributes} {...listeners} aria-label={`${tCommon("dragHandle")}: ${folder.name}`}>
       <GripVertical className="size-4" />
     </button>
   )
@@ -265,14 +265,14 @@ function FileItem({
     )
 
   const grip = (
-    <button type="button" className="text-muted-foreground/50 hover:text-muted-foreground cursor-grab touch-none" {...attributes} {...listeners} aria-label={item.name}>
+    <button type="button" className="text-muted-foreground/50 hover:text-muted-foreground cursor-grab touch-none" {...attributes} {...listeners} aria-label={`${tCommon("dragHandle")}: ${item.name}`}>
       <GripVertical className="size-4" />
     </button>
   )
 
   const menu = (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<button type="button" className="text-muted-foreground hover:text-foreground rounded p-1" aria-label={item.name} />}>
+      <DropdownMenuTrigger render={<button type="button" className="text-muted-foreground hover:text-foreground rounded p-1" aria-label={`${tCommon("moreOptions")}: ${item.name}`} />}>
         <MoreHorizontal className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">

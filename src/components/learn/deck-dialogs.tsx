@@ -24,6 +24,7 @@ import {
   updateDeck,
 } from "@/app/[locale]/(app)/deck-actions"
 import { startCompleteDeck } from "@/app/[locale]/(app)/generation-actions"
+import { FormDialog } from "@/components/form-dialog"
 import { ModuleSelect, type ModuleOption } from "./module-select"
 import { GenerationProgress } from "./generation-progress"
 
@@ -42,55 +43,30 @@ export function EditCardDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const t = useTranslations("learn.decks")
-  const tCommon = useTranslations("common")
   const router = useRouter()
-  const [pending, setPending] = React.useState(false)
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
-    setPending(true)
-    try {
-      await updateCard(cardId, {
-        front: String(form.get("front")),
-        back: String(form.get("back")),
-      })
-      onOpenChange(false)
-      router.refresh()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-    } finally {
-      setPending(false)
-    }
-  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("editCard")}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="ec-front">{t("front")}</Label>
-            <Textarea id="ec-front" name="front" rows={2} defaultValue={initialFront} required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="ec-back">{t("back")}</Label>
-            <Textarea id="ec-back" name="back" rows={2} defaultValue={initialBack} required />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {tCommon("cancel")}
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending && <Loader2 className="size-4 animate-spin" />}
-              {tCommon("save")}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      title={t("editCard")}
+      open={open}
+      onOpenChange={onOpenChange}
+      onSubmit={async (form) => {
+        await updateCard(cardId, {
+          front: String(form.get("front")),
+          back: String(form.get("back")),
+        })
+        router.refresh()
+      }}
+    >
+      <div className="space-y-1.5">
+        <Label htmlFor="ec-front">{t("front")}</Label>
+        <Textarea id="ec-front" name="front" rows={2} defaultValue={initialFront} required />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="ec-back">{t("back")}</Label>
+        <Textarea id="ec-back" name="back" rows={2} defaultValue={initialBack} required />
+      </div>
+    </FormDialog>
   )
 }
 
@@ -109,60 +85,35 @@ export function EditDeckDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const t = useTranslations("learn.decks")
-  const tCommon = useTranslations("common")
   const router = useRouter()
-  const [pending, setPending] = React.useState(false)
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
-    setPending(true)
-    try {
-      await updateDeck(deckId, {
-        name: String(form.get("name")),
-        description: String(form.get("description") || "") || null,
-      })
-      onOpenChange(false)
-      router.refresh()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-    } finally {
-      setPending(false)
-    }
-  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("edit")}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="ed-name">{t("name")}</Label>
-            <Input id="ed-name" name="name" defaultValue={initialName} required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="ed-desc">{t("description")}</Label>
-            <Textarea
-              id="ed-desc"
-              name="description"
-              rows={2}
-              defaultValue={initialDescription ?? ""}
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {tCommon("cancel")}
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending && <Loader2 className="size-4 animate-spin" />}
-              {tCommon("save")}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      title={t("edit")}
+      open={open}
+      onOpenChange={onOpenChange}
+      onSubmit={async (form) => {
+        await updateDeck(deckId, {
+          name: String(form.get("name")),
+          description: String(form.get("description") || "") || null,
+        })
+        router.refresh()
+      }}
+    >
+      <div className="space-y-1.5">
+        <Label htmlFor="ed-name">{t("name")}</Label>
+        <Input id="ed-name" name="name" defaultValue={initialName} required />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="ed-desc">{t("description")}</Label>
+        <Textarea
+          id="ed-desc"
+          name="description"
+          rows={2}
+          defaultValue={initialDescription ?? ""}
+        />
+      </div>
+    </FormDialog>
   )
 }
 
@@ -177,67 +128,42 @@ export function DeckDialog({
 }) {
   const t = useTranslations("learn.decks")
   const tLearn = useTranslations("learn")
-  const tCommon = useTranslations("common")
   const router = useRouter()
-  const [open, setOpen] = React.useState(false)
-  const [pending, setPending] = React.useState(false)
   const [moduleId, setModuleId] = React.useState(fixedModuleId ?? "")
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
-    setPending(true)
-    try {
-      const result = await createDeck({
-        name: String(form.get("name")),
-        description: String(form.get("description") || "") || null,
-        moduleId: moduleId || null,
-      })
-      setOpen(false)
-      router.push(`${basePath}/decks/${result.id}`)
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-      setPending(false)
-    }
-  }
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>
-        <Plus className="size-4" />
-        {t("new")}
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("new")}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="d-name">{t("name")}</Label>
-            <Input id="d-name" name="name" required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="d-desc">{t("description")}</Label>
-            <Textarea id="d-desc" name="description" rows={2} />
-          </div>
-          {!fixedModuleId && (
-            <div className="space-y-1.5">
-              <Label>{tLearn("module")}</Label>
-              <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              {tCommon("cancel")}
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending && <Loader2 className="size-4 animate-spin" />}
-              {tCommon("save")}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      title={t("new")}
+      trigger={
+        <>
+          <Plus className="size-4" />
+          {t("new")}
+        </>
+      }
+      onSubmit={async (form) => {
+        const result = await createDeck({
+          name: String(form.get("name")),
+          description: String(form.get("description") || "") || null,
+          moduleId: moduleId || null,
+        })
+        router.push(`${basePath}/decks/${result.id}`)
+      }}
+    >
+      <div className="space-y-1.5">
+        <Label htmlFor="d-name">{t("name")}</Label>
+        <Input id="d-name" name="name" required />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="d-desc">{t("description")}</Label>
+        <Textarea id="d-desc" name="description" rows={2} />
+      </div>
+      {!fixedModuleId && (
+        <div className="space-y-1.5">
+          <Label>{tLearn("module")}</Label>
+          <ModuleSelect modules={modules} value={moduleId} onChange={setModuleId} />
+        </div>
+      )}
+    </FormDialog>
   )
 }
 

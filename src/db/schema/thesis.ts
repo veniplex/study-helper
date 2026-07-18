@@ -1,4 +1,14 @@
-import { boolean, date, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core"
+import {
+  type AnyPgColumn,
+  boolean,
+  date,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core"
 import { relations, sql } from "drizzle-orm"
 import { user } from "./auth"
 import { degreeProgram, semester } from "./studies"
@@ -26,7 +36,9 @@ export const thesisProject = pgTable(
     /** Attempt number; a failed attempt is superseded by a new one. */
     attempt: integer("attempt").notNull().default(1),
     /** Points to the successor thesis row when this attempt was superseded. */
-    supersededById: text("superseded_by_id"),
+    supersededById: text("superseded_by_id").references((): AnyPgColumn => thesisProject.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

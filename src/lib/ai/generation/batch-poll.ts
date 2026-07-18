@@ -1,5 +1,5 @@
 import "server-only"
-import { and, eq, inArray, isNotNull } from "drizzle-orm"
+import { and, eq, inArray, isNotNull, lt } from "drizzle-orm"
 import { db } from "@/db"
 import { generationJob, outlineTopic } from "@/db/schema"
 import { getSetting } from "@/lib/settings"
@@ -31,7 +31,22 @@ type JobRow = typeof generationJob.$inferSelect
  * job. Individual failed items are marked in coverage so a re-run regenerates
  * only them. Each job is isolated so one bad batch can't block the others.
  */
+/** How long an "applying" claim may go untouched before it counts as crashed. */
+const STALE_CLAIM_MS = 15 * 60 * 1000
+
 export async function pollPendingBatches(): Promise<void> {
+  // Reclaim jobs whose applier died mid-way (claim stale) so they aren't stuck.
+  await db
+    .update(generationJob)
+    .set({ status: "running" })
+    .where(
+      and(
+        eq(generationJob.status, "applying"),
+        isNotNull(generationJob.batchRef),
+        lt(generationJob.updatedAt, new Date(Date.now() - STALE_CLAIM_MS))
+      )
+    )
+
   const jobs = await db.query.generationJob.findMany({
     where: and(isNotNull(generationJob.batchRef), eq(generationJob.status, "running")),
   })
@@ -66,8 +81,28 @@ async function processBatchJob(job: JobRow): Promise<void> {
     return
   }
 
-  const results = await fetchBatchResults(provider, job.batchRef)
-  await applyBatchResults(job, results)
+  // Atomically claim the finished batch before ingesting: overlapping poll runs
+  // (cron firing again during a slow apply, or web + dedicated worker both
+  // registered) would otherwise both fetch the same results and double-insert —
+  // the deduper can't help because each run seeds it before the other commits.
+  const claimed = await db
+    .update(generationJob)
+    .set({ status: "applying" })
+    .where(and(eq(generationJob.id, job.id), eq(generationJob.status, "running")))
+    .returning({ id: generationJob.id })
+  if (claimed.length === 0) return
+
+  try {
+    const results = await fetchBatchResults(provider, job.batchRef)
+    await applyBatchResults(job, results)
+  } catch (error) {
+    // Release the claim so the next cron run retries the ingestion.
+    await db
+      .update(generationJob)
+      .set({ status: "running" })
+      .where(and(eq(generationJob.id, job.id), eq(generationJob.status, "applying")))
+    throw error
+  }
 }
 
 async function applyBatchResults(job: JobRow, results: BatchResult[]): Promise<void> {

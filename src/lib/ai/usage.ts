@@ -19,7 +19,15 @@ export async function logUsage(
   })
 }
 
-/** Throws if the user exceeded the admin-configured monthly token limit. */
+/**
+ * Throws if the user exceeded the admin-configured monthly token limit.
+ *
+ * This is a soft limit by design: usage is recorded after a call finishes, so
+ * concurrent in-flight requests can collectively overshoot the cap by roughly
+ * one request each. The per-request bounds (message-size and history caps in
+ * the chat route) keep that overshoot small; a hard limit would need
+ * pessimistic reservations, which isn't worth the complexity here.
+ */
 export async function assertWithinLimit(userId: string): Promise<void> {
   const ai = await getSetting("ai")
   const limit = ai?.monthlyTokenLimitPerUser ?? 0
