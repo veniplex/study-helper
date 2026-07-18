@@ -135,6 +135,22 @@ const moduleSchema = z.object({
   color: z.string().max(40).optional().nullable(),
 })
 
+const goalTypeEnum = z.enum([
+  "exam",
+  "assignments",
+  "term_paper",
+  "presentation",
+  "oral_exam",
+  "project",
+  "thesis",
+  "other",
+])
+
+/** Create adds an optional goal-type multiselect that seeds the module's goals. */
+const createModuleSchema = moduleSchema.extend({
+  goalTypes: z.array(goalTypeEnum).max(8).optional(),
+})
+
 /** Splits parsed module input into module-table columns. */
 function moduleValues(data: z.infer<typeof moduleSchema>) {
   const m = data
@@ -153,14 +169,17 @@ function moduleValues(data: z.infer<typeof moduleSchema>) {
 export async function createModule(semesterId: string, input: unknown) {
   const session = await requireSession()
   const sem = await ownSemester(semesterId, session.user.id)
-  const data = moduleSchema.parse(input)
+  const data = createModuleSchema.parse(input)
   const [created] = await db
     .insert(studyModule)
     .values({ ...moduleValues(data), semesterId })
     .returning({ id: studyModule.id })
-  // Every module starts with one default exam goal so it is immediately
-  // gradable; goal setup (chips / CRUD) arrives in a later phase.
-  await db.insert(moduleGoal).values({ moduleId: created.id, type: "exam", gradingRole: "grade" })
+  // Seed one goal per selected type (deduped); modules created without a
+  // selection keep a single default exam goal so they are immediately gradable.
+  const types = data.goalTypes?.length ? [...new Set(data.goalTypes)] : ["exam" as const]
+  await db.insert(moduleGoal).values(
+    types.map((type, i) => ({ moduleId: created.id, type, gradingRole: "grade" as const, sortOrder: i }))
+  )
   revalidatePath(`/studies/${sem.programId}`)
   return { ok: true as const }
 }

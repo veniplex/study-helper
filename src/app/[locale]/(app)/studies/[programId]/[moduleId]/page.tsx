@@ -15,6 +15,7 @@ import { ResourceDialog } from "@/components/studies/resource-dialog"
 import { AnalyzeButton } from "@/components/learn/analyze-button"
 import { ModuleAssessmentCard } from "@/components/learn/module-assessment-card"
 import { ModuleContactsCard } from "@/components/learn/module-contacts-card"
+import { ModuleGoalsCard } from "@/components/studies/module-goals-card"
 import { SessionStartDialog } from "@/components/learn/session-start-dialog"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -129,6 +130,21 @@ export default async function ModuleOverviewPage({
           {mod.notes && <p className="mt-2 text-sm whitespace-pre-wrap">{mod.notes}</p>}
         </div>
       )}
+
+      <ModuleGoalsCard
+        moduleId={mod.id}
+        goals={mod.goals.map((g) => ({
+          id: g.id,
+          type: g.type,
+          title: g.title,
+          gradingRole: g.gradingRole,
+          weight: g.weight,
+          maxAttempts: g.maxAttempts,
+          passFail: g.passFail,
+          dueDate: g.dueDate,
+          config: g.config,
+        }))}
+      />
 
       {finalGrade && (
         <ModuleAssessmentCard

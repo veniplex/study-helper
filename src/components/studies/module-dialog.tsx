@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { createModule, updateModule } from "@/app/[locale]/(app)/studies/actions"
-import type { ModuleStatus } from "@/db/schema/studies"
+import type { GoalType, ModuleStatus } from "@/db/schema/studies"
 import {
   getModuleColorClasses,
   getModuleIcon,
@@ -31,6 +31,17 @@ import {
   MODULE_ICON_KEYS,
 } from "@/lib/module-visuals"
 import { cn } from "@/lib/utils"
+
+/** Quick-setup goal types offered as chips when creating a module. */
+const GOAL_CHIP_TYPES: GoalType[] = [
+  "exam",
+  "assignments",
+  "term_paper",
+  "presentation",
+  "oral_exam",
+  "project",
+  "thesis",
+]
 
 /** Renders a module icon from its stored key (stable, module-scope). */
 function IconGlyph({ iconKey, className }: { iconKey?: string | null; className?: string }) {
@@ -62,6 +73,7 @@ export function ModuleDialog({
 }) {
   const t = useTranslations("studies")
   const tDialog = useTranslations("studies.moduleDialog")
+  const tGoals = useTranslations("goals")
   const tCommon = useTranslations("common")
   const router = useRouter()
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
@@ -75,6 +87,7 @@ export function ModuleDialog({
   const [status, setStatus] = React.useState<ModuleStatus>(module?.status ?? "planned")
   const [icon, setIcon] = React.useState<string | null>(module?.icon ?? null)
   const [color, setColor] = React.useState<string | null>(module?.color ?? null)
+  const [goalTypes, setGoalTypes] = React.useState<GoalType[]>([])
   const isEdit = Boolean(module?.id)
 
   const statusLabels: Record<ModuleStatus, string> = {
@@ -103,7 +116,7 @@ export function ModuleDialog({
     setPending(true)
     try {
       if (isEdit) await updateModule(module!.id!, payload)
-      else await createModule(semesterId, payload)
+      else await createModule(semesterId, { ...payload, goalTypes })
       toast.success(isEdit ? t("updated") : t("created"))
       setOpen(false)
       router.refresh()
@@ -231,6 +244,37 @@ export function ModuleDialog({
               ))}
             </div>
           </div>
+
+          {!isEdit && (
+            <div className="space-y-2">
+              <Label>{tGoals("setupPrompt")}</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {GOAL_CHIP_TYPES.map((gt) => {
+                  const active = goalTypes.includes(gt)
+                  return (
+                    <button
+                      key={gt}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() =>
+                        setGoalTypes((prev) =>
+                          active ? prev.filter((x) => x !== gt) : [...prev, gt]
+                        )
+                      }
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                        active
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "hover:bg-accent"
+                      )}
+                    >
+                      {tGoals(`types.${gt}`)}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

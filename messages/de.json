@@ -1262,6 +1262,68 @@
   "offline": {
     "synced": "{count} Offline-Änderungen synchronisiert."
   },
+  "goals": {
+    "cardTitle": "Lernziele",
+    "add": "Lernziel hinzufügen",
+    "edit": "Lernziel bearbeiten",
+    "emptyTitle": "Lernziele festlegen",
+    "emptyPrompt": "Was musst du in diesem Modul bestehen?",
+    "setupPrompt": "Was musst du leisten?",
+    "deleteConfirm": "Dieses Lernziel wirklich löschen?",
+    "type": "Art",
+    "titleField": "Titel",
+    "gradingRole": "Bewertung",
+    "weight": "Gewichtung",
+    "dueDate": "Termin / Frist",
+    "maxAttempts": "Versuche (inkl. Wiederholungen)",
+    "passFail": "Bestanden / Nicht bestanden (ohne Note)",
+    "expectedCount": "Erwartete Anzahl",
+    "durationMinutes": "Dauer (Min.)",
+    "requiresSources": "Externe Quellen nötig",
+    "withPresentation": "Mit Präsentation",
+    "taskDescription": "Aufgabenstellung",
+    "types": {
+      "exam": "Klausur",
+      "assignments": "Abgaben",
+      "term_paper": "Hausarbeit",
+      "presentation": "Referat",
+      "oral_exam": "Mündliche Prüfung",
+      "project": "Projekt",
+      "thesis": "Abschlussarbeit",
+      "other": "Sonstiges"
+    },
+    "typePlaceholder": {
+      "exam": "Klausur",
+      "assignments": "Übungsblätter",
+      "term_paper": "Hausarbeit",
+      "presentation": "Referat",
+      "oral_exam": "Mündliche Prüfung",
+      "project": "Projekt",
+      "thesis": "Abschlussarbeit",
+      "other": "Bezeichnung"
+    },
+    "roles": {
+      "grade": "Zählt zur Modulnote",
+      "bonus": "Bonus",
+      "practice": "Nur Übung / Feedback"
+    },
+    "variant": {
+      "label": "Art der Arbeit",
+      "scientific": "Wissenschaftliche Arbeit",
+      "task": "Aufgabenbearbeitung"
+    },
+    "bonus": {
+      "type": "Bonusart",
+      "value": "Bonuswert",
+      "minAvgPercent": "Mind. Ø-Ergebnis (%)",
+      "minCompletedShare": "Mind. Anteil erledigt (0–1)",
+      "types": {
+        "none": "Kein Bonus",
+        "percent_points": "Prozentpunkte auf Ergebnis",
+        "grade_steps": "Notenschritte besser"
+      }
+    }
+  },
   "home": {
     "title": "Willkommen bei StudyHelper",
     "description": "Die Open-Source-App für dein gesamtes Studium: Planung, Lernmaterialien, KI-Unterstützung und Prüfungsvorbereitung — self-hosted und offline-fähig."

@@ -1262,6 +1262,68 @@
   "offline": {
     "synced": "{count} offline changes synced."
   },
+  "goals": {
+    "cardTitle": "Learning goals",
+    "add": "Add learning goal",
+    "edit": "Edit learning goal",
+    "emptyTitle": "Set learning goals",
+    "emptyPrompt": "What do you need to pass in this module?",
+    "setupPrompt": "What do you have to deliver?",
+    "deleteConfirm": "Really delete this learning goal?",
+    "type": "Type",
+    "titleField": "Title",
+    "gradingRole": "Grading",
+    "weight": "Weight",
+    "dueDate": "Date / deadline",
+    "maxAttempts": "Attempts (incl. retakes)",
+    "passFail": "Pass / fail (no grade)",
+    "expectedCount": "Expected count",
+    "durationMinutes": "Duration (min.)",
+    "requiresSources": "External sources required",
+    "withPresentation": "With presentation",
+    "taskDescription": "Task description",
+    "types": {
+      "exam": "Exam",
+      "assignments": "Assignments",
+      "term_paper": "Term paper",
+      "presentation": "Presentation",
+      "oral_exam": "Oral exam",
+      "project": "Project",
+      "thesis": "Thesis",
+      "other": "Other"
+    },
+    "typePlaceholder": {
+      "exam": "Exam",
+      "assignments": "Problem sets",
+      "term_paper": "Term paper",
+      "presentation": "Presentation",
+      "oral_exam": "Oral exam",
+      "project": "Project",
+      "thesis": "Thesis",
+      "other": "Label"
+    },
+    "roles": {
+      "grade": "Counts toward module grade",
+      "bonus": "Bonus",
+      "practice": "Practice / feedback only"
+    },
+    "variant": {
+      "label": "Kind of work",
+      "scientific": "Scientific paper",
+      "task": "Task-based work"
+    },
+    "bonus": {
+      "type": "Bonus type",
+      "value": "Bonus value",
+      "minAvgPercent": "Min. avg. result (%)",
+      "minCompletedShare": "Min. share completed (0–1)",
+      "types": {
+        "none": "No bonus",
+        "percent_points": "Percentage points on result",
+        "grade_steps": "Grade steps better"
+      }
+    }
+  },
   "home": {
     "title": "Welcome to StudyHelper",
     "description": "The open-source app for your entire studies: planning, learning materials, AI support and exam preparation — self-hosted and offline-capable."
