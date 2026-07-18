@@ -96,6 +96,41 @@ and links to the release. Installing it is a manual
 
 **Do not lose `ENCRYPTION_KEY`** — encrypted settings (AI keys, SMTP, OIDC secrets) become unreadable without it.
 
+## Troubleshooting
+
+### Admin shows "file storage is not writable" / uploads fail
+
+Docker Compose creates a bind-mounted host directory (`./data/uploads`) owned
+by **root** the first time it doesn't already exist, but the app runs as a
+non-root user inside the container — so it can't write to it. The image's
+entrypoint fixes this automatically on container start (it corrects
+ownership before starting the app). If you still see the warning after a
+fresh `docker compose pull && docker compose up -d`, fix it once by hand:
+
+```bash
+docker compose exec -u root <app-service-name> \
+  sh -c 'chown -R app:app /data/uploads /data/tus-incoming'
+```
+
+(`<app-service-name>` is whatever you named the app service in your compose
+file — `app` in the example above.) If the warning persists after upgrading,
+the volume is likely on a filesystem that ignores container-side chown
+entirely (e.g. certain NFS exports with root-squash) — move `DATA_DIR` to a
+regular local/host-managed disk.
+
+### The dedicated `worker` container doesn't seem to process anything
+
+The optional `worker` service (commented out by default) runs `npm run
+worker`, which needs `tsx` and the raw TypeScript sources — the prebuilt
+`ghcr.io/veniplex/study-helper` image is a **standalone, web-server-only**
+build and doesn't include either — pointing that service at the prebuilt
+image fails fast with a clear startup error instead of silently starting a
+second (unreachable) copy of the web server. Unless you build a
+custom image from a full source checkout, don't run the `worker` service —
+the web tier already processes background jobs in-process by default, which
+is sufficient for most deployments. Only reach for `WORKERS_IN_PROCESS=false`
++ a dedicated worker if you're building your own image.
+
 ## Object storage (S3)
 
 By default uploaded files are stored on disk (`STORAGE_DRIVER=local`, under

@@ -15,7 +15,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup -S app && adduser -S app -G app
+# su-exec drops root privileges after the entrypoint fixes bind-mount
+# ownership (see docker-entrypoint.sh) — Alpine's lightweight gosu equivalent.
+RUN apk add --no-cache su-exec && addgroup -S app && adduser -S app -G app
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
@@ -30,7 +32,11 @@ COPY --from=builder /app/src/db/schema ./src/db/schema
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN mkdir -p /data/uploads && chown -R app:app /data /app
-USER app
+# Stays root here: docker-compose creates bind-mounted host volumes (uploads,
+# tus staging) owned by root when they don't already exist, which "app" can't
+# write to — the classic Docker bind-mount permissions gotcha. The entrypoint
+# fixes ownership as root, then drops to "app" via su-exec before starting
+# the actual process, so the app itself never runs as root.
 
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0
