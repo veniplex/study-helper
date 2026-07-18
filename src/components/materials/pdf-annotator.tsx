@@ -94,7 +94,7 @@ export function PdfAnnotator({
     return () => {
       cancelled = true
     }
-  }, [fileUrl])
+  }, [fileUrl, t])
 
   async function onCreate(page: number, rect: AnnotationRect) {
     const temp: PdfAnnotation = { id: `tmp-${crypto.randomUUID()}`, page, rect, color, note: null }
