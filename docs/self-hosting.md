@@ -44,10 +44,11 @@ Update with `docker compose pull && docker compose up -d`. Images are built for
 `docker compose` mounts two directories from the **host** into the
 containers, so your data survives container restarts/rebuilds:
 
-| Host path (default) | Container path    | Contents                                                                                    |
-| ------------------- | ----------------- | ------------------------------------------------------------------------------------------- |
-| `./data/db`         | Postgres data dir | Everything except files: users, modules, flashcards, grades, events, chat history, settings |
-| `./data/uploads`    | `/data/uploads`   | Uploaded files (PDFs, images, …)                                                            |
+| Host path (default)   | Container path       | Contents                                                                                    |
+| --------------------- | -------------------- | ------------------------------------------------------------------------------------------- |
+| `./data/db`           | Postgres data dir    | Everything except files: users, modules, flashcards, grades, events, chat history, settings |
+| `./data/uploads`      | `/data/uploads`      | Uploaded files (PDFs, images, …)                                                            |
+| `./data/tus-incoming` | `/data/tus-incoming` | Staging for in-flight resumable (tus) uploads — transient; cleared once finalized           |
 
 By default both live under `./data`, next to `docker-compose.yml`. To store
 them elsewhere — a separate disk, a NAS mount, outside the git checkout —
@@ -88,6 +89,7 @@ and links to the release. Installing it is a manual
 | `STUDYHELPER_VERSION` | no       | Image tag to run (default `latest`); pin e.g. `1.0.0` for reproducible deploys                                                                                                      |
 | `DATA_DIR`            | no       | Host directory for the database + uploads volumes (default `./data`, next to `docker-compose.yml`) — see [Where data is stored](#where-data-is-stored)                              |
 | `UPLOAD_DIR`          | no       | Upload path **inside the container** (default `/data/uploads`) — only relevant for non-Docker deployments; Docker users should set `DATA_DIR` instead                               |
+| `TUS_DIR`             | no       | Staging dir for resumable (tus) uploads of very large files (default `<cwd>/data/tus-incoming`); use a persistent volume so interrupted uploads resume after a restart              |
 | `STORAGE_DRIVER`      | no       | Where uploaded files live: `local` (default, disk under `UPLOAD_DIR`) or `s3` (S3 / S3-compatible object storage) — see [Object storage (S3)](#object-storage-s3)                   |
 | `WORKERS_IN_PROCESS`  | no       | `false` runs background jobs only in a separate worker process (`npm run worker`) instead of the web tier (default `true` — in-process)                                             |
 | `SEED_TEST_DATA`      | no       | `true` seeds demo accounts (admin@example.com / admin-test-1234, user@example.com / user-test-1234) with sample study content on startup — for evaluation only, never in production |

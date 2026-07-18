@@ -20,8 +20,13 @@ services:
       # Server timezone — event times, reminders and daily plans use it.
       # Set to your users' timezone; containers default to UTC otherwise.
       TZ: ${TZ:-Europe/Berlin}
+      # Staging directory for resumable (tus) uploads (see volume below).
+      TUS_DIR: /data/tus-incoming
     volumes:
       - ${DATA_DIR:-./data}/uploads:/data/uploads
+      # Staging area for resumable (tus) uploads of very large files. A
+      # persistent volume lets an interrupted upload resume after a restart.
+      - ${DATA_DIR:-./data}/tus-incoming:/data/tus-incoming
     depends_on:
       db:
         condition: service_healthy
@@ -55,9 +60,12 @@ services:
   #   environment:
   #     DATABASE_URL: postgres://study:${POSTGRES_PASSWORD:-study}@db:5432/study
   #     UPLOAD_DIR: /data/uploads
+  #     # The worker finalizes resumable (tus) uploads, so it needs the staging dir.
+  #     TUS_DIR: /data/tus-incoming
   #     TZ: ${TZ:-Europe/Berlin}
   #   volumes:
   #     - ${DATA_DIR:-./data}/uploads:/data/uploads
+  #     - ${DATA_DIR:-./data}/tus-incoming:/data/tus-incoming
   #   depends_on:
   #     db:
   #       condition: service_healthy
