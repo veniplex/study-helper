@@ -6,8 +6,8 @@ import { writingMilestone, writingProject } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { listAvailableModels } from "@/lib/ai/registry"
 import { getStudyContext } from "@/lib/studies/context"
-import { BrainstormDialog, ThesisCreateDialog } from "@/components/thesis/thesis-create"
-import { RetryThesisButton } from "@/components/thesis/retry-thesis-button"
+import { BrainstormDialog, ThesisCreateDialog } from "@/components/writing/thesis-create"
+import { RetryThesisButton } from "@/components/writing/retry-thesis-button"
 import {
   WritingWorkspace,
   type WritingProjectData,

@@ -8,7 +8,6 @@ import {
   pgTable,
   text,
   timestamp,
-  uniqueIndex,
 } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { moduleGoal, studyModule } from "./studies"

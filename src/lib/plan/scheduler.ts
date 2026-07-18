@@ -90,10 +90,6 @@ function addDays(date: string, n: number): string {
   return new Date(parseDay(date) + n * 86400000).toISOString().slice(0, 10)
 }
 
-function daysUntil(from: string, to: string): number {
-  return Math.round((parseDay(to) - parseDay(from)) / 86400000)
-}
-
 /** ISO-8601 week key ("YYYY-Www"), used to cap weeklyHoursTarget per week. */
 function isoWeekKey(date: string): string {
   const d = new Date(parseDay(date))
