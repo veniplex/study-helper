@@ -167,7 +167,8 @@ export function ModulePlanPrefs({
             <BookOpen className="text-muted-foreground size-4" />
             {moduleName}
           </span>
-          <div className="ml-auto flex flex-wrap items-center gap-3">
+          {/* Stack the fields under sm so they don't cram on phones (D4). */}
+          <div className="mt-2 flex w-full flex-col gap-2 sm:mt-0 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
             {weightField}
             {hoursField}
             {phaseField}

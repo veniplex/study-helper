@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { CalendarClock } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useActionErrorToast } from "@/components/action-error-toast"
@@ -24,16 +25,20 @@ export function TodayPlanCard({ items }: { items: TodayPlanSession[] }) {
   const t = useTranslations("semesterPlan")
   const showError = useActionErrorToast()
   const router = useRouter()
+  const [pending, startTransition] = React.useTransition()
 
   if (items.length === 0) return null
 
-  async function onToggle(id: string, done: boolean) {
-    try {
-      await toggleSession(id, done)
-      router.refresh()
-    } catch (error) {
-      showError(error)
-    }
+  function onToggle(id: string, done: boolean) {
+    // Disable during flight so rapid taps can't double-fire (D13).
+    startTransition(async () => {
+      try {
+        await toggleSession(id, done)
+        router.refresh()
+      } catch (error) {
+        showError(error)
+      }
+    })
   }
 
   return (
@@ -63,7 +68,8 @@ export function TodayPlanCard({ items }: { items: TodayPlanSession[] }) {
               <div className="flex flex-wrap items-center gap-2">
                 <Checkbox
                   checked={item.done}
-                  onCheckedChange={(on) => void onToggle(item.id, Boolean(on))}
+                  disabled={pending}
+                  onCheckedChange={(on) => onToggle(item.id, Boolean(on))}
                 />
                 <span className={cn("font-medium", item.done && "line-through")}>
                   {item.moduleName ?? ""}
