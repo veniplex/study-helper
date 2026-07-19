@@ -88,6 +88,9 @@ export type MaterialItem = {
   /** AI extraction/embedding pipeline state (files only). */
   extractionStatus?: string | null
   extractionError?: string | null
+  /** Embedding progress (files only): leaf chunks total / already embedded. */
+  chunksTotal?: number | null
+  chunksEmbedded?: number | null
 }
 
 /** Pipeline states that are still moving — used to poll for fresh status. */
@@ -103,10 +106,18 @@ function ProcessingBadge({ item }: { item: MaterialItem }) {
   const status = item.extractionStatus
   if (item.kind !== "file" || !status || status === "ready") return null
   if (ACTIVE_STATUSES.includes(status)) {
+    // For the embedding step, show "N/M" chunk progress when known.
+    const showProgress =
+      status === "embedding" && item.chunksTotal != null && item.chunksTotal > 0
     return (
       <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px]">
         <Loader2 className="size-3 animate-spin" />
         {t(status)}
+        {showProgress && (
+          <span className="tabular-nums">
+            {item.chunksEmbedded ?? 0}/{item.chunksTotal}
+          </span>
+        )}
       </span>
     )
   }

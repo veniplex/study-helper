@@ -366,7 +366,8 @@
       "unsupported": "This browser does not support push notifications.",
       "denied": "Notifications are blocked in the browser.",
       "swUnavailable": "The background service for push is unavailable. Reload the page and try again.",
-      "saveFailed": "The setting could not be saved."
+      "saveFailed": "The setting could not be saved.",
+      "pushInactiveHint": "Push notifications aren't enabled on this device — the push switches only take effect once you enable push below."
     },
     "usage": {
       "title": "Your AI usage (30 days)",
@@ -656,7 +657,9 @@
         "4": "Th",
         "5": "Fr",
         "6": "Sa"
-      }
+      },
+      "deleteOccurrence": "Delete only this occurrence",
+      "deleteSeries": "Delete entire series"
     },
     "ics": {
       "title": "Calendar subscription (ICS)",
@@ -715,7 +718,8 @@
       "planItems": "{count} study sessions today",
       "examIn": "{title} in {days} days",
       "prepared": "{percent}% prepared",
-      "start": "Start learning"
+      "start": "Start learning",
+      "viewPlan": "View plan"
     }
   },
   "stats": {
@@ -787,7 +791,10 @@
     "viewer": {
       "unsupported": "No preview available for this file type — please download.",
       "fileMissing": "File no longer available",
-      "fileMissingHint": "The entry exists, but the file is missing on the server (e.g. lost in an earlier redeploy without a persistent upload volume). Please upload it again."
+      "fileMissingHint": "The entry exists, but the file is missing on the server (e.g. lost in an earlier redeploy without a persistent upload volume). Please upload it again.",
+      "processingTitle": "Document is being processed",
+      "processingHint": "Chat and search become available once processing is complete.",
+      "processingFailedTitle": "Processing failed"
     },
     "annotator": {
       "hint": "Drag on a page to highlight; click a highlight to add a note or delete it.",
@@ -832,7 +839,8 @@
     "uploadRateLimited": "Too many uploads in a short time — please wait a moment.",
     "uploadNetworkError": "Network error during upload — check your connection and try again.",
     "uploadServerError": "{name}: Server error while saving. Check in the admin area whether file storage is writable.",
-    "askDocument": "Ask in chat"
+    "askDocument": "Ask in chat",
+    "askDocumentProcessing": "Document is still being processed"
   },
   "search": {
     "modules": "Modules",
@@ -1043,7 +1051,14 @@
       "description": "Description (optional)",
       "correctAnswer": "Correct answer",
       "edit": "Edit",
-      "notGraded": "Not graded automatically (no AI configured) — compare with the reference answer."
+      "notGraded": "Not graded automatically (no AI configured) — compare with the reference answer.",
+      "resultNotGraded": "Result: not graded",
+      "notScored": "not graded",
+      "mistakesAdded": "{count} cards added to the mistakes deck",
+      "openMistakesDeck": "Open mistakes deck",
+      "previous": "Back",
+      "skip": "Skip",
+      "gradingCount": "Grading {count} answers …"
     },
     "aiUnavailable": "No AI model configured — AI features disabled.",
     "questionForm": {

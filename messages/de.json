@@ -366,7 +366,8 @@
       "unsupported": "Dieser Browser unterstützt keine Push-Benachrichtigungen.",
       "denied": "Benachrichtigungen wurden im Browser blockiert.",
       "swUnavailable": "Der Hintergrunddienst für Push ist nicht verfügbar. Lade die Seite neu und versuche es erneut.",
-      "saveFailed": "Einstellung konnte nicht gespeichert werden."
+      "saveFailed": "Einstellung konnte nicht gespeichert werden.",
+      "pushInactiveHint": "Push-Benachrichtigungen sind auf diesem Gerät nicht aktiviert — die Push-Schalter wirken erst, wenn du unten Push aktivierst."
     },
     "usage": {
       "title": "Deine KI-Nutzung (30 Tage)",
@@ -656,7 +657,9 @@
         "4": "Do",
         "5": "Fr",
         "6": "Sa"
-      }
+      },
+      "deleteOccurrence": "Nur dieses Vorkommen löschen",
+      "deleteSeries": "Ganze Serie löschen"
     },
     "ics": {
       "title": "Kalender-Abo (ICS)",
@@ -715,7 +718,8 @@
       "planItems": "{count} Lerneinheiten heute",
       "examIn": "{title} in {days} Tagen",
       "prepared": "{percent} % vorbereitet",
-      "start": "Jetzt lernen"
+      "start": "Jetzt lernen",
+      "viewPlan": "Plan ansehen"
     }
   },
   "stats": {
@@ -787,7 +791,10 @@
     "viewer": {
       "unsupported": "Vorschau für diesen Dateityp nicht verfügbar — bitte herunterladen.",
       "fileMissing": "Datei nicht mehr vorhanden",
-      "fileMissingHint": "Der Eintrag existiert, aber die Datei fehlt auf dem Server (z. B. durch ein früheres Redeploy ohne persistentes Upload-Volume verloren). Bitte lade die Datei neu hoch."
+      "fileMissingHint": "Der Eintrag existiert, aber die Datei fehlt auf dem Server (z. B. durch ein früheres Redeploy ohne persistentes Upload-Volume verloren). Bitte lade die Datei neu hoch.",
+      "processingTitle": "Dokument wird verarbeitet",
+      "processingHint": "Chat und Suche sind verfügbar, sobald die Verarbeitung abgeschlossen ist.",
+      "processingFailedTitle": "Verarbeitung fehlgeschlagen"
     },
     "annotator": {
       "hint": "Auf der Seite ziehen zum Markieren; Markierung anklicken für Notiz oder Löschen.",
@@ -832,7 +839,8 @@
     "uploadRateLimited": "Zu viele Uploads in kurzer Zeit — bitte kurz warten.",
     "uploadNetworkError": "Netzwerkfehler beim Upload — Verbindung prüfen und erneut versuchen.",
     "uploadServerError": "{name}: Serverfehler beim Speichern. Prüfe im Admin-Bereich, ob der Datei-Speicher beschreibbar ist.",
-    "askDocument": "Im Chat fragen"
+    "askDocument": "Im Chat fragen",
+    "askDocumentProcessing": "Dokument wird noch verarbeitet"
   },
   "search": {
     "modules": "Module",
@@ -1043,7 +1051,14 @@
       "description": "Beschreibung (optional)",
       "correctAnswer": "Richtige Antwort",
       "edit": "Bearbeiten",
-      "notGraded": "Nicht automatisch bewertet (kein AI-Provider) — vergleiche mit der Referenzantwort."
+      "notGraded": "Nicht automatisch bewertet (kein AI-Provider) — vergleiche mit der Referenzantwort.",
+      "resultNotGraded": "Ergebnis: nicht bewertet",
+      "notScored": "nicht bewertet",
+      "mistakesAdded": "{count} Karten zum Fehler-Deck hinzugefügt",
+      "openMistakesDeck": "Fehler-Deck öffnen",
+      "previous": "Zurück",
+      "skip": "Überspringen",
+      "gradingCount": "Bewerte {count} Antworten …"
     },
     "aiUnavailable": "Kein KI-Modell konfiguriert — KI-Funktionen deaktiviert.",
     "questionForm": {

@@ -12,6 +12,7 @@ import {
   semesterPlan,
   studyEvent,
   user,
+  userPrefs,
   type NotificationChannels,
 } from "@/db/schema"
 import { sendEmail } from "@/lib/email"
@@ -21,14 +22,19 @@ import { getAppName } from "@/lib/settings"
 import { env } from "@/lib/env"
 
 /**
- * Resolves the notification locale for a user. This is the single seam R5 will
- * wire to `user_prefs.locale` (the column lands in R5's migration 0042); until
- * then every user gets the default locale. All reminder formatting below flows
- * through the returned locale, so R5 only has to change this function's source.
+ * Resolves the notification locale for a user from `user_prefs.locale`
+ * (migration 0042), falling back to the app default when unset or unsupported.
+ * All reminder formatting flows through the returned locale.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- R5 wires userId → user_prefs.locale here
 async function reminderLocale(userId: string): Promise<string> {
-  return routing.defaultLocale
+  const prefs = await db.query.userPrefs.findFirst({
+    where: eq(userPrefs.userId, userId),
+    columns: { locale: true },
+  })
+  const locale = prefs?.locale
+  return locale && routing.locales.includes(locale as (typeof routing.locales)[number])
+    ? locale
+    : routing.defaultLocale
 }
 
 type NotificationsT = (key: string, values?: Record<string, string | number>) => string

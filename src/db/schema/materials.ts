@@ -1,6 +1,7 @@
 import {
   type AnyPgColumn,
   bigint,
+  customType,
   index,
   integer,
   jsonb,
@@ -9,9 +10,14 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core"
-import { relations, sql } from "drizzle-orm"
+import { relations, sql, type SQL } from "drizzle-orm"
 import { user } from "./auth"
 import { studyModule } from "./studies"
+
+/** Postgres full-text search vector (generated from `text_content`). */
+const tsvector = customType<{ data: string }>({
+  dataType: () => "tsvector",
+})
 
 export type MaterialKind = "file" | "link"
 
@@ -119,6 +125,14 @@ export const material = pgTable(
     chunksTotal: integer("chunks_total"),
     /** Number of leaf chunks already embedded (for resumable/progress display). */
     chunksEmbedded: integer("chunks_embedded"),
+    /** Full-text search vector over `text_content`, for the command palette
+     *  search (replaces the ILIKE seq-scan). Uses the 'german' config to match
+     *  the query's `websearch_to_tsquery('german', …)` in the search route.
+     *  `coalesce` guards the nullable column so the generated expression stays
+     *  total. Mirrors material_chunk.contentTsv. */
+    textContentTsv: tsvector("text_content_tsv").generatedAlwaysAs(
+      (): SQL => sql`to_tsvector('german', coalesce(${material.textContent}, ''))`
+    ),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -130,6 +144,7 @@ export const material = pgTable(
     index("material_moduleId_idx").on(t.moduleId),
     index("material_folderId_idx").on(t.folderId),
     index("material_contentHash_idx").on(t.userId, t.contentHash),
+    index("material_text_content_tsv_idx").using("gin", t.textContentTsv),
   ]
 )
 

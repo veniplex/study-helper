@@ -9,6 +9,8 @@ export type RecurringEventLike = {
   recurrenceWeekdays?: number[] | null
   /** "custom" only: repeat every N weeks, anchored at startsAt's week. */
   recurrenceInterval?: number | null
+  /** ISO dates (local) of individually-deleted occurrences to skip (E18). */
+  skipDates?: string[] | null
 }
 
 export type Occurrence = {
@@ -40,21 +42,25 @@ export function expandOccurrences(
 ): Occurrence[] {
   const duration = event.endsAt ? event.endsAt.getTime() - event.startsAt.getTime() : null
 
+  // Occurrences whose local date was individually deleted (E18) are skipped so
+  // the rest of the series survives.
+  const skip = event.skipDates?.length ? new Set(event.skipDates) : null
   const make = (startsAt: Date, isInstance: boolean): Occurrence => ({
     startsAt,
     endsAt: duration != null ? new Date(startsAt.getTime() + duration) : null,
     occurrenceDate: toIsoDate(startsAt),
     isRecurrenceInstance: isInstance,
   })
+  const notSkipped = (o: Occurrence) => !skip?.has(o.occurrenceDate)
 
   if (event.recurrence === "none" || !event.recurrence) {
     return event.startsAt <= to && (event.endsAt ?? event.startsAt) >= from
-      ? [make(event.startsAt, false)]
+      ? [make(event.startsAt, false)].filter(notSkipped)
       : []
   }
 
   if (event.recurrence === "custom") {
-    return expandCustom(event, from, to, make)
+    return expandCustom(event, from, to, make).filter(notSkipped)
   }
 
   const stepWeeks = event.recurrence === "biweekly" ? 2 : 1
@@ -80,7 +86,7 @@ export function expandOccurrences(
     }
     cursor = addWeeks(cursor, stepWeeks)
   }
-  return out
+  return out.filter(notSkipped)
 }
 
 /**

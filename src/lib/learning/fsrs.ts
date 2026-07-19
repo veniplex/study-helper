@@ -54,3 +54,37 @@ export function scheduleReview(
     lastReview: card.last_review ?? null,
   }
 }
+
+/**
+ * Next-due date for each of the four ratings, without mutating the card —
+ * powers the interval preview on the rating buttons (E8). Pure: no DB, no
+ * server round-trip.
+ */
+export function previewIntervals(
+  fields: CardSchedulingFields,
+  now: Date = new Date()
+): Record<ReviewRating, Date> {
+  const card = toFsrsCard(fields)
+  const out = {} as Record<ReviewRating, Date>
+  for (const rating of [1, 2, 3, 4] as const) {
+    out[rating] = scheduler.next(card, now, rating as Grade).card.due
+  }
+  return out
+}
+
+/**
+ * Compact human label for the gap between `from` and `due` ("<1m", "10m",
+ * "3h", "4d", "2mo"). Rounds to the coarsest natural unit so the preview stays
+ * glanceable. Pure — see fsrs.test.ts.
+ */
+export function formatReviewInterval(from: Date, due: Date): string {
+  const mins = Math.round((due.getTime() - from.getTime()) / 60000)
+  if (mins < 1) return "<1m"
+  if (mins < 60) return `${mins}m`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `${hours}h`
+  const days = Math.round(hours / 24)
+  if (days < 30) return `${days}d`
+  const months = Math.round(days / 30)
+  return `${months}mo`
+}

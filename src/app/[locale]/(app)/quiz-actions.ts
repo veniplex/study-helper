@@ -320,7 +320,13 @@ const submitSchema = z.object({
 })
 
 export type AttemptResult = {
-  score: number
+  /** Percentage over auto-gradable questions, or null when nothing could be
+   *  graded (all free-text and no AI provider) — shown as "not graded". */
+  score: number | null
+  /** How many new cards were added to the module's mistakes deck (E6). */
+  mistakesAdded: number
+  /** The mistakes deck id (for a deep link), when cards were added. */
+  mistakesDeckId: string | null
   results: {
     questionId: string
     prompt: string
@@ -393,49 +399,55 @@ Reply with correct=true/false and one sentence of feedback in the language of th
     }
   }
 
-  const results: AttemptResult["results"] = []
-  for (const { questionId, answer } of data.answers) {
-    const q = byId.get(questionId)
-    if (!q) continue
-    let correct = false
-    let graded = true
-    let feedback: string | null = null
-    if (q.kind === "multiple_choice") {
-      correct = q.correctIndex != null && Number(answer) === q.correctIndex
-    } else if (gradeFreeText && q.referenceAnswer) {
-      const result = await gradeFreeText(q.prompt, q.referenceAnswer, answer)
-      correct = result.correct
-      feedback = result.feedback
-    } else {
-      // No AI available: don't pretend to grade free text — the runner shows
-      // the reference answer and excludes the question from the score.
-      graded = false
-    }
-    const answerText =
-      q.kind === "multiple_choice" ? (q.options?.[Number(answer)] ?? answer) : answer
-    const correctAnswer =
-      q.kind === "multiple_choice"
-        ? q.correctIndex != null
-          ? (q.options?.[q.correctIndex] ?? null)
-          : null
-        : q.referenceAnswer
-    results.push({
-      questionId,
-      prompt: q.prompt,
-      answer,
-      answerText,
-      correctAnswer,
-      correct,
-      graded,
-      feedback,
-      explanation: q.explanation,
+  // Grade all answers concurrently — the free-text AI calls are independent, so
+  // a sequential loop needlessly serialized N round-trips (E10). Question count
+  // is bounded (≤30), so a plain Promise.all is within provider limits.
+  const graded_ = await Promise.all(
+    data.answers.map(async ({ questionId, answer }) => {
+      const q = byId.get(questionId)
+      if (!q) return null
+      let correct = false
+      let graded = true
+      let feedback: string | null = null
+      if (q.kind === "multiple_choice") {
+        correct = q.correctIndex != null && Number(answer) === q.correctIndex
+      } else if (gradeFreeText && q.referenceAnswer) {
+        const result = await gradeFreeText(q.prompt, q.referenceAnswer, answer)
+        correct = result.correct
+        feedback = result.feedback
+      } else {
+        // No AI available: don't pretend to grade free text — the runner shows
+        // the reference answer and excludes the question from the score.
+        graded = false
+      }
+      const answerText =
+        q.kind === "multiple_choice" ? (q.options?.[Number(answer)] ?? answer) : answer
+      const correctAnswer =
+        q.kind === "multiple_choice"
+          ? q.correctIndex != null
+            ? (q.options?.[q.correctIndex] ?? null)
+            : null
+          : q.referenceAnswer
+      return {
+        questionId,
+        prompt: q.prompt,
+        answer,
+        answerText,
+        correctAnswer,
+        correct,
+        graded,
+        feedback,
+        explanation: q.explanation,
+      }
     })
-  }
+  )
+  const results: AttemptResult["results"] = graded_.filter((r) => r !== null)
 
   const gradedResults = results.filter((r) => r.graded)
+  // Nothing gradable (all free-text, no AI) → honest null instead of a fake 0%.
   const score =
     gradedResults.length === 0
-      ? 0
+      ? null
       : Math.round((gradedResults.filter((r) => r.correct).length / gradedResults.length) * 100)
 
   const [attempt] = await db
@@ -443,7 +455,7 @@ Reply with correct=true/false and one sentence of feedback in the language of th
     .values({
       quizId: data.quizId,
       userId: session.user.id,
-      score: String(score),
+      score: score != null ? String(score) : null,
       finishedAt: new Date(),
     })
     .returning({ id: quizAttempt.id })
@@ -477,12 +489,16 @@ Reply with correct=true/false and one sentence of feedback in the language of th
   // Feed wrong answers into the module's auto-managed "mistakes" deck so they
   // come back through spaced repetition.
   const wrong = results.filter((r) => r.graded && !r.correct && r.correctAnswer)
+  let mistakesAdded = 0
+  let mistakesDeckId: string | null = null
   if (wrong.length > 0) {
-    await addToMistakesDeck(session.user.id, quizRow?.moduleId ?? null, wrong)
+    const added = await addToMistakesDeck(session.user.id, quizRow?.moduleId ?? null, wrong)
+    mistakesAdded = added.added
+    mistakesDeckId = added.deckId
   }
 
   revalidatePath("/")
-  return { score, results }
+  return { score, results, mistakesAdded, mistakesDeckId }
 }
 
 /**
@@ -494,7 +510,7 @@ async function addToMistakesDeck(
   userId: string,
   moduleId: string | null,
   wrong: { prompt: string; correctAnswer: string | null; explanation: string | null }[]
-): Promise<void> {
+): Promise<{ added: number; deckId: string }> {
   const { deck, flashcard } = await import("@/db/schema")
   let mistakes = await db.query.deck.findFirst({
     where: and(
@@ -528,4 +544,5 @@ async function addToMistakesDeck(
       }))
     )
   }
+  return { added: fresh.length, deckId: mistakes.id }
 }

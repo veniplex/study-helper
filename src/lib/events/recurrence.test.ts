@@ -71,6 +71,33 @@ describe("expandOccurrences", () => {
     expect(occ).toHaveLength(1)
     expect(occ[0].endsAt!.getTime() - occ[0].startsAt.getTime()).toBe(90 * 60 * 1000)
   })
+
+  it("skips individually-deleted occurrences via skipDates (E18)", () => {
+    const occ = expandOccurrences(
+      { ...base, recurrence: "weekly", skipDates: ["2026-04-20", "2026-05-04"] },
+      new Date("2026-04-01"),
+      new Date("2026-05-05")
+    )
+    expect(occ.map((o) => o.occurrenceDate)).toEqual(["2026-04-13", "2026-04-27"])
+  })
+
+  it("leaves the series intact when skipDates is empty or null", () => {
+    const empty = expandOccurrences(
+      { ...base, recurrence: "weekly", skipDates: [] },
+      new Date("2026-04-01"),
+      new Date("2026-04-28")
+    )
+    expect(empty.map((o) => o.occurrenceDate)).toEqual(["2026-04-13", "2026-04-20", "2026-04-27"])
+  })
+
+  it("can skip the first (non-instance) occurrence too", () => {
+    const occ = expandOccurrences(
+      { ...base, recurrence: "weekly", skipDates: ["2026-04-13"] },
+      new Date("2026-04-01"),
+      new Date("2026-04-28")
+    )
+    expect(occ.map((o) => o.occurrenceDate)).toEqual(["2026-04-20", "2026-04-27"])
+  })
 })
 
 describe("custom recurrence", () => {

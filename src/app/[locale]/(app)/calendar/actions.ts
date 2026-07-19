@@ -137,11 +137,13 @@ export async function moveEvent(eventId: string, input: unknown) {
   const session = await requireSession()
   const data = moveSchema.parse(input)
   const before = await ownEvent(eventId, session.user.id)
+  // Interpret drag/resize times through the same server-local convention as
+  // create/update (parseStart) so the whole calendar stays consistent (E20).
   await db
     .update(studyEvent)
     .set({
-      startsAt: new Date(data.startsAt),
-      endsAt: data.endsAt ? new Date(data.endsAt) : null,
+      startsAt: parseStart(data.startsAt, false),
+      endsAt: data.endsAt ? parseStart(data.endsAt, false) : null,
     })
     .where(and(eq(studyEvent.id, eventId), eq(studyEvent.userId, session.user.id)))
   await logAudit({
@@ -154,6 +156,38 @@ export async function moveEvent(eventId: string, input: unknown) {
     after: { ...before, startsAt: data.startsAt, endsAt: data.endsAt ?? null },
   })
   revalidatePath("/calendar")
+  return { ok: true as const }
+}
+
+/**
+ * Deletes a single occurrence of a recurring event by recording its (local ISO)
+ * date in `skip_dates` — `expandOccurrences` then skips it while the rest of the
+ * series survives (E18). Single-occurrence editing is intentionally deferred.
+ */
+export async function deleteEventOccurrence(eventId: string, occurrenceDate: string) {
+  const session = await requireSession()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(occurrenceDate)) throw new Error("Invalid date")
+  const before = await ownEvent(eventId, session.user.id)
+  if (before.recurrence === "none") {
+    // Not a series — a single-occurrence delete is just a delete.
+    return deleteEvent(eventId)
+  }
+  const next = Array.from(new Set([...(before.skipDates ?? []), occurrenceDate]))
+  await db
+    .update(studyEvent)
+    .set({ skipDates: next })
+    .where(and(eq(studyEvent.id, eventId), eq(studyEvent.userId, session.user.id)))
+  await logAudit({
+    userId: session.user.id,
+    operation: "update",
+    entityType: "event",
+    entityId: eventId,
+    entityLabel: `${before.title} (${occurrenceDate})`,
+    before,
+    after: { ...before, skipDates: next },
+  })
+  revalidatePath("/calendar")
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 

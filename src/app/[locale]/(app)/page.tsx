@@ -111,15 +111,20 @@ export default async function DashboardPage() {
     : []
 
   // Next upcoming exam of the active program's modules, with its preparedness.
-  const nextExamRow = await db.query.studyEvent.findFirst({
-    where: and(
-      eq(studyEvent.userId, session.user.id),
-      eq(studyEvent.type, "exam"),
-      gte(studyEvent.startsAt, new Date())
-    ),
-    orderBy: [asc(studyEvent.startsAt)],
-    with: { module: { columns: { id: true, name: true } } },
-  })
+  // Scope to the active program's module ids so exams from other programs don't
+  // surface on this program's dashboard (E16).
+  const nextExamRow = activeModuleIds.length
+    ? await db.query.studyEvent.findFirst({
+        where: and(
+          eq(studyEvent.userId, session.user.id),
+          eq(studyEvent.type, "exam"),
+          gte(studyEvent.startsAt, new Date()),
+          inArray(studyEvent.moduleId, activeModuleIds)
+        ),
+        orderBy: [asc(studyEvent.startsAt)],
+        with: { module: { columns: { id: true, name: true } } },
+      })
+    : null
   const nextExam: NextExam | null = nextExamRow
     ? {
         title: nextExamRow.title,

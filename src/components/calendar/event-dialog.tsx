@@ -51,6 +51,8 @@ export type EventData = {
   recurrenceUntil?: string | null
   recurrenceWeekdays?: number[] | null
   recurrenceInterval?: number | null
+  /** Local ISO dates of individually-deleted occurrences (E18). */
+  skipDates?: string[] | null
 }
 
 export type ModuleOption = { id: string; name: string }

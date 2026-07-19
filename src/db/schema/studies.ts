@@ -293,6 +293,10 @@ export const studyEvent = pgTable(
     recurrenceWeekdays: jsonb("recurrence_weekdays").$type<number[]>(),
     /** For "custom": repeat every N weeks (1–4), anchored at startsAt's week. */
     recurrenceInterval: integer("recurrence_interval"),
+    /** ISO dates (yyyy-mm-dd) of recurring occurrences deleted individually.
+     *  `expandOccurrences` skips these — lets a single instance be removed
+     *  without deleting the whole series. */
+    skipDates: jsonb("skip_dates").$type<string[]>(),
     ...timestamps,
   },
   (t) => [

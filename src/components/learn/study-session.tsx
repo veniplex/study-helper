@@ -12,12 +12,31 @@ import { Card, CardContent } from "@/components/ui/card"
 import { reviewCard } from "@/app/[locale]/(app)/deck-actions"
 import { logStudySession } from "@/app/[locale]/(app)/learn-actions"
 import { enqueue, isNetworkError } from "@/lib/offline/outbox"
-import type { ReviewRating } from "@/lib/learning/fsrs"
+import {
+  formatReviewInterval,
+  previewIntervals,
+  type CardSchedulingFields,
+  type ReviewRating,
+} from "@/lib/learning/fsrs"
 import { cn } from "@/lib/utils"
 
-export type StudyCard = { id: string; front: string; back: string }
+/** A card plus its FSRS scheduling fields (for the client-side interval
+ *  preview). Fields are optional so callers that don't need previews can omit
+ *  them; without them the buttons simply show no interval label. */
+export type StudyCard = {
+  id: string
+  front: string
+  back: string
+} & Partial<CardSchedulingFields>
 
 const RATING_KEYS = { 1: "again", 2: "hard", 3: "good", 4: "easy" } as const
+
+const RATING_BUTTONS = [
+  { rating: 1, variant: "destructive" },
+  { rating: 2, variant: "outline" },
+  { rating: 3, variant: "secondary" },
+  { rating: 4, variant: "default" },
+] as const satisfies { rating: ReviewRating; variant: string }[]
 
 export function StudySession({
   backHref,
@@ -52,6 +71,70 @@ export function StudySession({
   const current = queue[0]
   const reviewed = counts[1] + counts[2] + counts[3] + counts[4]
 
+  // Log the elapsed study time exactly once. Both the completion path and the
+  // leave-mid-session path (E7) funnel through here; `loggedRef` guards against
+  // double-counting. `reviewedRef` lets the unmount cleanup read the latest
+  // count without re-subscribing.
+  const reviewedRef = React.useRef(0)
+  React.useEffect(() => {
+    reviewedRef.current = reviewed
+  }, [reviewed])
+
+  const logOnce = React.useCallback(() => {
+    if (loggedRef.current || reviewedRef.current === 0) return
+    loggedRef.current = true
+    const minutes = Math.max(1, Math.round((Date.now() - startedAt) / 60000))
+    setResultMinutes(minutes)
+    void logStudySession({
+      moduleId: moduleId ?? null,
+      durationMinutes: minutes,
+      kind: "cards",
+    }).catch((error: unknown) => {
+      console.error("[study-session] failed to log session", error)
+    })
+  }, [moduleId, startedAt])
+
+  // Leaving mid-session (SPA navigation → unmount cleanup; tab close/refresh →
+  // pagehide) still credits the partial time studied.
+  React.useEffect(() => {
+    const onLeave = () => logOnce()
+    window.addEventListener("pagehide", onLeave)
+    return () => {
+      window.removeEventListener("pagehide", onLeave)
+      logOnce()
+    }
+  }, [logOnce])
+
+  // Client-side FSRS interval preview for the four ratings of the current card
+  // (E8) — no server round-trip. Null when the card carries no scheduling
+  // fields (e.g. an older caller), in which case the buttons show no label.
+  // Precomputes the human labels so no separate "now" state is needed.
+  const previewLabels = React.useMemo<Record<ReviewRating, string> | null>(() => {
+    if (!current || current.due == null) return null
+    const now = new Date()
+    const due = previewIntervals(
+      {
+        due: current.due,
+        stability: current.stability ?? 0,
+        difficulty: current.difficulty ?? 0,
+        elapsedDays: current.elapsedDays ?? 0,
+        scheduledDays: current.scheduledDays ?? 0,
+        learningSteps: current.learningSteps ?? 0,
+        reps: current.reps ?? 0,
+        lapses: current.lapses ?? 0,
+        state: current.state ?? 0,
+        lastReview: current.lastReview ?? null,
+      },
+      now
+    )
+    return {
+      1: formatReviewInterval(now, due[1]),
+      2: formatReviewInterval(now, due[2]),
+      3: formatReviewInterval(now, due[3]),
+      4: formatReviewInterval(now, due[4]),
+    }
+  }, [current])
+
   // Touch swipe (mobile): after reveal, swipe right = good, left = again.
   const touchStartX = React.useRef<number | null>(null)
   const [dragX, setDragX] = React.useState(0)
@@ -71,22 +154,12 @@ export function StudySession({
     if (Math.abs(delta) > 80) void rate(delta > 0 ? 3 : 1)
   }
 
-  // Log the session once when the queue is exhausted
+  // Log the session once when the queue is exhausted (leaving early is handled
+  // by the pagehide/unmount effect above — both go through logOnce).
   React.useEffect(() => {
-    if (current || reviewed === 0 || loggedRef.current) return
-    loggedRef.current = true
-    const minutes = Math.max(1, Math.round((Date.now() - startedAt) / 60000))
-    setResultMinutes(minutes)
-    void logStudySession({
-      moduleId: moduleId ?? null,
-      durationMinutes: minutes,
-      kind: "cards",
-    }).catch((error: unknown) => {
-      // Non-blocking background logging, but never fully silent — a persistent
-      // failure here quietly under-counts the study statistics.
-      console.error("[study-session] failed to log session", error)
-    })
-  }, [current, reviewed, moduleId, startedAt])
+    if (current || reviewed === 0) return
+    logOnce()
+  }, [current, reviewed, logOnce])
 
   async function rate(rating: ReviewRating) {
     if (!current || pending) return
@@ -234,18 +307,22 @@ export function StudySession({
         </Button>
       ) : (
         <div className="grid grid-cols-4 gap-2">
-          <Button variant="destructive" disabled={pending} onClick={() => rate(1)}>
-            {t("again")}
-          </Button>
-          <Button variant="outline" disabled={pending} onClick={() => rate(2)}>
-            {t("hard")}
-          </Button>
-          <Button variant="secondary" disabled={pending} onClick={() => rate(3)}>
-            {t("good")}
-          </Button>
-          <Button disabled={pending} onClick={() => rate(4)}>
-            {t("easy")}
-          </Button>
+          {RATING_BUTTONS.map(({ rating, variant }) => (
+            <Button
+              key={rating}
+              variant={variant}
+              disabled={pending}
+              onClick={() => rate(rating)}
+              className="h-auto flex-col gap-0.5 py-2"
+            >
+              <span>{t(RATING_KEYS[rating])}</span>
+              {previewLabels && (
+                <span className="text-[10px] font-normal tabular-nums opacity-70">
+                  {previewLabels[rating]}
+                </span>
+              )}
+            </Button>
+          ))}
         </div>
       )}
     </div>

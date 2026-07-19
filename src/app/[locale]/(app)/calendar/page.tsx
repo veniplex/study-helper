@@ -23,9 +23,15 @@ function toLocalInputValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export default async function CalendarPage() {
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ event?: string }>
+}) {
   const session = await requireSession()
   const t = await getTranslations("calendar")
+  // Deep link from the command palette: focus/open this event on load (E24).
+  const { event: focusEventId } = await searchParams
 
   const userPlans = await db.query.semesterPlan.findMany({
     where: eq(semesterPlan.userId, session.user.id),
@@ -95,6 +101,7 @@ export default async function CalendarPage() {
 
       <CalendarView
         modules={modules}
+        focusEventId={focusEventId}
         events={allEvents.map((e) => ({
           id: e.id,
           title: e.title,
@@ -110,6 +117,7 @@ export default async function CalendarPage() {
           recurrenceUntil: e.recurrenceUntil,
           recurrenceWeekdays: e.recurrenceWeekdays,
           recurrenceInterval: e.recurrenceInterval,
+          skipDates: e.skipDates,
         }))}
         planSessions={planSessions.map((s) => ({
           id: s.id,

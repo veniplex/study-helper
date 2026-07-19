@@ -139,7 +139,7 @@ export function CommandPalette() {
           {results.events.length > 0 && (
             <CommandGroup heading={tSearch("events")}>
               {results.events.map((e) => (
-                <CommandItem key={e.id} onSelect={() => go("/calendar")}>
+                <CommandItem key={e.id} onSelect={() => go(`/calendar?event=${e.id}`)}>
                   <CalendarDays className="size-4" />
                   {e.title}
                 </CommandItem>
