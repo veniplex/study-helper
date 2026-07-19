@@ -336,6 +336,194 @@ describe("DEFAULT_SCHEDULE_CONFIG", () => {
   })
 })
 
+// ---- consolidation window ------------------------------------------------------
+
+/** Categorized task helper for consolidation tests. */
+function ctask(
+  id: string,
+  category: "learn" | "review" | "cards",
+  minutes = 60,
+  dueDate: string | null = null
+) {
+  return { id, estimatedMinutes: minutes, dueDate, category }
+}
+
+/** ISO-week key mirroring the scheduler's internal grouping. */
+function weekKeyOf(date: string): string {
+  const d = new Date(Date.parse(`${date}T00:00:00Z`))
+  const day = (d.getUTCDay() + 6) % 7
+  d.setUTCDate(d.getUTCDate() - day + 3)
+  const firstThursday = Date.UTC(d.getUTCFullYear(), 0, 4)
+  const ft = new Date(firstThursday)
+  const ftDay = (ft.getUTCDay() + 6) % 7
+  ft.setUTCDate(ft.getUTCDate() - ftDay + 3)
+  const week = 1 + Math.round((d.getTime() - ft.getTime()) / (7 * 86400000))
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`
+}
+
+describe("computeSchedule — consolidation window", () => {
+  const START = "2026-08-17"
+  const END = "2026-08-24" // exam day
+  const consolidation = { start: START, end: END }
+
+  it("(a) never places a learn task on/after the window start", () => {
+    const input = baseInput({
+      today: "2026-08-03",
+      horizonEnd: "2026-08-31",
+      availabilityWindows: allDays("09:00", "12:00"),
+      modules: [
+        mod({
+          moduleId: "m",
+          consolidation,
+          tasks: [0, 1, 2, 3].map((i) => ctask(`learn${i}`, "learn", 60, START)),
+        }),
+      ],
+    })
+    const { sessions } = computeSchedule(input)
+    expect(sessions.length).toBeGreaterThan(0)
+    for (const s of sessions) expect(s.date < START).toBe(true)
+  })
+
+  it("(b) review/cards tasks land inside the window", () => {
+    const input = baseInput({
+      today: START,
+      horizonEnd: "2026-08-31",
+      availabilityWindows: allDays("09:00", "12:00"),
+      modules: [
+        mod({
+          moduleId: "m",
+          consolidation,
+          tasks: [
+            ctask("r0", "review", 60, "2026-08-20"),
+            ctask("c0", "cards", 30, "2026-08-20"),
+            ctask("r1", "review", 60, "2026-08-22"),
+          ],
+        }),
+      ],
+    })
+    const { sessions } = computeSchedule(input)
+    expect(sessions.length).toBeGreaterThan(0)
+    for (const s of sessions) {
+      expect(s.date >= START && s.date <= END).toBe(true)
+      expect(s.date).not.toBe(END)
+    }
+  })
+
+  it("(c) an assignment learn task due INSIDE the window is still scheduled", () => {
+    const input = baseInput({
+      today: START,
+      horizonEnd: "2026-08-31",
+      availabilityWindows: allDays("09:00", "12:00"),
+      modules: [
+        mod({
+          moduleId: "m",
+          consolidation,
+          tasks: [ctask("assign", "learn", 60, "2026-08-20")],
+        }),
+      ],
+    })
+    const { sessions, warnings } = computeSchedule(input)
+    const placed = sessions.find((s) => s.taskIds.includes("assign"))
+    expect(placed).toBeDefined()
+    expect(placed!.date <= "2026-08-20").toBe(true)
+    expect(warnings.some((w) => w.kind === "deadline_unreachable" && w.taskId === "assign")).toBe(
+      false
+    )
+  })
+
+  it("(d) never places a session for the module on the exam day", () => {
+    const input = baseInput({
+      today: START,
+      horizonEnd: "2026-08-31",
+      availabilityWindows: allDays("09:00", "12:00"),
+      modules: [
+        mod({
+          moduleId: "m",
+          consolidation,
+          tasks: [ctask("r0", "review", 60, END), ctask("r1", "review", 60, END)],
+        }),
+      ],
+    })
+    const { sessions } = computeSchedule(input)
+    expect(sessions.some((s) => s.moduleId === "m")).toBe(true)
+    expect(sessions.every((s) => s.date !== END)).toBe(true)
+  })
+
+  it("(g) session kind reflects the majority task category", () => {
+    const reviewHeavy = baseInput({
+      today: "2026-08-03",
+      horizonEnd: "2026-08-03",
+      availabilityWindows: allDays("09:00", "12:00"),
+      config: { maxSessionsPerDay: 1, sessionMinutes: { min: 45, max: 180 } },
+      modules: [
+        mod({
+          moduleId: "m",
+          tasks: [ctask("r0", "review", 30), ctask("r1", "review", 30), ctask("l0", "learn", 30)],
+        }),
+      ],
+    })
+    const s1 = computeSchedule(reviewHeavy).sessions
+    expect(s1).toHaveLength(1)
+    expect(s1[0].kind).toBe("review")
+
+    const learnHeavy = baseInput({
+      today: "2026-08-03",
+      horizonEnd: "2026-08-03",
+      availabilityWindows: allDays("09:00", "12:00"),
+      config: { maxSessionsPerDay: 1, sessionMinutes: { min: 45, max: 180 } },
+      modules: [mod({ moduleId: "m", tasks: [ctask("l0", "learn", 30), ctask("l1", "learn", 30)] })],
+    })
+    expect(computeSchedule(learnHeavy).sessions[0].kind).toBe("study")
+  })
+})
+
+// ---- weekly capacity override --------------------------------------------------
+
+describe("computeSchedule — weekCapacityOverrides", () => {
+  it("(e) caps the whole plan's minutes in the overridden ISO week only", () => {
+    const capWeek = weekKeyOf("2026-08-03")
+    const build = () =>
+      baseInput({
+        today: "2026-08-03", // Monday
+        horizonEnd: "2026-08-16", // through the following Sunday (two ISO weeks)
+        availabilityWindows: allDays("09:00", "15:00"),
+        config: { maxSessionsPerDay: 3, sessionMinutes: { min: 45, max: 60 } },
+        weekCapacityOverrides: { [capWeek]: 120 }, // 2h cap in week one
+        modules: [mod({ moduleId: "m", tasks: tasks(60, 60) })],
+      })
+    const { sessions } = computeSchedule(build())
+    const minutesIn = (from: string, to: string) =>
+      sessions
+        .filter((s) => s.date >= from && s.date <= to)
+        .reduce((sum, s) => sum + s.durationMinutes, 0)
+    expect(minutesIn("2026-08-03", "2026-08-09")).toBeLessThanOrEqual(120)
+    // A later week (no override) is unaffected — more than the cap is placed.
+    expect(minutesIn("2026-08-10", "2026-08-16")).toBeGreaterThan(120)
+    // Determinism preserved.
+    expect(computeSchedule(build())).toEqual(computeSchedule(build()))
+  })
+})
+
+// ---- horizon clipping ----------------------------------------------------------
+
+describe("computeSchedule — horizon_clipped", () => {
+  it("(f) emits horizon_clipped for a task due beyond the horizon", () => {
+    const input = baseInput({
+      today: "2026-08-03",
+      horizonEnd: "2026-08-16",
+      availabilityWindows: allDays("09:00", "12:00"),
+      modules: [
+        mod({
+          moduleId: "m",
+          tasks: [{ id: "far", estimatedMinutes: 60, dueDate: "2027-01-01" }],
+        }),
+      ],
+    })
+    const { warnings } = computeSchedule(input)
+    expect(warnings.some((w) => w.kind === "horizon_clipped" && w.taskId === "far")).toBe(true)
+  })
+})
+
 // ---- degenerate config guard (B8) ----------------------------------------------
 
 describe("computeSchedule — degenerate config", () => {

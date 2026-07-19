@@ -1,6 +1,7 @@
-import { asc, eq, ne, and, isNotNull, inArray } from "drizzle-orm"
+import { asc, eq, ne, and, isNotNull, inArray, gte, lte } from "drizzle-orm"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
+import { toIsoDate } from "@/lib/events/recurrence"
 import {
   assignment,
   degreeProgram,
@@ -32,6 +33,11 @@ export default async function CalendarPage() {
   })
   const planIds = userPlans.map((p) => p.id)
 
+  // Bound plan sessions to a sane window instead of loading every session ever.
+  const now = new Date()
+  const sessionFrom = toIsoDate(new Date(now.getTime() - 60 * 86400000))
+  const sessionTo = toIsoDate(new Date(now.getTime() + 365 * 86400000))
+
   const [allEvents, prefs, programs, planSessions, dueAssignments] = await Promise.all([
     db.query.studyEvent.findMany({
       where: eq(studyEvent.userId, session.user.id),
@@ -45,7 +51,11 @@ export default async function CalendarPage() {
     }),
     planIds.length
       ? db.query.planSession.findMany({
-          where: inArray(planSession.semesterPlanId, planIds),
+          where: and(
+            inArray(planSession.semesterPlanId, planIds),
+            gte(planSession.date, sessionFrom),
+            lte(planSession.date, sessionTo)
+          ),
           with: {
             module: { columns: { name: true } },
             tasks: {

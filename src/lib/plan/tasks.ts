@@ -10,6 +10,9 @@ import type { PlanTaskSource } from "@/db/schema/plan"
  * action upserts by (kind, refId) and never duplicates or clobbers manual work.
  */
 
+/** What a draft is for; drives the pre-exam consolidation window scheduling. */
+export type PlanTaskCategory = "learn" | "review" | "cards"
+
 export type PlanTaskDraft = {
   title: string
   description: string | null
@@ -17,6 +20,7 @@ export type PlanTaskDraft = {
   dueDate: string | null
   goalId: string | null
   source: PlanTaskSource
+  category: PlanTaskCategory
   aiGenerated: boolean
 }
 
@@ -40,6 +44,29 @@ export type TaskGenInput = {
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 
+/** UTC-based day math so it never depends on the host timezone/clock. */
+const MS_PER_DAY = 86400000
+function parseDay(date: string): number {
+  return Date.parse(`${date}T00:00:00Z`)
+}
+function addDays(date: string, n: number): string {
+  return new Date(parseDay(date) + n * MS_PER_DAY).toISOString().slice(0, 10)
+}
+function daysBetween(from: string, to: string): number {
+  return Math.round((parseDay(to) - parseDay(from)) / MS_PER_DAY)
+}
+
+/**
+ * Length of the pre-exam consolidation window in days: an explicit value if the
+ * goal carries one, otherwise `clamp(round(0.25 × daysUntilExam), 3, 14)` — a
+ * quarter of the remaining runway, floored at 3 and capped at 14 days. Pure.
+ */
+export function reviewDays(examDate: string, today: string, explicit?: number | null): number {
+  if (explicit != null && Number.isFinite(explicit)) return clamp(Math.round(explicit), 3, 14)
+  const until = Math.max(0, daysBetween(today, examDate))
+  return clamp(Math.round(0.25 * until), 3, 14)
+}
+
 /** Outline weight (1–10) → estimated study minutes (30–150), rounded to 15. */
 function minutesForTopic(weight: number): number {
   const raw = clamp(weight, 1, 10) * 15
@@ -61,50 +88,82 @@ const TASK_PHASES = [
   "Überarbeitung & Korrektur",
 ]
 
-function examDrafts(goal: TaskGenGoal, topics: TaskGenInput["outlineTopics"]): PlanTaskDraft[] {
+function examDrafts(
+  goal: TaskGenGoal,
+  topics: TaskGenInput["outlineTopics"],
+  today: string
+): PlanTaskDraft[] {
   const drafts: PlanTaskDraft[] = []
+  const examDate = goal.dueDate
+  // Effective learning deadline sits BEFORE the consolidation window so new
+  // material is done by the time review starts. Falls back to the exam date
+  // (or null) when there is no exam date to anchor the window.
+  const rd = examDate ? reviewDays(examDate, today, goal.config.reviewDays) : null
+  const learnDue = examDate && rd != null ? addDays(examDate, -rd) : examDate
+
   if (topics.length > 0) {
     for (const topic of topics) {
       drafts.push({
         title: `Lernen: ${topic.title}`,
         description: null,
         estimatedMinutes: minutesForTopic(topic.weight),
-        dueDate: goal.dueDate,
+        dueDate: learnDue,
         goalId: goal.id,
         source: { kind: "outline_topic", refId: topic.id },
+        category: "learn",
         aiGenerated: false,
       })
     }
-    // Review tasks in the run-up to the exam (cards/quiz recommendation).
-    drafts.push(
-      {
-        title: "Wiederholung & Karteikarten",
-        description: "Fällige Karten wiederholen und Wissenslücken schließen.",
-        estimatedMinutes: 60,
-        dueDate: goal.dueDate,
-        goalId: goal.id,
-        source: { kind: "ai", refId: `review-${goal.id}` },
-        aiGenerated: false,
-      },
-      {
+    // Spaced consolidation series inside [examDate−reviewDays, examDate]: n
+    // review tasks + a companion cards task each, plus one mock the day before.
+    if (examDate && rd != null) {
+      const windowStart = addDays(examDate, -rd)
+      const n = clamp(Math.ceil(rd / 3), 2, 5)
+      for (let i = 0; i < n; i++) {
+        const offset = clamp(Math.round(((i + 1) / n) * rd), 1, rd)
+        const due = addDays(windowStart, offset)
+        drafts.push({
+          title: `Wiederholung ${i + 1}/${n}`,
+          description: "Kernthemen aktiv wiederholen und Wissenslücken schließen.",
+          estimatedMinutes: 60,
+          dueDate: due,
+          goalId: goal.id,
+          source: { kind: "ai", refId: `review-${goal.id}-${i}` },
+          category: "review",
+          aiGenerated: false,
+        })
+        drafts.push({
+          title: `Karten & Fehler-Deck ${i + 1}/${n}`,
+          description: "Fällige Karteikarten und Karten aus dem Fehler-Deck üben.",
+          estimatedMinutes: 30,
+          dueDate: due,
+          goalId: goal.id,
+          source: { kind: "ai", refId: `cards-${goal.id}-${i}` },
+          category: "cards",
+          aiGenerated: false,
+        })
+      }
+      drafts.push({
         title: "Probeklausur / Quiz",
         description: "Unter Prüfungsbedingungen testen.",
         estimatedMinutes: 90,
-        dueDate: goal.dueDate,
+        dueDate: addDays(examDate, -1),
         goalId: goal.id,
         source: { kind: "ai", refId: `mock-${goal.id}` },
+        category: "review",
         aiGenerated: false,
-      }
-    )
+      })
+    }
   } else {
     // No outline yet — a single grounding task the action may enrich via RAG.
     drafts.push({
       title: "Materialien durcharbeiten",
       description: "Materialien sichten und Kernthemen zusammenfassen.",
       estimatedMinutes: 120,
-      dueDate: goal.dueDate,
+      dueDate: learnDue,
       goalId: goal.id,
       source: { kind: "ai", refId: `study-${goal.id}` },
+      category: "learn",
       aiGenerated: false,
     })
   }
@@ -123,6 +182,7 @@ function assignmentDrafts(
       dueDate: a.dueDate,
       goalId: goal.id,
       source: { kind: "assignment", refId: a.id },
+      category: "learn" as const,
       aiGenerated: false,
     }))
   }
@@ -135,6 +195,7 @@ function assignmentDrafts(
     dueDate: null,
     goalId: goal.id,
     source: { kind: "ai" as const, refId: `assignment-${goal.id}-${i}` },
+    category: "learn" as const,
     aiGenerated: false,
   }))
 }
@@ -148,6 +209,7 @@ function writingDrafts(goal: TaskGenGoal, milestones: TaskGenInput["milestones"]
       dueDate: m.dueDate,
       goalId: goal.id,
       source: { kind: "milestone", refId: m.id },
+      category: "learn" as const,
       aiGenerated: false,
     }))
   }
@@ -160,6 +222,7 @@ function writingDrafts(goal: TaskGenGoal, milestones: TaskGenInput["milestones"]
     dueDate: i === phases.length - 1 ? goal.dueDate : null,
     goalId: goal.id,
     source: { kind: "ai" as const, refId: `phase-${goal.id}-${i}` },
+    category: "learn" as const,
     aiGenerated: false,
   }))
 }
@@ -174,6 +237,7 @@ function presentationDrafts(goal: TaskGenGoal): PlanTaskDraft[] {
       dueDate: goal.dueDate,
       goalId: goal.id,
       source: { kind: "ai", refId: `prep-${goal.id}` },
+      category: "learn",
       aiGenerated: false,
     },
     {
@@ -183,19 +247,23 @@ function presentationDrafts(goal: TaskGenGoal): PlanTaskDraft[] {
       dueDate: goal.dueDate,
       goalId: goal.id,
       source: { kind: "ai", refId: `rehearse-${goal.id}` },
+      category: "learn",
       aiGenerated: false,
     },
   ]
 }
 
-/** Builds the full set of proposed drafts for a module from its goals + data. */
-export function buildTaskDrafts(input: TaskGenInput): PlanTaskDraft[] {
+/**
+ * Builds the full set of proposed drafts for a module from its goals + data.
+ * `today` (ISO date) anchors the pre-exam consolidation window math.
+ */
+export function buildTaskDrafts(input: TaskGenInput, today: string): PlanTaskDraft[] {
   const drafts: PlanTaskDraft[] = []
   for (const goal of input.goals) {
     switch (goal.type) {
       case "exam":
       case "oral_exam":
-        drafts.push(...examDrafts(goal, input.outlineTopics))
+        drafts.push(...examDrafts(goal, input.outlineTopics, today))
         break
       case "assignments":
         drafts.push(...assignmentDrafts(goal, input.assignments))

@@ -65,6 +65,9 @@ export type GoalConfig = {
   withPresentation?: boolean
   /** presentation: talk length in minutes. */
   durationMinutes?: number
+  /** exam/oral_exam: explicit consolidation window length in days (overrides
+   * the derived clamp(round(0.25 × daysUntil), 3, 14)). */
+  reviewDays?: number | null
 }
 
 /**
@@ -271,6 +274,8 @@ export const studyEvent = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     moduleId: text("module_id").references(() => studyModule.id, { onDelete: "set null" }),
+    /** For the idempotent exam-event sync: the module goal this event mirrors. */
+    goalId: text("goal_id").references(() => moduleGoal.id, { onDelete: "cascade" }),
     type: text("type").$type<EventType>().notNull().default("other"),
     title: text("title").notNull(),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
@@ -293,6 +298,7 @@ export const studyEvent = pgTable(
   (t) => [
     index("event_userId_idx").on(t.userId),
     index("event_startsAt_idx").on(t.startsAt),
+    index("event_goalId_idx").on(t.goalId),
   ]
 )
 
@@ -363,5 +369,9 @@ export const studyEventRelations = relations(studyEvent, ({ one }) => ({
   module: one(studyModule, {
     fields: [studyEvent.moduleId],
     references: [studyModule.id],
+  }),
+  goal: one(moduleGoal, {
+    fields: [studyEvent.goalId],
+    references: [moduleGoal.id],
   }),
 }))

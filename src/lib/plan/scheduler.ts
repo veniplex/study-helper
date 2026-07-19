@@ -17,6 +17,12 @@
  * moduleId asc). Same input ⇒ byte-identical output.
  */
 
+/** What a task (and, in majority, its session) is for. Defaults to "learn". */
+export type TaskCategory = "learn" | "review" | "cards"
+
+/** What a scheduled session is for — derived from its majority task category. */
+export type SessionKind = "study" | "review" | "cards"
+
 export type ScheduleModuleInput = {
   moduleId: string
   weight: number
@@ -26,8 +32,15 @@ export type ScheduleModuleInput = {
   phase: number
   /** Soft weekday filter (0=Sun..6=Sat). null = any weekday. */
   preferredWeekdays: number[] | null
-  /** Open tasks in priority order. */
-  tasks: { id: string; estimatedMinutes: number; dueDate: string | null }[]
+  /**
+   * Pre-exam consolidation window (start = examDate−reviewDays, end = examDate).
+   * When set: no `learn` task lands on/after `start` (unless its own dueDate is
+   * inside the window), and the module gets no session on `end` (exam day).
+   * null/absent = legacy behaviour (window rules off).
+   */
+  consolidation?: { start: string; end: string } | null
+  /** Open tasks in priority order. `category` defaults to "learn". */
+  tasks: { id: string; estimatedMinutes: number; dueDate: string | null; category?: TaskCategory }[]
 }
 
 export type ScheduleInput = {
@@ -42,6 +55,11 @@ export type ScheduleInput = {
   config: { maxSessionsPerDay: number; sessionMinutes: { min: number; max: number } }
   /** Fixed blocks the scheduler plans around (kept as-is, not re-emitted). */
   pinnedSessions: { date: string; startTime: string; durationMinutes: number }[]
+  /**
+   * Optional per-ISO-week cap (weekKey → minutes) on the WHOLE plan's assigned
+   * minutes that week ("this week I only have 4h"). Absent key = no cap.
+   */
+  weekCapacityOverrides?: Record<string, number>
   modules: ScheduleModuleInput[]
 }
 
@@ -51,10 +69,12 @@ export type ScheduledSession = {
   startTime: string
   durationMinutes: number
   taskIds: string[]
+  /** Majority task category of the session (study | review | cards). */
+  kind: SessionKind
 }
 
 export type ScheduleWarning = {
-  kind: "deadline_unreachable" | "no_capacity"
+  kind: "deadline_unreachable" | "no_capacity" | "horizon_clipped"
   moduleId?: string
   taskId?: string
   message?: string
@@ -140,19 +160,64 @@ function subtract(base: Interval[], blockers: Interval[]): Interval[] {
 
 // ---- module scheduling state ---------------------------------------------------
 
+type QueueTask = {
+  id: string
+  estimatedMinutes: number
+  dueDate: string | null
+  category: TaskCategory
+}
+
 type ModuleState = {
   input: ScheduleModuleInput
-  queue: { id: string; estimatedMinutes: number; dueDate: string | null }[]
+  queue: QueueTask[]
   assignedMinutes: number
   weekMinutes: Map<string, number>
 }
 
-function earliestDue(state: ModuleState): string | null {
+/**
+ * True if `task` may be placed on `date` for this module. Legacy (no
+ * consolidation) → always true. With a window: no session at all on the exam
+ * day; `learn` tasks not on/after `start` unless their own dueDate is inside
+ * the window; `review`/`cards` unrestricted.
+ */
+function isPlaceable(state: ModuleState, task: QueueTask, date: string): boolean {
+  const c = state.input.consolidation
+  if (!c) return true
+  if (date === c.end) return false // rule 3: no session on exam day
+  if (task.category !== "learn") return true // review/cards placed normally
+  if (date < c.start) return true
+  // On/after the window start a learn task is only allowed if it is itself due
+  // inside the window (e.g. an assignment due during the run-up).
+  return task.dueDate != null && task.dueDate >= c.start && task.dueDate <= c.end
+}
+
+function hasPlaceableWork(state: ModuleState, date: string): boolean {
+  return state.queue.some((t) => isPlaceable(state, t, date))
+}
+
+/** Earliest dueDate among the tasks placeable on `date` (null if none). */
+function earliestPlaceableDue(state: ModuleState, date: string): string | null {
   let best: string | null = null
   for (const t of state.queue) {
+    if (!isPlaceable(state, t, date)) continue
     if (t.dueDate && (best === null || t.dueDate < best)) best = t.dueDate
   }
   return best
+}
+
+/** Session kind = majority task category (ties favour study, then review). */
+function majorityKind(categories: TaskCategory[]): SessionKind {
+  let learn = 0
+  let review = 0
+  let cards = 0
+  for (const c of categories) {
+    if (c === "review") review++
+    else if (c === "cards") cards++
+    else learn++
+  }
+  if (learn >= review && learn >= cards) return "study"
+  if (review >= cards) return "review"
+  return "cards"
 }
 
 /** Deterministic ordering: phase asc, weight desc, moduleId asc. */
@@ -184,10 +249,13 @@ export function computeSchedule(input: ScheduleInput): ScheduleResult {
 
   const states: ModuleState[] = input.modules.map((m) => ({
     input: m,
-    queue: m.tasks.map((t) => ({ ...t })),
+    queue: m.tasks.map((t) => ({ ...t, category: t.category ?? "learn" })),
     assignedMinutes: 0,
     weekMinutes: new Map(),
   }))
+
+  // Plan-wide assigned minutes per ISO week (for weekCapacityOverrides).
+  const planWeekMinutes = new Map<string, number>()
 
   // Group inputs by day for O(1) lookup during the walk.
   const availByWeekday = new Map<number, Interval[]>()
@@ -258,26 +326,41 @@ export function computeSchedule(input: ScheduleInput): ScheduleResult {
 
     const budget = Math.max(0, config.maxSessionsPerDay - (pinnedCountByDate.get(date) ?? 0))
     const weekKey = isoWeekKey(date)
+    const weekOverride = input.weekCapacityOverrides?.[weekKey]
 
     for (const slot of slots.slice(0, budget)) {
+      // Plan-wide weekly cap ("this week only Xh"): stop placing once reached.
+      if (weekOverride != null && weekOverride - (planWeekMinutes.get(weekKey) ?? 0) < min) break
+
       const chosen = selectModule(states, date, weekday, weekKey, min)
       if (!chosen) continue
 
       const slotCap = slot.end - slot.start
-      const cap = capacityFor(chosen, weekKey, slotCap, min)
+      let cap = capacityFor(chosen, weekKey, slotCap, min)
+      if (weekOverride != null) {
+        cap = Math.min(cap, weekOverride - (planWeekMinutes.get(weekKey) ?? 0))
+      }
       if (cap < min) continue
 
-      // Pack tasks until the capacity is used (always at least one task).
+      // Pack placeable tasks until the capacity is used (always at least one).
       const taskIds: string[] = []
+      const categories: TaskCategory[] = []
       let used = 0
-      while (chosen.queue.length > 0) {
-        const t = chosen.queue[0]
+      let i = 0
+      while (i < chosen.queue.length) {
+        const t = chosen.queue[i]
+        if (!isPlaceable(chosen, t, date)) {
+          i++
+          continue
+        }
         if (taskIds.length > 0 && used + t.estimatedMinutes > cap) break
         taskIds.push(t.id)
+        categories.push(t.category)
         used += t.estimatedMinutes
         placedOn.set(t.id, date)
-        chosen.queue.shift()
+        chosen.queue.splice(i, 1) // remove placed task; do not advance i
       }
+      if (taskIds.length === 0) continue
 
       const durationMinutes = Math.max(min, Math.min(used, cap))
       sessions.push({
@@ -286,13 +369,29 @@ export function computeSchedule(input: ScheduleInput): ScheduleResult {
         startTime: toHHmm(slot.start),
         durationMinutes,
         taskIds,
+        kind: majorityKind(categories),
       })
       chosen.assignedMinutes += durationMinutes
       chosen.weekMinutes.set(weekKey, (chosen.weekMinutes.get(weekKey) ?? 0) + durationMinutes)
+      planWeekMinutes.set(weekKey, (planWeekMinutes.get(weekKey) ?? 0) + durationMinutes)
     }
   }
 
   // ---- warnings ----
+  // A task due beyond the (already-clipped) horizon can never be reached here;
+  // surface it so the caller can flag the far-future deadline.
+  for (const s of states) {
+    for (const t of s.input.tasks) {
+      if (t.dueDate && t.dueDate > input.horizonEnd) {
+        warnings.push({
+          kind: "horizon_clipped",
+          moduleId: s.input.moduleId,
+          taskId: t.id,
+          message: `Task ${t.id} is due ${t.dueDate}, beyond the planning horizon ${input.horizonEnd}.`,
+        })
+      }
+    }
+  }
   for (const s of states) {
     const unplacedDeadline = s.queue.filter((t) => t.dueDate)
     for (const t of unplacedDeadline) {
@@ -356,17 +455,24 @@ function selectModule(
   weekKey: string,
   min: number
 ): ModuleState | null {
-  const withWork = states.filter((s) => s.queue.length > 0 && hasWeekCapacity(s, weekKey, min))
+  const withWork = states.filter(
+    (s) => s.queue.length > 0 && hasWeekCapacity(s, weekKey, min) && hasPlaceableWork(s, date)
+  )
   if (withWork.length === 0) return null
 
   const activePhase = Math.min(...withWork.map((s) => s.input.phase))
 
+  // B10: precompute each module's earliest (placeable) due once per pass rather
+  // than recomputing it inside the sort comparator.
+  const dueOf = new Map<ModuleState, string | null>()
+  for (const s of withWork) dueOf.set(s, earliestPlaceableDue(s, date))
+
   // Deadline-driven modules cross phase and weekday boundaries.
-  const deadline = withWork.filter((s) => earliestDue(s) !== null)
+  const deadline = withWork.filter((s) => dueOf.get(s) != null)
   if (deadline.length > 0) {
     return [...deadline].sort((a, b) => {
-      const da = earliestDue(a)!
-      const db = earliestDue(b)!
+      const da = dueOf.get(a)!
+      const db = dueOf.get(b)!
       if (da !== db) return da < db ? -1 : 1
       return tieBreak(a, b)
     })[0]

@@ -7,6 +7,7 @@ import { semesterPlan, type PlanAvailability } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { validateCron } from "@/lib/plan/absences"
 import { ownSemester } from "@/lib/studies/access"
+import { recomputeSchedule } from "./schedule-actions"
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
 
@@ -70,6 +71,12 @@ export async function saveAvailability(semesterId: string, input: unknown) {
     .insert(semesterPlan)
     .values({ userId: session.user.id, semesterId, availability })
     .onConflictDoUpdate({ target: semesterPlan.semesterId, set: { availability } })
+  // Availability is a core scheduler input → auto-replan (best-effort).
+  try {
+    await recomputeSchedule(semesterId)
+  } catch {
+    // best-effort; availability was saved regardless
+  }
   revalidatePath("/", "layout")
   return { ok: true as const }
 }

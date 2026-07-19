@@ -18,6 +18,8 @@ import { requireSession } from "@/lib/auth/session"
 import { ownModule } from "@/lib/studies/access"
 import { buildTaskDrafts, sourceKey, type TaskGenInput } from "@/lib/plan/tasks"
 import { dueDateField } from "@/lib/plan/task-validation"
+import { markPlanStale } from "@/lib/plan/staleness"
+import { toIsoDate } from "@/lib/events/recurrence"
 
 type OwnedModule = Awaited<ReturnType<typeof ownModule>>
 
@@ -25,6 +27,11 @@ function revalidateModule(mod: OwnedModule) {
   revalidatePath(`/studies/${mod.semester.programId}/${mod.id}/plan`)
   revalidatePath(`/plan/${mod.semesterId}`)
   revalidatePath("/", "layout")
+}
+
+/** A2: flag the module's semester plan stale after a plan-relevant mutation. */
+async function markStale(mod: OwnedModule) {
+  await markPlanStale(mod.semesterId)
 }
 
 /**
@@ -94,6 +101,7 @@ export async function updateModulePlanPrefs(moduleId: string, input: unknown) {
       ...(data.preferredWeekdays !== undefined ? { preferredWeekdays: data.preferredWeekdays } : {}),
     })
     .where(eq(modulePlan.moduleId, moduleId))
+  await markStale(mod)
   revalidateModule(mod)
   return { ok: true as const }
 }
@@ -160,35 +168,79 @@ export async function generateModuleTasks(moduleId: string) {
     : []
 
   const genInput: TaskGenInput = { goals, outlineTopics, assignments: openAssignments, milestones }
-  const drafts = buildTaskDrafts(genInput)
+  const today = toIsoDate(new Date())
+  const drafts = buildTaskDrafts(genInput, today)
 
   await ensureModulePlan(moduleId)
 
   const existing = await db.query.planTask.findMany({
     where: eq(planTask.moduleId, moduleId),
-    columns: { source: true, sortOrder: true },
+    columns: {
+      id: true,
+      source: true,
+      sortOrder: true,
+      dueDate: true,
+      estimatedMinutes: true,
+      done: true,
+    },
   })
   const existingKeys = new Set(existing.map((t) => sourceKey(t.source)))
+  const draftByKey = new Map(drafts.map((d) => [sourceKey(d.source), d]))
   const maxSort = existing.reduce((m, t) => Math.max(m, t.sortOrder), -1)
 
-  const toInsert = drafts.filter((d) => !existingKeys.has(sourceKey(d.source)))
-  if (toInsert.length > 0) {
-    await db.insert(planTask).values(
-      toInsert.map((d, i) => ({
-        moduleId,
-        goalId: d.goalId,
-        title: d.title,
-        description: d.description,
-        estimatedMinutes: d.estimatedMinutes,
-        dueDate: d.dueDate,
-        source: d.source,
-        sortOrder: maxSort + 1 + i,
-        aiGenerated: d.aiGenerated,
-      }))
-    )
+  // A12 reconciliation: keep the generated task set in sync with the current
+  // draft set. Never touch manual tasks or anything already done.
+  const toDelete: string[] = []
+  const toUpdate: { id: string; dueDate: string | null; estimatedMinutes: number }[] = []
+  for (const t of existing) {
+    if (t.source.kind === "manual" || t.done) continue
+    const draft = draftByKey.get(sourceKey(t.source))
+    if (!draft) {
+      toDelete.push(t.id) // generated task whose source vanished from the drafts
+      continue
+    }
+    if (t.dueDate !== draft.dueDate || t.estimatedMinutes !== draft.estimatedMinutes) {
+      toUpdate.push({ id: t.id, dueDate: draft.dueDate, estimatedMinutes: draft.estimatedMinutes })
+    }
   }
+
+  const toInsert = drafts.filter((d) => !existingKeys.has(sourceKey(d.source)))
+
+  await db.transaction(async (tx) => {
+    if (toDelete.length > 0) {
+      await tx.delete(planTask).where(inArray(planTask.id, toDelete))
+    }
+    for (const u of toUpdate) {
+      await tx
+        .update(planTask)
+        .set({ dueDate: u.dueDate, estimatedMinutes: u.estimatedMinutes })
+        .where(eq(planTask.id, u.id))
+    }
+    if (toInsert.length > 0) {
+      await tx.insert(planTask).values(
+        toInsert.map((d, i) => ({
+          moduleId,
+          goalId: d.goalId,
+          title: d.title,
+          description: d.description,
+          estimatedMinutes: d.estimatedMinutes,
+          dueDate: d.dueDate,
+          source: d.source,
+          sortOrder: maxSort + 1 + i,
+          aiGenerated: d.aiGenerated,
+        }))
+      )
+    }
+  })
+
+  await markStale(mod)
   revalidateModule(mod)
-  return { ok: true as const, created: toInsert.length }
+  return {
+    ok: true as const,
+    created: toInsert.length,
+    deleted: toDelete.length,
+    updated: toUpdate.length,
+  }
 }
 
 // ---- task CRUD --------------------------------------------------------------
@@ -225,6 +277,7 @@ export async function createPlanTask(moduleId: string, input: unknown) {
       sortOrder: maxSort + 1,
     })
     .returning({ id: planTask.id })
+  await markStale(mod)
   revalidateModule(mod)
   return { ok: true as const, id: created.id }
 }
@@ -252,6 +305,7 @@ export async function updatePlanTask(taskId: string, input: unknown) {
       ...(data.goalId !== undefined ? { goalId: data.goalId } : {}),
     })
     .where(eq(planTask.id, taskId))
+  await markStale(row.module)
   revalidateModule(row.module)
   return { ok: true as const }
 }
@@ -260,6 +314,7 @@ export async function togglePlanTask(taskId: string, done: boolean) {
   const session = await requireSession()
   const row = await ownPlanTask(taskId, session.user.id)
   await db.update(planTask).set({ done }).where(eq(planTask.id, taskId))
+  await markStale(row.module)
   revalidateModule(row.module)
   return { ok: true as const }
 }
@@ -268,6 +323,7 @@ export async function deletePlanTask(taskId: string) {
   const session = await requireSession()
   const row = await ownPlanTask(taskId, session.user.id)
   await db.delete(planTask).where(eq(planTask.id, taskId))
+  await markStale(row.module)
   revalidateModule(row.module)
   return { ok: true as const }
 }
@@ -287,6 +343,7 @@ export async function reorderPlanTasks(moduleId: string, orderedIds: string[]) {
       await tx.update(planTask).set({ sortOrder: i }).where(eq(planTask.id, ids[i]))
     }
   })
+  await markStale(mod)
   revalidateModule(mod)
   return { ok: true as const }
 }

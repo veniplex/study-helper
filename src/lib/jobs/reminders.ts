@@ -155,7 +155,8 @@ async function sendAssignmentReminders(now: Date): Promise<void> {
 
 /** Daily morning reminder listing today's open plan sessions. */
 export async function sendDailyPlanReminders(): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10)
+  // Local ISO date, matching how plan_session.date is written (B6/day-key policy).
+  const today = toIsoDate(new Date())
 
   const sessions = await db
     .select({ userId: semesterPlan.userId })

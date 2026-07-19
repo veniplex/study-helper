@@ -38,6 +38,14 @@ export type PlanTaskSource = {
 }
 
 /**
+ * What a scheduled session is FOR — drives the pre-exam consolidation window:
+ * `study` = learning new material, `review` = spaced repetition / mock exams,
+ * `cards` = FSRS-due flashcards + mistakes deck. Derived from the majority task
+ * category placed in the session.
+ */
+export type PlanSessionKind = "study" | "review" | "cards"
+
+/**
  * Per-module planning preferences (the "content layer" knobs a student tweaks).
  * One row per module; the scheduler reads these to distribute time across
  * modules. Separate from the tasks so prefs survive task regeneration.
@@ -84,6 +92,8 @@ export const planSession = pgTable(
     date: date("date").notNull(),
     startTime: text("start_time").notNull(), // "HH:mm"
     durationMinutes: integer("duration_minutes").notNull(),
+    /** What this block is for (study | review | cards) — majority task category. */
+    kind: text("kind").$type<PlanSessionKind>().notNull().default("study"),
     /** Student-fixed → the scheduler keeps it as-is and plans around it. */
     pinned: boolean("pinned").notNull().default(false),
     done: boolean("done").notNull().default(false),
