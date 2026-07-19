@@ -1,17 +1,22 @@
 "use client"
 
 import * as React from "react"
+import dynamic from "next/dynamic"
 import { MessageCircle, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { usePathname } from "@/i18n/navigation"
-import {
-  CHAT_OPEN_EVENT,
-  ConversationPanel,
-  LAST_CHAT_KEY,
-} from "@/components/ai/conversation-panel"
+import { CHAT_OPEN_EVENT, LAST_CHAT_KEY } from "@/components/ai/chat-events"
 import type { ModuleOption } from "@/components/learn/module-select"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+
+// The conversation panel drags in the AI SDK, react-markdown and katex. Load it
+// on demand (client-only) so none of that lands in the shared layout bundle —
+// it is fetched the first time the dock actually opens (F1).
+const ConversationPanel = dynamic(
+  () => import("@/components/ai/conversation-panel").then((m) => m.ConversationPanel),
+  { ssr: false }
+)
 
 export { CHAT_OPEN_EVENT }
 

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Loader2 } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
 
 /**
  * Shared scaffolding for the app's create/edit dialogs: dialog shell, form,
@@ -30,8 +31,11 @@ export function FormDialog({
   pendingLabel,
   trigger,
   triggerVariant = "default",
+  triggerSize,
   open: controlledOpen,
   onOpenChange,
+  scrollable = false,
+  contentClassName,
 }: {
   title: string
   children: React.ReactNode
@@ -44,10 +48,16 @@ export function FormDialog({
   /** Trigger button contents (icon + label) for the self-managed mode. */
   trigger?: React.ReactNode
   triggerVariant?: React.ComponentProps<typeof Button>["variant"]
+  triggerSize?: React.ComponentProps<typeof Button>["size"]
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  /** Cap the dialog height and scroll its body — for tall forms (F16). */
+  scrollable?: boolean
+  /** Extra classes on the dialog content (e.g. a wider `sm:max-w-lg`). */
+  contentClassName?: string
 }) {
   const tCommon = useTranslations("common")
+  const showError = useActionErrorToast()
   const [internalOpen, setInternalOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
 
@@ -62,7 +72,7 @@ export function FormDialog({
       await onSubmit(form)
       setOpen(false)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(false)
     }
@@ -71,9 +81,13 @@ export function FormDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {trigger != null && (
-        <DialogTrigger render={<Button variant={triggerVariant} />}>{trigger}</DialogTrigger>
+        <DialogTrigger render={<Button variant={triggerVariant} size={triggerSize} />}>
+          {trigger}
+        </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent
+        className={cn(scrollable && "max-h-[90dvh] overflow-y-auto", contentClassName)}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

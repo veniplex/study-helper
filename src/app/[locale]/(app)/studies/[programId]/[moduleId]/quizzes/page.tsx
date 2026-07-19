@@ -9,6 +9,8 @@ import { ownModule } from "@/lib/studies/access"
 import { getModuleColorClasses, getModuleIcon } from "@/lib/module-visuals"
 import { QuizCard } from "@/components/learn/quiz-card"
 import { GenerateQuizDialog, QuizDialog } from "@/components/learn/quiz-dialogs"
+import { EmptyState } from "@/components/ui/empty-state"
+import { ListChecks } from "lucide-react"
 
 export default async function ModuleQuizzesPage({
   params,
@@ -45,7 +47,7 @@ export default async function ModuleQuizzesPage({
         />
       </div>
       {quizzes.length === 0 ? (
-        <p className="text-muted-foreground py-8 text-center text-sm">{t("empty")}</p>
+        <EmptyState icon={ListChecks} title={t("empty")} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {quizzes.map((q) => {

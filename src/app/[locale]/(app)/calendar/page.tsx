@@ -13,7 +13,7 @@ import {
 import { requireSession } from "@/lib/auth/session"
 import { env } from "@/lib/env"
 import { expandAbsences } from "@/lib/plan/absences"
-import { CalendarView } from "@/components/calendar/calendar-view"
+import { CalendarView } from "@/components/calendar/calendar-view-dynamic"
 import { EventDialog, type ModuleOption } from "@/components/calendar/event-dialog"
 import { IcsCard } from "@/components/calendar/ics-card"
 import { IcsImportCard } from "@/components/calendar/ics-import-card"

@@ -8,6 +8,8 @@ import { ownModule } from "@/lib/studies/access"
 import { getModuleColorClasses, getModuleIcon } from "@/lib/module-visuals"
 import { DeckCard } from "@/components/learn/deck-card"
 import { DeckDialog } from "@/components/learn/deck-dialogs"
+import { EmptyState } from "@/components/ui/empty-state"
+import { Layers } from "lucide-react"
 
 export default async function ModuleDecksPage({
   params,
@@ -39,7 +41,7 @@ export default async function ModuleDecksPage({
         />
       </div>
       {decks.length === 0 ? (
-        <p className="text-muted-foreground py-8 text-center text-sm">{t("empty")}</p>
+        <EmptyState icon={Layers} title={t("empty")} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {decks.map((d) => (

@@ -38,9 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
-
-export const LAST_CHAT_KEY = "studyhelper.lastChatId"
-export const CHAT_OPEN_EVENT = "studyhelper:chat-open"
+import { CHAT_OPEN_EVENT, LAST_CHAT_KEY } from "@/components/ai/chat-events"
 
 export type ConversationMeta = {
   id: string

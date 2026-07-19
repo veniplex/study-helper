@@ -4,6 +4,7 @@ import * as React from "react"
 import FullCalendar from "@fullcalendar/react"
 import dayGridPlugin from "@fullcalendar/daygrid"
 import timeGridPlugin from "@fullcalendar/timegrid"
+import listPlugin from "@fullcalendar/list"
 import interactionPlugin from "@fullcalendar/interaction"
 import deLocale from "@fullcalendar/core/locales/de"
 import type { EventClickArg, EventDropArg, EventInput } from "@fullcalendar/core"
@@ -121,6 +122,14 @@ export function CalendarView({
     occurrenceDate?: string
   } | null>(null)
   const calendarRef = React.useRef<FullCalendar>(null)
+
+  // Default phones to the agenda (listWeek); larger screens keep the month grid
+  // (E21). Only the initial view is derived — the toolbar lets users switch.
+  const [initialView] = React.useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches
+      ? "listWeek"
+      : "dayGridMonth"
+  )
 
   // Close the right-click menu on outside interaction or Escape. Other keys
   // (Tab/Enter/arrows) must keep working so the menu is keyboard-operable.
@@ -414,12 +423,13 @@ export function CalendarView({
 
         <FullCalendar
           ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
+          plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+          initialView={initialView}
           headerToolbar={{
             left: "prev,next today",
             center: "title",
-            right: "dayGridMonth,timeGridWeek",
+            // listWeek gives phones a usable agenda instead of a cramped grid (E21).
+            right: "dayGridMonth,timeGridWeek,listWeek",
           }}
           locales={[deLocale]}
           locale={locale === "de" ? "de" : "en"}

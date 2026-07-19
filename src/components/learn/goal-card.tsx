@@ -38,15 +38,11 @@ import { formatGrade } from "@/lib/grades"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { FormDialog } from "@/components/form-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 import { GoalDialog, type GoalData } from "@/components/studies/goal-dialog"
 import { cn } from "@/lib/utils"
 
@@ -172,25 +168,11 @@ function GoalCardShell({
   children?: React.ReactNode
 }) {
   const t = useTranslations("goals")
-  const showError = useActionErrorToast()
   const router = useRouter()
   const [editing, setEditing] = React.useState(false)
-  const [pending, setPending] = React.useState(false)
+  const [confirmOpen, setConfirmOpen] = React.useState(false)
   const { goal } = data
   const Icon = GOAL_ICON[goal.type]
-
-  async function onDelete() {
-    if (!confirm(t("deleteConfirm"))) return
-    setPending(true)
-    try {
-      await deleteGoal(goal.id)
-      router.refresh()
-    } catch (error) {
-      showError(error)
-    } finally {
-      setPending(false)
-    }
-  }
 
   return (
     <Card>
@@ -213,12 +195,22 @@ function GoalCardShell({
           <Button variant="ghost" size="icon-sm" onClick={() => setEditing(true)}>
             <Pencil className="size-3.5" />
           </Button>
-          <Button variant="ghost" size="icon-sm" disabled={pending} onClick={() => void onDelete()}>
+          <Button variant="ghost" size="icon-sm" onClick={() => setConfirmOpen(true)}>
             <Trash2 className="text-destructive size-3.5" />
           </Button>
         </span>
       </CardHeader>
       {children && <CardContent className="space-y-4">{children}</CardContent>}
+
+      <ConfirmDeleteDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        label={goal.title || t(`types.${goal.type}`)}
+        onConfirm={async () => {
+          await deleteGoal(goal.id)
+          router.refresh()
+        }}
+      />
 
       {editing && (
         <GoalDialog
@@ -296,7 +288,6 @@ function GoalAttempts({
   goalResult: GoalResultDTO | null
 }) {
   const t = useTranslations("studies.assessment")
-  const tCommon = useTranslations("common")
   const format = useFormatter()
   const router = useRouter()
 
@@ -304,7 +295,10 @@ function GoalAttempts({
   const [editing, setEditing] = React.useState<AttemptDTO | null>(null)
   const [passed, setPassed] = React.useState(false)
   const showError = useActionErrorToast()
-  const [pending, setPending] = React.useState(false)
+  // D13: optimistic-feel delete — disable the row's button while the action is
+  // in flight so rapid taps can't double-fire.
+  const [isDeleting, startDelete] = React.useTransition()
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
 
   const atMax = attempts.length >= maxAttempts
 
@@ -319,38 +313,17 @@ function GoalAttempts({
     setOpen(true)
   }
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
-    const payload = {
-      resultPercent:
-        form.get("resultPercent") && String(form.get("resultPercent")).trim() !== ""
-          ? Number(form.get("resultPercent"))
-          : null,
-      date: String(form.get("date") || "") || null,
-      passed,
-      note: String(form.get("note") || "") || null,
-    }
-    setPending(true)
-    try {
-      if (editing) await updateAttempt(editing.id, payload)
-      else await addAttempt(goalId, payload)
-      setOpen(false)
-      router.refresh()
-    } catch (error) {
-      showError(error)
-    } finally {
-      setPending(false)
-    }
-  }
-
-  async function onDelete(id: string) {
-    try {
-      await deleteAttempt(id)
-      router.refresh()
-    } catch (error) {
-      showError(error)
-    }
+  function onDelete(id: string) {
+    if (isDeleting) return
+    setDeletingId(id)
+    startDelete(async () => {
+      try {
+        await deleteAttempt(id)
+        router.refresh()
+      } catch (error) {
+        showError(error)
+      }
+    })
   }
 
   return (
@@ -368,108 +341,129 @@ function GoalAttempts({
       {attempts.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("noAttempts")}</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-muted-foreground border-b text-left">
-                <th className="py-2 pr-4 font-medium">{t("attemptCol")}</th>
-                <th className="py-2 pr-4 font-medium">{t("percentCol")}</th>
-                <th className="py-2 pr-4 font-medium">{t("dateCol")}</th>
-                {!passFail && <th className="py-2 pr-4 font-medium">{t("gradeCol")}</th>}
-                <th className="py-2 pr-4 font-medium">{t("passedCol")}</th>
-                <th className="py-2 text-right font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {attempts.map((a) => (
-                <tr key={a.id} className="border-b last:border-0">
-                  <td className="py-2.5 pr-4 font-medium tabular-nums">{a.attempt}</td>
-                  <td className="py-2.5 pr-4 tabular-nums">
-                    {a.resultPercent != null ? `${Number(a.resultPercent)} %` : "–"}
-                  </td>
-                  <td className="py-2.5 pr-4">
-                    {a.date ? format.dateTime(new Date(a.date), { dateStyle: "medium" }) : "–"}
-                  </td>
-                  {!passFail && (
-                    <td className="py-2.5 pr-4 tabular-nums">
-                      {a.resultPercent != null
-                        ? formatGrade(
-                            goalResult?.attempt === a.attempt ? goalResult.grade : null,
-                            gradingSystem
-                          )
-                        : "–"}
-                    </td>
-                  )}
-                  <td className="py-2.5 pr-4">
-                    {a.passed == null
-                      ? t("passUnknown")
-                      : a.passed
-                        ? t("passYes")
-                        : t("passNo")}
-                  </td>
-                  <td className="py-2.5 text-right">
-                    <span className="inline-flex gap-1">
-                      <Button variant="ghost" size="icon-sm" onClick={() => openEdit(a)}>
-                        <Pencil className="size-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon-sm" onClick={() => void onDelete(a.id)}>
+        // D6: stacked card layout — a labelled grid instead of a 6-col table so
+        // it stays readable on phones without horizontal scrolling.
+        <ul className="space-y-2">
+          {attempts.map((a) => {
+            const rowDeleting = isDeleting && deletingId === a.id
+            return (
+              <li key={a.id} className="rounded-md border px-3 py-2.5 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium tabular-nums">
+                    {t("attemptCol")} {a.attempt}
+                  </span>
+                  <span className="inline-flex gap-1">
+                    <Button variant="ghost" size="icon-sm" onClick={() => openEdit(a)}>
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      disabled={rowDeleting}
+                      onClick={() => onDelete(a.id)}
+                    >
+                      {rowDeleting ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
                         <Trash2 className="size-3.5" />
-                      </Button>
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      )}
+                    </Button>
+                  </span>
+                </div>
+                <dl className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-4">
+                  <div>
+                    <dt className="text-muted-foreground text-xs">{t("percentCol")}</dt>
+                    <dd className="tabular-nums">
+                      {a.resultPercent != null ? `${Number(a.resultPercent)} %` : "–"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground text-xs">{t("dateCol")}</dt>
+                    <dd>
+                      {a.date
+                        ? format.dateTime(new Date(a.date), { dateStyle: "medium" })
+                        : "–"}
+                    </dd>
+                  </div>
+                  {!passFail && (
+                    <div>
+                      <dt className="text-muted-foreground text-xs">{t("gradeCol")}</dt>
+                      <dd className="tabular-nums">
+                        {a.resultPercent != null
+                          ? formatGrade(
+                              goalResult?.attempt === a.attempt ? goalResult.grade : null,
+                              gradingSystem
+                            )
+                          : "–"}
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-muted-foreground text-xs">{t("passedCol")}</dt>
+                    <dd>
+                      {a.passed == null
+                        ? t("passUnknown")
+                        : a.passed
+                          ? t("passYes")
+                          : t("passNo")}
+                    </dd>
+                  </div>
+                </dl>
+              </li>
+            )
+          })}
+        </ul>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing ? t("editAttempt") : t("addAttempt")}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="at-percent">{t("percentField")}</Label>
-                <Input
-                  id="at-percent"
-                  name="resultPercent"
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  max={100}
-                  defaultValue={
-                    editing?.resultPercent != null ? String(Number(editing.resultPercent)) : ""
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="at-date">{t("dateField")}</Label>
-                <Input id="at-date" name="date" type="date" defaultValue={editing?.date ?? ""} />
-              </div>
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <Switch checked={passed} onCheckedChange={setPassed} />
-              {t("passedField")}
-            </label>
-            <div className="space-y-1.5">
-              <Label htmlFor="at-note">{t("noteField")}</Label>
-              <Input id="at-note" name="note" defaultValue={editing?.note ?? ""} />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                {tCommon("cancel")}
-              </Button>
-              <Button type="submit" disabled={pending}>
-                {pending && <Loader2 className="size-4 animate-spin" />}
-                {tCommon("save")}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <FormDialog
+        key={editing?.id ?? "new"}
+        title={editing ? t("editAttempt") : t("addAttempt")}
+        open={open}
+        onOpenChange={setOpen}
+        onSubmit={async (form) => {
+          const payload = {
+            resultPercent:
+              form.get("resultPercent") && String(form.get("resultPercent")).trim() !== ""
+                ? Number(form.get("resultPercent"))
+                : null,
+            date: String(form.get("date") || "") || null,
+            passed,
+            note: String(form.get("note") || "") || null,
+          }
+          if (editing) await updateAttempt(editing.id, payload)
+          else await addAttempt(goalId, payload)
+          router.refresh()
+        }}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="at-percent">{t("percentField")}</Label>
+            <Input
+              id="at-percent"
+              name="resultPercent"
+              type="number"
+              step="0.1"
+              min={0}
+              max={100}
+              defaultValue={
+                editing?.resultPercent != null ? String(Number(editing.resultPercent)) : ""
+              }
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="at-date">{t("dateField")}</Label>
+            <Input id="at-date" name="date" type="date" defaultValue={editing?.date ?? ""} />
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <Switch checked={passed} onCheckedChange={setPassed} />
+          {t("passedField")}
+        </label>
+        <div className="space-y-1.5">
+          <Label htmlFor="at-note">{t("noteField")}</Label>
+          <Input id="at-note" name="note" defaultValue={editing?.note ?? ""} />
+        </div>
+      </FormDialog>
     </div>
   )
 }
