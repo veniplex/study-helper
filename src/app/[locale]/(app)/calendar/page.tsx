@@ -118,6 +118,7 @@ export default async function CalendarPage({
           recurrenceWeekdays: e.recurrenceWeekdays,
           recurrenceInterval: e.recurrenceInterval,
           skipDates: e.skipDates,
+          aiGenerated: e.aiGenerated,
         }))}
         planSessions={planSessions.map((s) => ({
           id: s.id,

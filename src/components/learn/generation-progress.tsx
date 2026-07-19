@@ -60,11 +60,11 @@ export function GenerationProgress({ jobId, onDone }: { jobId: string; onDone?: 
         ) : (
           <Loader2 className="size-4 animate-spin" />
         )}
-        <span>
+        <span title={failed ? (status?.error ?? undefined) : undefined}>
           {!status
             ? t("pending")
             : failed
-              ? t("failed", { error: status.error ?? "" })
+              ? t("failedGeneric")
               : completed
                 ? t("completed", { count: status.producedCount, total: status.topicsTotal })
                 : t("running")}

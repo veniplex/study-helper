@@ -29,20 +29,57 @@ import { VoiceInputButton } from "./voice-input-button"
 import { describePageContext, usePageContext } from "./page-context"
 import { cn } from "@/lib/utils"
 
-function summarizeInput(input: unknown): { key: string; value: string }[] {
+/**
+ * The fields shown on each write-tool confirmation card, in display order.
+ * A whitelist keeps opaque ids (goalId, correctIndex, the moduleId uuid) and
+ * bulky payloads (raw card/question arrays) out of the card — only the fields a
+ * user needs to confirm what will be created are rendered (F7).
+ */
+const CONFIRM_FIELDS: Record<string, readonly string[]> = {
+  createDeckWithCards: ["name", "moduleId", "cards"],
+  createQuizWithQuestions: ["title", "moduleId", "questions"],
+  createCalendarEvent: ["title", "type", "startsAt", "endsAt", "location", "moduleId"],
+  createAssignment: ["title", "moduleId", "dueDate", "pointsMax"],
+}
+
+const EVENT_TYPES = ["exam", "deadline", "lecture", "other"] as const
+
+/**
+ * Builds the translated, id-free rows for a write-tool confirmation card.
+ * `moduleId` is resolved to the module NAME via `resolveModuleName` and hidden
+ * when it can't be resolved; arrays collapse to a count; the event `type` and
+ * field labels are localized (F7).
+ */
+function buildConfirmRows(
+  toolName: string,
+  input: unknown,
+  resolveModuleName: (id: string) => string | undefined,
+  t: (key: string) => string
+): { label: string; value: string }[] {
   if (!input || typeof input !== "object") return []
-  return Object.entries(input as Record<string, unknown>)
-    .filter(([, v]) => v != null && v !== "")
-    .map(([key, value]) => ({
-      key,
-      value: Array.isArray(value)
-        ? `${value.length}`
-        : typeof value === "string"
-          ? value.length > 120
-            ? value.slice(0, 120) + "…"
-            : value
-          : String(value),
-    }))
+  const values = input as Record<string, unknown>
+  const rows: { label: string; value: string }[] = []
+  for (const key of CONFIRM_FIELDS[toolName] ?? []) {
+    const v = values[key]
+    if (v == null || v === "") continue
+    if (key === "moduleId") {
+      const name = resolveModuleName(String(v))
+      if (!name) continue
+      rows.push({ label: t("tool.fields.module"), value: name })
+    } else if (Array.isArray(v)) {
+      rows.push({ label: t(`tool.fields.${key}`), value: String(v.length) })
+    } else if (key === "type") {
+      const type = String(v)
+      const value = (EVENT_TYPES as readonly string[]).includes(type)
+        ? t(`tool.eventTypes.${type}`)
+        : type
+      rows.push({ label: t("tool.fields.type"), value })
+    } else {
+      const str = String(v)
+      rows.push({ label: t(`tool.fields.${key}`), value: str.length > 120 ? str.slice(0, 120) + "…" : str })
+    }
+  }
+  return rows
 }
 
 type ToolOutput =
@@ -110,11 +147,13 @@ function ToolCard({
   toolName,
   part,
   conversationId,
+  resolveModuleName,
   onResolve,
 }: {
   toolName: string
   part: { state: string; input?: unknown; output?: unknown }
   conversationId: string
+  resolveModuleName: (id: string) => string | undefined
   onResolve: (output: ToolOutput) => void
 }) {
   const t = useTranslations("ai")
@@ -144,9 +183,9 @@ function ToolCard({
       </p>
       {part.state !== "output-available" && (
         <dl className="text-muted-foreground mt-1.5 space-y-0.5 text-xs">
-          {summarizeInput(part.input).map(({ key, value }) => (
-            <div key={key} className="flex gap-1.5">
-              <dt className="shrink-0 font-medium">{key}:</dt>
+          {buildConfirmRows(toolName, part.input, resolveModuleName, t).map(({ label, value }) => (
+            <div key={label} className="flex gap-1.5">
+              <dt className="shrink-0 font-medium">{label}:</dt>
               <dd className="min-w-0 truncate">{value}</dd>
             </div>
           ))}
@@ -224,6 +263,15 @@ export function Chat({
   const bottomRef = React.useRef<HTMLDivElement>(null)
 
   const pageContext = usePageContext()
+  // Resolve a write-tool's moduleId to a human name for the confirmation card,
+  // so it never shows a raw uuid (F7). The current page's module is the only
+  // reliable client-side lookup; an unknown id resolves to undefined and the
+  // row is hidden rather than exposing the id.
+  const resolveModuleName = React.useCallback(
+    (id: string): string | undefined =>
+      pageContext?.moduleId && id === pageContext.moduleId ? pageContext.moduleName : undefined,
+    [pageContext]
+  )
 
   // Auto-continued requests (after tool confirmation) go through the transport
   // body; per-send bodies are merged on top for regular sends. A stable holder
@@ -365,6 +413,7 @@ export function Chat({
                       toolName={part.type.slice(5)}
                       part={toolPart}
                       conversationId={conversationId}
+                      resolveModuleName={resolveModuleName}
                       onResolve={(output) =>
                         void addToolResult({
                           tool: part.type.slice(5),
@@ -403,12 +452,21 @@ export function Chat({
           <p className="text-destructive text-sm">
             {/* Server categorizes stream errors as AI_ERROR:<code>; anything
                 else stays generic so provider internals never reach the UI. */}
-            {error.message === "AI_ERROR:auth"
-              ? t("errorAuth")
-              : error.message === "AI_ERROR:rate-limit" ||
-                  error.message.toLowerCase().includes("limit")
-                ? t("errorLimit")
-                : t("errorGeneric")}
+            {error.message === "AI_ERROR:no-key" ? (
+              <>
+                {t("errorNoKey")}{" "}
+                <Link href="/settings" className="underline underline-offset-2">
+                  {t("errorNoKeyCta")}
+                </Link>
+              </>
+            ) : error.message === "AI_ERROR:auth" ? (
+              t("errorAuth")
+            ) : error.message === "AI_ERROR:rate-limit" ||
+              error.message.toLowerCase().includes("limit") ? (
+              t("errorLimit")
+            ) : (
+              t("errorGeneric")
+            )}
           </p>
         )}
         <div ref={bottomRef} />

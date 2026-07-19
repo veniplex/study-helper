@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 export default async function AdminAiPage() {
   await requireAdmin()
   const t = await getTranslations("admin.ai")
+  const tf = await getTranslations("usage.features")
   const ai = await getSetting("ai")
   const embeddingRef = ai?.defaultEmbeddingModel
 
@@ -114,7 +115,7 @@ export default async function AdminAiPage() {
                 <tbody>
                   {usageByFeature.map((row) => (
                     <tr key={`${row.feature}-${row.model}`} className="border-b last:border-0">
-                      <td className="py-2 pr-4">{row.feature}</td>
+                      <td className="py-2 pr-4">{tf.has(row.feature) ? tf(row.feature) : row.feature}</td>
                       <td className="text-muted-foreground max-w-48 truncate py-2 pr-4">
                         {row.model}
                       </td>

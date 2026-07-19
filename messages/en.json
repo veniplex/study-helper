@@ -856,7 +856,11 @@
     "title": "AI Assistant",
     "newChat": "New chat",
     "noConversations": "No conversations yet.",
-    "notConfigured": "No AI providers are configured yet.",
+    "notConfigured": {
+      "title": "AI isn't set up",
+      "description": "No AI model is configured. Set it up in Settings to use chat.",
+      "cta": "Go to Settings"
+    },
     "configureNow": "Configure now in the admin panel",
     "emptyChat": "Ask anything about your studies.",
     "quickChat": "AI chat",
@@ -880,6 +884,25 @@
         "createQuizWithQuestions": "Create quiz",
         "createCalendarEvent": "Create event",
         "createAssignment": "Create assignment"
+      },
+      "fields": {
+        "name": "Name",
+        "title": "Title",
+        "module": "Module",
+        "type": "Type",
+        "startsAt": "Starts",
+        "endsAt": "Ends",
+        "location": "Location",
+        "dueDate": "Due",
+        "cards": "Cards",
+        "questions": "Questions",
+        "pointsMax": "Points"
+      },
+      "eventTypes": {
+        "exam": "Exam",
+        "deadline": "Deadline",
+        "lecture": "Lecture",
+        "other": "Other"
       }
     },
     "suggestions": {
@@ -938,7 +961,9 @@
       "stop": "Stop recording",
       "empty": "No speech detected.",
       "micDenied": "Microphone access was denied."
-    }
+    },
+    "errorNoKey": "No API key is set for this AI model.",
+    "errorNoKeyCta": "Set it up in Settings"
   },
   "learn": {
     "title": "Learn",
@@ -1089,7 +1114,8 @@
       "produced": "{count} created",
       "completed": "Done — {count} items, {total} topics covered.",
       "failed": "Failed: {error}",
-      "close": "Close"
+      "close": "Close",
+      "failedGeneric": "Generation failed. Please try again."
     },
     "selectModuleFirst": "Please select a module first."
   },
@@ -1539,7 +1565,8 @@
     "LIMIT_EXCEEDED": "You've used up your monthly AI quota.",
     "MATERIAL_NAME_REQUIRED": "Please enter a name.",
     "FOLDER_DUPLICATE": "A folder with this name already exists here.",
-    "GENERIC": "Something went wrong. Please try again."
+    "GENERIC": "Something went wrong. Please try again.",
+    "AI_SETUP_REQUIRED": "Add your API key in Settings to use AI features."
   },
   "notifications": {
     "eventTitle": "⏰ {title}",
@@ -1549,5 +1576,30 @@
     "assignmentBody": "{module} · {due}",
     "dailyPlanTitle": "📚 {appName}",
     "dailyPlanBody": "{count, plural, one {You have # study session in today's plan.} other {You have # study sessions in today's plan.}}"
+  },
+  "usage": {
+    "features": {
+      "chat": "Chat",
+      "flashcards": "Flashcards",
+      "quiz": "Quiz",
+      "quiz-grading": "Quiz grading",
+      "outline": "Outline",
+      "summary": "Summary",
+      "summary-doc": "Document summary",
+      "summary-section": "Section summary",
+      "analysis": "Analysis",
+      "explain": "Explanation",
+      "embedding": "Embedding",
+      "embedding-dedup": "Embedding (dedup)",
+      "embedding-query": "Embedding (search)",
+      "rerank": "Reranking",
+      "ocr": "Text recognition (OCR)",
+      "transcription": "Transcription",
+      "voice-input": "Voice input",
+      "thesis-topics": "Topic ideas (thesis)",
+      "writing-milestones": "Milestones (writing)",
+      "writing-outline": "Outline (writing)",
+      "writing-sources": "Source suggestions (writing)"
+    }
   }
 }

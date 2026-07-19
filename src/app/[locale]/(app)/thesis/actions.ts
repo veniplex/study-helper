@@ -9,7 +9,12 @@ import { writingProject } from "@/db/schema"
 import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { ownProgram } from "@/lib/studies/access"
-import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
+import {
+  getLanguageModel,
+  resolveModelForUser,
+  userHasUsableKeyForModel,
+} from "@/lib/ai/registry"
+import { GEN_PARAMS, maxTokensForItems } from "@/lib/ai/params"
 import { assertWithinLimit } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 import { brainstormSchema, buildBrainstormPrompt } from "@/lib/writing/ai"
@@ -25,6 +30,8 @@ async function ownThesis(thesisId: string, userId: string) {
 async function getModel(userId: string) {
   const defaultModel = await resolveModelForUser(userId)
   if (!defaultModel) actionError("AI_NO_MODEL")
+  // BYOK dead-end: model configured but no usable key for its provider (F4).
+  if (!(await userHasUsableKeyForModel(defaultModel, userId))) actionError("AI_SETUP_REQUIRED")
   return { ref: defaultModel, model: await getLanguageModel(defaultModel, userId) }
 }
 
@@ -171,6 +178,8 @@ export async function brainstormTopics(interests: string) {
         model,
         schema: brainstormSchema,
         prompt: buildBrainstormPrompt(interests),
+        ...GEN_PARAMS,
+        maxOutputTokens: maxTokensForItems(8),
       })
   )
   return object.topics

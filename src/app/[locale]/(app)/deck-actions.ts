@@ -9,7 +9,12 @@ import { db } from "@/db"
 import { deck, flashcard, reviewLog } from "@/db/schema"
 import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
-import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
+import {
+  getLanguageModel,
+  resolveModelForUser,
+  userHasUsableKeyForModel,
+} from "@/lib/ai/registry"
+import { GEN_PARAMS, maxTokensForItems } from "@/lib/ai/params"
 import { searchChunks, getModuleMaterialSample } from "@/lib/ai/rag"
 import { assertWithinLimit } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
@@ -308,6 +313,10 @@ export async function generateCards(input: unknown) {
 
   const defaultModel = await resolveModelForUser(session.user.id)
   if (!defaultModel) actionError("AI_NO_MODEL")
+  // BYOK dead-end: model configured but no usable key for its provider (F4).
+  if (!(await userHasUsableKeyForModel(defaultModel, session.user.id))) {
+    actionError("AI_SETUP_REQUIRED")
+  }
   const model = await getLanguageModel(defaultModel, session.user.id)
 
   const moduleRow = deckRow.moduleId ? await ownModule(deckRow.moduleId, session.user.id) : null
@@ -348,6 +357,8 @@ export async function generateCards(input: unknown) {
         prompt: `Create ${data.count} high-quality flashcards for spaced repetition about: ${query}.
 Each card has a concise question/term on the front and a precise answer/definition on the back.${examContext ? `\n${examContext}` : ""}
 Write all cards in ${language}, regardless of the language of the topic text or source materials.${context}`,
+        ...GEN_PARAMS,
+        maxOutputTokens: maxTokensForItems(data.count),
       })
   )
 

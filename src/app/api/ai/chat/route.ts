@@ -4,7 +4,11 @@ import { and, asc, eq, gte, inArray } from "drizzle-orm"
 import { db } from "@/db"
 import { aiConversation, aiMessage, studyEvent } from "@/db/schema"
 import { getSession } from "@/lib/auth/session"
-import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
+import {
+  getLanguageModel,
+  listAvailableModels,
+  userHasUsableKeyForModel,
+} from "@/lib/ai/registry"
 import { assertWithinLimit, isOverLimit } from "@/lib/ai/usage"
 import { normalizeUsage, recordAiAudit, recordAiUsage } from "@/lib/ai/run"
 import { searchChunks, searchChunksInMaterials } from "@/lib/ai/rag"
@@ -236,6 +240,11 @@ export async function POST(request: Request) {
   const ai = await getSetting("ai")
   const ragEnabled = Boolean(ai?.defaultEmbeddingModel)
   const userId = session.user.id
+  // Whether this user can authenticate a request for the chosen model. Computed
+  // up front so the synchronous stream `onError` can tell a BYOK dead-end (no
+  // usable key → point the user at Settings) apart from a genuine auth failure
+  // on a configured key (F4).
+  const canAuthModel = await userHasUsableKeyForModel(body.model, userId)
   const moduleId = conversation.moduleId
   const scopedMaterialId = conversation.materialId
 
@@ -429,7 +438,11 @@ export async function POST(request: Request) {
     onError: (error) => {
       console.error("[chat] stream error", error)
       const message = error instanceof Error ? error.message : String(error)
-      if (/api.?key|unauthorized|authentication|401|403/i.test(message)) return "AI_ERROR:auth"
+      if (/api.?key|unauthorized|authentication|401|403/i.test(message)) {
+        // No usable key for this provider → actionable setup hint (F4); an auth
+        // failure on a configured key stays the generic provider-rejected code.
+        return canAuthModel ? "AI_ERROR:auth" : "AI_ERROR:no-key"
+      }
       if (/rate.?limit|quota|429|overloaded/i.test(message)) return "AI_ERROR:rate-limit"
       return "AI_ERROR:generic"
     },

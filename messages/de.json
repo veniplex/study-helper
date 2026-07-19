@@ -856,7 +856,11 @@
     "title": "KI-Assistent",
     "newChat": "Neuer Chat",
     "noConversations": "Noch keine Unterhaltungen.",
-    "notConfigured": "Es sind noch keine KI-Provider konfiguriert.",
+    "notConfigured": {
+      "title": "KI ist nicht eingerichtet",
+      "description": "Es ist kein KI-Modell konfiguriert. Richte es in den Einstellungen ein, um den Chat zu nutzen.",
+      "cta": "Zu den Einstellungen"
+    },
     "configureNow": "Jetzt im Admin-Panel konfigurieren",
     "emptyChat": "Stelle eine Frage zu deinem Studium.",
     "quickChat": "KI-Chat",
@@ -881,6 +885,25 @@
         "createQuizWithQuestions": "Quiz anlegen",
         "createCalendarEvent": "Termin anlegen",
         "createAssignment": "Abgabe anlegen"
+      },
+      "fields": {
+        "name": "Name",
+        "title": "Titel",
+        "module": "Modul",
+        "type": "Art",
+        "startsAt": "Beginn",
+        "endsAt": "Ende",
+        "location": "Ort",
+        "dueDate": "Fällig",
+        "cards": "Karten",
+        "questions": "Fragen",
+        "pointsMax": "Punkte"
+      },
+      "eventTypes": {
+        "exam": "Prüfung",
+        "deadline": "Frist",
+        "lecture": "Vorlesung",
+        "other": "Sonstiges"
       }
     },
     "suggestions": {
@@ -938,7 +961,9 @@
       "stop": "Aufnahme beenden",
       "empty": "Keine Sprache erkannt.",
       "micDenied": "Mikrofonzugriff wurde verweigert."
-    }
+    },
+    "errorNoKey": "Für dieses KI-Modell ist kein API-Key hinterlegt.",
+    "errorNoKeyCta": "In den Einstellungen einrichten"
   },
   "learn": {
     "title": "Lernen",
@@ -1089,7 +1114,8 @@
       "produced": "{count} erzeugt",
       "completed": "Fertig — {count} Elemente, {total} Themen abgedeckt.",
       "failed": "Fehlgeschlagen: {error}",
-      "close": "Schließen"
+      "close": "Schließen",
+      "failedGeneric": "Die Generierung ist fehlgeschlagen. Bitte versuche es erneut."
     },
     "selectModuleFirst": "Bitte wähle zuerst ein Modul aus."
   },
@@ -1539,7 +1565,8 @@
     "LIMIT_EXCEEDED": "Dein monatliches KI-Kontingent ist aufgebraucht.",
     "MATERIAL_NAME_REQUIRED": "Bitte gib einen Namen ein.",
     "FOLDER_DUPLICATE": "Ein Ordner mit diesem Namen existiert hier bereits.",
-    "GENERIC": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+    "GENERIC": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+    "AI_SETUP_REQUIRED": "Hinterlege deinen API-Key in den Einstellungen, um KI-Funktionen zu nutzen."
   },
   "notifications": {
     "eventTitle": "⏰ {title}",
@@ -1549,5 +1576,30 @@
     "assignmentBody": "{module} · {due}",
     "dailyPlanTitle": "📚 {appName}",
     "dailyPlanBody": "{count, plural, one {Heute steht # Lerneinheit in deinem Lernplan.} other {Heute stehen # Lerneinheiten in deinem Lernplan.}}"
+  },
+  "usage": {
+    "features": {
+      "chat": "Chat",
+      "flashcards": "Karteikarten",
+      "quiz": "Quiz",
+      "quiz-grading": "Quiz-Bewertung",
+      "outline": "Gliederung",
+      "summary": "Zusammenfassung",
+      "summary-doc": "Dokument-Zusammenfassung",
+      "summary-section": "Abschnitts-Zusammenfassung",
+      "analysis": "Analyse",
+      "explain": "Erklärung",
+      "embedding": "Embedding",
+      "embedding-dedup": "Embedding (Duplikate)",
+      "embedding-query": "Embedding (Suche)",
+      "rerank": "Reranking",
+      "ocr": "Texterkennung (OCR)",
+      "transcription": "Transkription",
+      "voice-input": "Spracheingabe",
+      "thesis-topics": "Themen-Ideen (Abschlussarbeit)",
+      "writing-milestones": "Meilensteine (Schreiben)",
+      "writing-outline": "Gliederung (Schreiben)",
+      "writing-sources": "Quellen-Vorschläge (Schreiben)"
+    }
   }
 }

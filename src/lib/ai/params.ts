@@ -33,3 +33,14 @@ export const UTILITY_PARAMS = { temperature: 0.3 } as const
 export function maxTokensForItems(count: number): number {
   return Math.min(8000, Math.max(1500, count * 400))
 }
+
+/**
+ * Output-token budget for a single prose generation (an outline, a summary,
+ * source suggestions) that isn't a countable list of items. Gives the model
+ * enough room to finish long structured prose without truncating mid-answer,
+ * while still capping cost. Defaults to a value sized for a multi-section
+ * outline; pass a smaller cap for short utility prose.
+ */
+export function maxTokensForText(cap = 4000): number {
+  return Math.min(8000, Math.max(500, cap))
+}

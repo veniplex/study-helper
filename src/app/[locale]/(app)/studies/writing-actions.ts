@@ -11,7 +11,12 @@ import type { WritingPhase } from "@/db/schema/thesis"
 import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { ownModule } from "@/lib/studies/access"
-import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
+import {
+  getLanguageModel,
+  resolveModelForUser,
+  userHasUsableKeyForModel,
+} from "@/lib/ai/registry"
+import { GEN_PARAMS, maxTokensForItems, maxTokensForText } from "@/lib/ai/params"
 import { assertWithinLimit } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 import { searchChunks } from "@/lib/ai/rag"
@@ -31,6 +36,10 @@ const WRITING_GOAL_TYPES: readonly GoalType[] = ["thesis", "term_paper", "projec
 async function getModel(userId: string) {
   const defaultModel = await resolveModelForUser(userId)
   if (!defaultModel) actionError("AI_NO_MODEL")
+  // BYOK dead-end: a model is configured but the user has no usable key for its
+  // provider — surface an actionable "add your key in Settings" error instead of
+  // letting the request fail deep inside the SDK with a generic auth error (F4).
+  if (!(await userHasUsableKeyForModel(defaultModel, userId))) actionError("AI_SETUP_REQUIRED")
   return { ref: defaultModel, model: await getLanguageModel(defaultModel, userId) }
 }
 
@@ -322,7 +331,13 @@ export async function generateWritingOutline(projectId: string) {
       entityId: projectId,
       entityLabel: row.title,
     },
-    () => generateText({ model, prompt: buildOutlinePrompt(promptFields(row), grounding) })
+    () =>
+      generateText({
+        model,
+        prompt: buildOutlinePrompt(promptFields(row), grounding),
+        ...GEN_PARAMS,
+        maxOutputTokens: maxTokensForText(),
+      })
   )
   await db.update(writingProject).set({ outline: text }).where(eq(writingProject.id, projectId))
   revalidateWriting(row)
@@ -351,6 +366,8 @@ export async function generateWritingMilestones(projectId: string, addToCalendar
         model,
         schema: milestonesSchema,
         prompt: buildMilestonesPrompt(promptFields(row), today),
+        ...GEN_PARAMS,
+        maxOutputTokens: maxTokensForItems(15),
       })
   )
 
@@ -400,6 +417,8 @@ export async function suggestWritingSources(projectId: string) {
         model,
         schema: sourcesSchema,
         prompt: buildSourcesPrompt(promptFields(row)),
+        ...GEN_PARAMS,
+        maxOutputTokens: maxTokensForItems(20),
       })
   )
   return object

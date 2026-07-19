@@ -9,7 +9,7 @@ import interactionPlugin from "@fullcalendar/interaction"
 import deLocale from "@fullcalendar/core/locales/de"
 import type { EventClickArg, EventDropArg, EventInput } from "@fullcalendar/core"
 import type { EventResizeDoneArg } from "@fullcalendar/interaction"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Sparkles, Trash2 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
-export type CalendarEvent = EventData & { id: string }
+export type CalendarEvent = EventData & { id: string; aiGenerated?: boolean }
 
 export type PlanCalendarSession = {
   id: string
@@ -302,6 +302,7 @@ export function CalendarView({
               end: e.endsAt ? (e.allDay ? e.endsAt.slice(0, 10) : e.endsAt) : undefined,
               allDay: e.allDay ?? false,
               classNames: [TYPE_CLASS[e.type]],
+              extendedProps: { aiGenerated: e.aiGenerated ?? false },
             },
           ]
         }
@@ -334,6 +335,7 @@ export function CalendarView({
           allDay: e.allDay ?? false,
           editable: !occ.isRecurrenceInstance,
           classNames: [TYPE_CLASS[e.type]],
+          extendedProps: { aiGenerated: e.aiGenerated ?? false },
         }))
       }),
     ...(!hidden.has("plan")
@@ -439,6 +441,23 @@ export function CalendarView({
           nowIndicator
           editable
           events={fcEvents}
+          eventContent={(arg) => {
+            // Mark AI-generated events with a small sparkle, consistent with
+            // decks/assignments and the mini-calendar badge (F8). Returning
+            // `true` for everything else keeps FullCalendar's default rendering.
+            if (!(arg.event.extendedProps as { aiGenerated?: boolean }).aiGenerated) return true
+            return (
+              <div className="fc-event-main-frame">
+                {arg.timeText && <div className="fc-event-time">{arg.timeText}</div>}
+                <div className="fc-event-title-container">
+                  <div className="fc-event-title fc-sticky flex items-center gap-1">
+                    <Sparkles className="size-3 shrink-0" aria-label={tCommon("aiGenerated")} />
+                    {arg.event.title}
+                  </div>
+                </div>
+              </div>
+            )
+          }}
           eventClick={(arg) => {
             if (arg.event.id.startsWith("assignment:")) {
               const href = (arg.event.extendedProps as { href?: string }).href

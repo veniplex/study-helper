@@ -38,7 +38,7 @@ const EMPTY: SearchResults = {
   contacts: [],
 }
 
-export function CommandPalette() {
+export function CommandPalette({ aiAvailable }: { aiAvailable: boolean }) {
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
   const [results, setResults] = React.useState<SearchResults>(EMPTY)
@@ -203,7 +203,9 @@ export function CommandPalette() {
             </CommandGroup>
           )}
           <CommandGroup heading={t("navigation")}>
-            {navItems.map((item) => (
+            {navItems
+              .filter((item) => aiAvailable || item.key !== "ai")
+              .map((item) => (
               <CommandItem key={item.key} onSelect={() => go(item.href)}>
                 <item.icon className="size-4" />
                 {tNav(item.key)}
