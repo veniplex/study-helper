@@ -69,13 +69,18 @@ export async function recomputeSchedule(semesterId: string) {
     }))
     .filter((m) => m.tasks.length > 0)
 
-  // Horizon: at least 6 weeks, extended to the last task deadline if further.
+  // Horizon: at least 6 weeks, extended to the last task deadline if further,
+  // but hard-capped at today+365d so a far-future due date can't blow up the
+  // scheduling window (DoS via distant deadlines). Tasks beyond the cap are
+  // simply clipped here.
   const now = new Date()
   const today = toIsoDate(now)
   const sixWeeks = new Date(now)
   sixWeeks.setDate(sixWeeks.getDate() + 42)
+  const cap = toIsoDate(new Date(now.getTime() + 365 * 86400000))
   let horizonEnd = toIsoDate(sixWeeks)
   for (const t of openTasks) if (t.dueDate && t.dueDate > horizonEnd) horizonEnd = t.dueDate
+  if (horizonEnd > cap) horizonEnd = cap
   const horizonDate = new Date(`${horizonEnd}T23:59:59`)
 
   // Absences (blackouts + recurring) → all-day / windowed blockers.

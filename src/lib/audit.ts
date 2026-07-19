@@ -28,6 +28,14 @@ const ENTITY_TABLES: Record<string, PgTable> = {
   thesis: writingProject,
 }
 
+/**
+ * entityTypes whose table has a direct `user_id` column. For these the undo
+ * mutation is additionally scoped by userId as defense-in-depth. flashcard and
+ * question have no direct userId (they are scoped transitively via deck/quiz),
+ * so they are intentionally excluded and matched by id only.
+ */
+const USER_SCOPED_ENTITIES = new Set(["deck", "quiz", "event", "material", "thesis"])
+
 export type LogAuditInput = {
   userId: string
   actor?: AuditActor
@@ -102,9 +110,17 @@ export async function undoAudit(entryId: string, userId: string) {
   if (!table) throw new Error("Not undoable")
 
   const tableId = (table as unknown as { id: unknown }).id
+  const tableUserId = (table as unknown as { userId?: unknown }).userId
+
+  // Scope the mutation by userId too when the table carries one, so an undo can
+  // never touch another user's row even if entityIds were to collide.
+  const scoped = (idMatch: ReturnType<typeof eq>) =>
+    USER_SCOPED_ENTITIES.has(entry.entityType) && tableUserId
+      ? and(idMatch, eq(tableUserId as never, userId as never))
+      : idMatch
 
   if (entry.operation === "create") {
-    await db.delete(table).where(eq(tableId as never, entry.entityId as never))
+    await db.delete(table).where(scoped(eq(tableId as never, entry.entityId as never)))
   } else if (entry.operation === "delete") {
     if (!entry.before) throw new Error("No snapshot")
     await db.insert(table).values(reviveRow(entry.before as Record<string, unknown>) as never)
@@ -114,7 +130,7 @@ export async function undoAudit(entryId: string, userId: string) {
     await db
       .update(table)
       .set(rest as never)
-      .where(eq(tableId as never, entry.entityId as never))
+      .where(scoped(eq(tableId as never, entry.entityId as never)))
   }
 
   await db.update(auditLog).set({ undone: true }).where(eq(auditLog.id, entry.id))

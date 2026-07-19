@@ -166,7 +166,19 @@ function tieBreak(a: ModuleState, b: ModuleState): number {
 
 export function computeSchedule(input: ScheduleInput): ScheduleResult {
   const { config } = input
-  const { min, max } = config.sessionMinutes
+  // Degenerate-config guard: a min<=0 or max<min would make the slot-cutting
+  // loop below advance the cursor by 0 and never terminate. Clamp to sane
+  // values (min>=5, max>=min), falling back to the defaults when unusable.
+  const rawMin = Number(config.sessionMinutes?.min)
+  const rawMax = Number(config.sessionMinutes?.max)
+  const min =
+    Number.isFinite(rawMin) && rawMin >= 5
+      ? Math.floor(rawMin)
+      : DEFAULT_SCHEDULE_CONFIG.sessionMinutes.min
+  const max =
+    Number.isFinite(rawMax) && rawMax >= min
+      ? Math.floor(rawMax)
+      : Math.max(min, DEFAULT_SCHEDULE_CONFIG.sessionMinutes.max)
   const sessions: ScheduledSession[] = []
   const warnings: ScheduleWarning[] = []
 
@@ -231,7 +243,10 @@ export function computeSchedule(input: ScheduleInput): ScheduleResult {
     const slots: Interval[] = []
     for (const iv of free) {
       let cursor = iv.start
-      while (iv.end - cursor >= min) {
+      let slotGuard = 0
+      // Backstop against a non-terminating cut (defensive; min>=5 above already
+      // guarantees the cursor advances).
+      while (iv.end - cursor >= min && slotGuard++ < 10000) {
         let size = Math.min(max, iv.end - cursor)
         const leftover = iv.end - cursor - size
         // Absorb a sub-`min` sliver into this slot rather than orphaning it.

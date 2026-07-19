@@ -36,9 +36,25 @@ function getServer(): Server {
     // hit the web tier, and finalization happens later in a background job.
     locker: new MemoryLocker(),
     respectForwardedHeaders: true,
-    async onIncomingRequest() {
+    async onIncomingRequest(req, uploadId) {
       const session = await getSession()
       if (!session) throw httpError(401, "Unauthorized")
+
+      // For requests against an EXISTING upload (resume/status/abort), verify
+      // the stamped owner matches the caller. onUploadCreate stamps userId; POST
+      // creation carries a not-yet-persisted id, so only guard PATCH/HEAD/DELETE.
+      const method = req.method?.toUpperCase()
+      if ((method === "PATCH" || method === "HEAD" || method === "DELETE") && uploadId) {
+        let upload
+        try {
+          upload = await server.datastore.getUpload(uploadId)
+        } catch {
+          return // unknown id — let tus return its normal 404
+        }
+        if (metaString(upload.metadata?.userId) !== session.user.id) {
+          throw httpError(404, "Not found")
+        }
+      }
     },
     async onUploadCreate(_req, upload) {
       const session = await getSession()

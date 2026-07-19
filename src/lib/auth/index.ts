@@ -22,14 +22,30 @@ function buildAuth(config: DynamicAuthConfig) {
   const oidc = config.oidcProviders ?? []
   const rpUrl = new URL(env.APP_URL)
 
+  // When registration is not open, a first-time social/OIDC login must NOT
+  // auto-create a user (better-auth would otherwise implicitly sign them up,
+  // bypassing the closed/invite gate that only covers email sign-up).
+  const restrictImplicitSignup = config.registrationMode !== "open"
+  const implicitSignup = restrictImplicitSignup ? { disableImplicitSignUp: true as const } : {}
+
   const options = {
     appName: "StudyHelper",
     baseURL: env.APP_URL,
     secret: env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(db, { provider: "pg", schema }),
+    session: {
+      expiresIn: 60 * 60 * 24 * 7, // 7 days
+      updateAge: 60 * 60 * 24, // refresh the session at most once per day
+    },
+    rateLimit: {
+      enabled: true,
+      window: 60,
+      max: 30,
+    },
     emailAndPassword: {
       enabled: true,
       disableSignUp: config.registrationMode === "closed",
+      minPasswordLength: 8,
       sendResetPassword: async ({ user, url }) => {
         await sendEmail({
           to: user.email,
@@ -39,8 +55,8 @@ function buildAuth(config: DynamicAuthConfig) {
       },
     },
     socialProviders: {
-      ...(social.github ? { github: social.github } : {}),
-      ...(social.google ? { google: social.google } : {}),
+      ...(social.github ? { github: { ...social.github, ...implicitSignup } } : {}),
+      ...(social.google ? { google: { ...social.google, ...implicitSignup } } : {}),
     },
     hooks: {
       // Invite mode: sign-ups require a valid invite token (enforced server-side)
@@ -101,6 +117,7 @@ function buildAuth(config: DynamicAuthConfig) {
           clientId: p.clientId,
           clientSecret: p.clientSecret,
           scopes: p.scopes,
+          ...implicitSignup,
         })),
       }),
       nextCookies(), // must be last

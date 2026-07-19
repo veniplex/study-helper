@@ -335,3 +335,32 @@ describe("DEFAULT_SCHEDULE_CONFIG", () => {
     })
   })
 })
+
+// ---- degenerate config guard (B8) ----------------------------------------------
+
+describe("computeSchedule — degenerate config", () => {
+  const degenerateConfigs = [
+    { min: 0, max: 0 },
+    { min: 0, max: 180 },
+    { min: -10, max: -5 },
+    { min: 180, max: 45 }, // max < min
+    { min: Number.NaN, max: Number.NaN },
+  ]
+
+  for (const sessionMinutes of degenerateConfigs) {
+    it(`terminates and produces valid sessions for ${JSON.stringify(sessionMinutes)}`, () => {
+      const input = baseInput({
+        config: { maxSessionsPerDay: 2, sessionMinutes },
+        modules: [mod({ moduleId: "m", tasks: tasks(10, 60) })],
+      })
+      // Must not hang; must still emit only in-availability, sane-length sessions.
+      const { sessions } = computeSchedule(input)
+      expect(sessions.length).toBeGreaterThan(0)
+      for (const s of sessions) {
+        expect(s.durationMinutes).toBeGreaterThanOrEqual(5)
+        expect(toMin(s.startTime)).toBeGreaterThanOrEqual(toMin("09:00"))
+        expect(endMin(s)).toBeLessThanOrEqual(toMin("12:00"))
+      }
+    })
+  }
+})

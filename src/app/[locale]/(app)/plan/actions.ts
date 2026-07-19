@@ -8,14 +8,18 @@ import { requireSession } from "@/lib/auth/session"
 import { validateCron } from "@/lib/plan/absences"
 import { ownSemester } from "@/lib/studies/access"
 
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
+
 const availabilitySchema = z.object({
   weekly: z
     .array(
-      z.object({
-        weekday: z.number().int().min(0).max(6),
-        from: z.string().regex(/^\d{2}:\d{2}$/),
-        to: z.string().regex(/^\d{2}:\d{2}$/),
-      })
+      z
+        .object({
+          weekday: z.number().int().min(0).max(6),
+          from: z.string().regex(HHMM),
+          to: z.string().regex(HHMM),
+        })
+        .refine((w) => w.from < w.to, { message: "from must be before to" })
     )
     .max(21),
   blackouts: z
@@ -29,28 +33,30 @@ const availabilitySchema = z.object({
     .max(30),
   recurring: z
     .array(
-      z.object({
-        weekday: z.number().int().min(0).max(6),
-        weekdays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
-        from: z.string().regex(/^\d{2}:\d{2}$/),
-        to: z.string().regex(/^\d{2}:\d{2}$/),
-        interval: z.union([z.literal(1), z.literal(2)]),
-        anchor: z.string().date().optional(),
-        label: z.string().max(100).optional(),
-        cron: z
-          .string()
-          .max(100)
-          .optional()
-          .refine((v) => v == null || v === "" || validateCron(v) == null, {
-            message: "Invalid cron expression",
-          }),
-        durationMinutes: z
-          .number()
-          .int()
-          .min(5)
-          .max(24 * 60)
-          .optional(),
-      })
+      z
+        .object({
+          weekday: z.number().int().min(0).max(6),
+          weekdays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
+          from: z.string().regex(HHMM),
+          to: z.string().regex(HHMM),
+          interval: z.union([z.literal(1), z.literal(2)]),
+          anchor: z.string().date().optional(),
+          label: z.string().max(100).optional(),
+          cron: z
+            .string()
+            .max(100)
+            .optional()
+            .refine((v) => v == null || v === "" || validateCron(v) == null, {
+              message: "Invalid cron expression",
+            }),
+          durationMinutes: z
+            .number()
+            .int()
+            .min(5)
+            .max(24 * 60)
+            .optional(),
+        })
+        .refine((r) => r.from < r.to, { message: "from must be before to" })
     )
     .max(20)
     .optional(),

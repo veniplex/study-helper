@@ -17,6 +17,7 @@ import {
 import { requireSession } from "@/lib/auth/session"
 import { ownModule } from "@/lib/studies/access"
 import { buildTaskDrafts, sourceKey, type TaskGenInput } from "@/lib/plan/tasks"
+import { dueDateField } from "@/lib/plan/task-validation"
 
 type OwnedModule = Awaited<ReturnType<typeof ownModule>>
 
@@ -24,6 +25,20 @@ function revalidateModule(mod: OwnedModule) {
   revalidatePath(`/studies/${mod.semester.programId}/${mod.id}/plan`)
   revalidatePath(`/plan/${mod.semesterId}`)
   revalidatePath("/", "layout")
+}
+
+/**
+ * Verifies a client-supplied goalId belongs to the given (already-owned)
+ * module. Mirrors the check in ai/tool-executors.ts. Rejects cross-module
+ * goal references (IDOR).
+ */
+async function assertGoalInModule(moduleId: string, goalId: string | null | undefined) {
+  if (!goalId) return
+  const goals = await db.query.moduleGoal.findMany({
+    where: eq(moduleGoal.moduleId, moduleId),
+    columns: { id: true },
+  })
+  if (!goals.some((g) => g.id === goalId)) throw new Error("Invalid goal")
 }
 
 /** Loads a plan task (with its module → semester → program) or throws. */
@@ -182,7 +197,7 @@ const createSchema = z.object({
   title: z.string().min(1).max(300),
   description: z.string().max(2000).optional().nullable(),
   estimatedMinutes: z.number().int().min(5).max(600).optional(),
-  dueDate: z.string().date().optional().nullable(),
+  dueDate: dueDateField.optional().nullable(),
   goalId: z.string().optional().nullable(),
 })
 
@@ -190,6 +205,7 @@ export async function createPlanTask(moduleId: string, input: unknown) {
   const session = await requireSession()
   const mod = await ownModule(moduleId, session.user.id)
   const data = createSchema.parse(input)
+  await assertGoalInModule(moduleId, data.goalId)
   await ensureModulePlan(moduleId)
   const existing = await db.query.planTask.findMany({
     where: eq(planTask.moduleId, moduleId),
@@ -217,7 +233,7 @@ const updateSchema = z.object({
   title: z.string().min(1).max(300).optional(),
   description: z.string().max(2000).optional().nullable(),
   estimatedMinutes: z.number().int().min(5).max(600).optional(),
-  dueDate: z.string().date().optional().nullable(),
+  dueDate: dueDateField.optional().nullable(),
   goalId: z.string().optional().nullable(),
 })
 
@@ -225,6 +241,7 @@ export async function updatePlanTask(taskId: string, input: unknown) {
   const session = await requireSession()
   const row = await ownPlanTask(taskId, session.user.id)
   const data = updateSchema.parse(input)
+  if (data.goalId !== undefined) await assertGoalInModule(row.moduleId, data.goalId)
   await db
     .update(planTask)
     .set({
