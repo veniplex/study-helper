@@ -2,7 +2,7 @@
 
 import { CalendarClock } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { Link, useRouter } from "@/i18n/navigation"
 import { toggleSession } from "@/app/[locale]/(app)/plan/schedule-actions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,6 +22,7 @@ export type TodayPlanSession = {
 /** Dashboard card: today's plan sessions, each checkable, with task titles. */
 export function TodayPlanCard({ items }: { items: TodayPlanSession[] }) {
   const t = useTranslations("semesterPlan")
+  const showError = useActionErrorToast()
   const router = useRouter()
 
   if (items.length === 0) return null
@@ -31,7 +32,7 @@ export function TodayPlanCard({ items }: { items: TodayPlanSession[] }) {
       await toggleSession(id, done)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     }
   }
 

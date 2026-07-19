@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Target } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { updateGradeGoal } from "@/app/[locale]/(app)/studies/actions"
 import { requiredGradeForGoal } from "@/lib/grades"
 import { Input } from "@/components/ui/input"
@@ -30,6 +30,7 @@ export function GradeGoal({
   initialGoal: string | null
 }) {
   const t = useTranslations("dashboard.gradeGoal")
+  const locale = useLocale()
   const [target, setTarget] = React.useState(initialGoal ?? "2.0")
   const saveTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -73,7 +74,7 @@ export function GradeGoal({
           ? t("invalid")
           : result?.kind === "needed"
             ? t("needed", {
-                grade: result.grade.toLocaleString("de-DE", {
+                grade: result.grade.toLocaleString(locale, {
                   minimumFractionDigits: 1,
                   maximumFractionDigits: 1,
                 }),

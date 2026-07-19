@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { useRouter } from "@/i18n/navigation"
 import {
   deleteWritingMilestone,
@@ -31,6 +31,7 @@ export function WritingMilestoneRow({
 }) {
   const t = useTranslations("writing")
   const tCommon = useTranslations("common")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
@@ -41,7 +42,7 @@ export function WritingMilestoneRow({
       await toggleWritingMilestone(milestone.id, !milestone.done)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     }
   }
 
@@ -57,7 +58,7 @@ export function WritingMilestoneRow({
       setEditOpen(false)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(false)
     }

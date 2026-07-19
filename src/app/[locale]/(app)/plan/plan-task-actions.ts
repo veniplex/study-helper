@@ -14,6 +14,7 @@ import {
   writingMilestone,
   writingProject,
 } from "@/db/schema"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { ownModule } from "@/lib/studies/access"
 import { buildTaskDrafts, sourceKey, type TaskGenInput } from "@/lib/plan/tasks"
@@ -45,7 +46,7 @@ async function assertGoalInModule(moduleId: string, goalId: string | null | unde
     where: eq(moduleGoal.moduleId, moduleId),
     columns: { id: true },
   })
-  if (!goals.some((g) => g.id === goalId)) throw new Error("Invalid goal")
+  if (!goals.some((g) => g.id === goalId)) actionError("PLAN_INVALID_GOAL")
 }
 
 /** Loads a plan task (with its module → semester → program) or throws. */

@@ -6,6 +6,7 @@ import { generateObject } from "ai"
 import { z } from "zod"
 import { db } from "@/db"
 import { writingProject } from "@/db/schema"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { ownProgram } from "@/lib/studies/access"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
@@ -23,7 +24,7 @@ async function ownThesis(thesisId: string, userId: string) {
 
 async function getModel(userId: string) {
   const defaultModel = await resolveModelForUser(userId)
-  if (!defaultModel) throw new Error("No AI model configured")
+  if (!defaultModel) actionError("AI_NO_MODEL")
   return { ref: defaultModel, model: await getLanguageModel(defaultModel, userId) }
 }
 
@@ -62,7 +63,7 @@ export async function createThesis(input: unknown) {
       columns: { id: true },
     })
     if (existing) {
-      throw new Error("Für diesen Studiengang existiert bereits eine aktive Abschlussarbeit.")
+      actionError("THESIS_ACTIVE_EXISTS")
     }
   }
 
@@ -89,7 +90,7 @@ export async function retryThesis(thesisId: string) {
   if (prev.programId) {
     const program = await ownProgram(prev.programId, session.user.id)
     if (prev.attempt >= program.thesisMaxAttempts) {
-      throw new Error("Maximale Versuchszahl für die Abschlussarbeit erreicht.")
+      actionError("THESIS_MAX_ATTEMPTS")
     }
   }
 

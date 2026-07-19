@@ -5,6 +5,7 @@ import { asc, eq } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
 import { goalAttempt, moduleGoal, studyEvent } from "@/db/schema"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { ownModule } from "@/lib/studies/access"
 import { markPlanStale } from "@/lib/plan/staleness"
@@ -255,7 +256,7 @@ export async function addAttempt(goalId: string, input: unknown) {
     columns: { attempt: true },
   })
   if (existing.length >= goal.maxAttempts) {
-    throw new Error("Maximale Versuchszahl erreicht")
+    actionError("GOAL_MAX_ATTEMPTS")
   }
   const nextAttempt = existing.reduce((max, a) => Math.max(max, a.attempt), 0) + 1
 

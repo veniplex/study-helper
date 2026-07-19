@@ -50,6 +50,7 @@ export default async function ModuleDecksPage({
                 name: d.name,
                 description: d.description,
                 aiGenerated: d.aiGenerated,
+                kind: d.kind,
                 cardCount: d.cards.length,
                 dueCount: d.cards.filter((c) => c.due <= now).length,
               }}

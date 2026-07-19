@@ -19,7 +19,7 @@ import {
   TriangleAlert,
 } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
-import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { Link, useRouter } from "@/i18n/navigation"
 import {
   addAttempt,
@@ -172,6 +172,7 @@ function GoalCardShell({
   children?: React.ReactNode
 }) {
   const t = useTranslations("goals")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [editing, setEditing] = React.useState(false)
   const [pending, setPending] = React.useState(false)
@@ -185,7 +186,7 @@ function GoalCardShell({
       await deleteGoal(goal.id)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(false)
     }
@@ -302,6 +303,7 @@ function GoalAttempts({
   const [open, setOpen] = React.useState(false)
   const [editing, setEditing] = React.useState<AttemptDTO | null>(null)
   const [passed, setPassed] = React.useState(false)
+  const showError = useActionErrorToast()
   const [pending, setPending] = React.useState(false)
 
   const atMax = attempts.length >= maxAttempts
@@ -336,7 +338,7 @@ function GoalAttempts({
       setOpen(false)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(false)
     }
@@ -347,7 +349,7 @@ function GoalAttempts({
       await deleteAttempt(id)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     }
   }
 

@@ -4,6 +4,7 @@ import * as React from "react"
 import { Loader2, Plus, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { useRouter } from "@/i18n/navigation"
 import { saveAvailability, saveWeekOverride } from "@/app/[locale]/(app)/plan/actions"
 import type { PlanAvailability, WeekOverrides } from "@/db/schema"
@@ -28,6 +29,7 @@ export function AvailabilityEditor({
   weekOverrides?: WeekOverrides | null
 }) {
   const t = useTranslations("semesterPlan")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [pending, setPending] = React.useState<"save" | null>(null)
   const [weekly, setWeekly] = React.useState<Record<number, WeeklyRow>>(() => {
@@ -60,7 +62,7 @@ export function AvailabilityEditor({
       toast.success(t("saved"))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(null)
     }
@@ -390,6 +392,7 @@ function WeekOverridesSection({
   initial: WeekOverrides | null
 }) {
   const t = useTranslations("semesterPlan.weekOverride")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [week, setWeek] = React.useState("")
   const [hours, setHours] = React.useState("")
@@ -403,7 +406,7 @@ function WeekOverridesSection({
       await saveWeekOverride(semesterId, isoWeek, value)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(false)
     }

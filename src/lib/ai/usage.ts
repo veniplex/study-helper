@@ -3,6 +3,7 @@ import { and, eq, gte, sum } from "drizzle-orm"
 import { db } from "@/db"
 import { aiUsageLog } from "@/db/schema"
 import { getSetting } from "@/lib/settings"
+import { actionError } from "@/lib/action-errors"
 
 export async function logUsage(
   userId: string,
@@ -44,6 +45,6 @@ export async function assertWithinLimit(userId: string): Promise<void> {
     .where(and(eq(aiUsageLog.userId, userId), gte(aiUsageLog.createdAt, monthStart)))
   const used = (row?.total ?? 0) + (row?.totalOut ?? 0)
   if (used >= limit) {
-    throw new Error("Monthly token limit reached")
+    actionError("LIMIT_EXCEEDED")
   }
 }

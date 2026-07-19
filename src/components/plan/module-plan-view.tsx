@@ -28,6 +28,7 @@ import {
 } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { Link, useRouter } from "@/i18n/navigation"
 import {
   createPlanTask,
@@ -100,6 +101,7 @@ export function ModulePlanView({
   setupSteps?: SetupStep[]
 }) {
   const t = useTranslations("plan")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [generating, setGenerating] = React.useState(false)
 
@@ -110,7 +112,7 @@ export function ModulePlanView({
       toast.success(t("tasks.generated", { count: res.created }))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setGenerating(false)
     }
@@ -182,6 +184,7 @@ function TaskList({
   tasks: PlanTaskData[]
   goals: GoalOption[]
 }) {
+  const showError = useActionErrorToast()
   const [list, setList] = React.useState(tasks)
   const [prev, setPrev] = React.useState(tasks)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
@@ -206,7 +209,7 @@ function TaskList({
         next.map((i) => i.id)
       )
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
       setList(tasks)
     }
   }
@@ -254,6 +257,7 @@ function TaskRow({
   dragHandle: Record<string, unknown>
 }) {
   const t = useTranslations("plan")
+  const showError = useActionErrorToast()
   const format = useFormatter()
   const router = useRouter()
   const [editOpen, setEditOpen] = React.useState(false)
@@ -264,7 +268,7 @@ function TaskRow({
       await togglePlanTask(task.id, !task.done)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     }
   }
 
@@ -435,6 +439,7 @@ function EditTaskDialog({
 
 function AddTaskForm({ moduleId, goals }: { moduleId: string; goals: GoalOption[] }) {
   const t = useTranslations("plan")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
 
@@ -455,7 +460,7 @@ function AddTaskForm({ moduleId, goals }: { moduleId: string; goals: GoalOption[
       el.reset()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(false)
     }

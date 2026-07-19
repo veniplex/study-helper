@@ -7,6 +7,7 @@ import { getLocale } from "next-intl/server"
 import { z } from "zod"
 import { db } from "@/db"
 import { deck, flashcard, reviewLog } from "@/db/schema"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { searchChunks, getModuleMaterialSample } from "@/lib/ai/rag"
@@ -280,6 +281,10 @@ export async function reviewCard(cardId: string, rating: ReviewRating) {
 
   await db.update(flashcard).set(updated).where(eq(flashcard.id, cardId))
   await db.insert(reviewLog).values({ cardId, userId: session.user.id, rating })
+  // Keep due-card counts (dashboard, deck cards) fresh after a review. The
+  // study page itself is driven by client state, so this never disrupts an
+  // in-progress session.
+  revalidatePath("/")
   return { ok: true as const, nextDue: updated.due.toISOString() }
 }
 
@@ -302,7 +307,7 @@ export async function generateCards(input: unknown) {
   const deckRow = await ownDeck(data.deckId, session.user.id)
 
   const defaultModel = await resolveModelForUser(session.user.id)
-  if (!defaultModel) throw new Error("No AI model configured")
+  if (!defaultModel) actionError("AI_NO_MODEL")
   const model = await getLanguageModel(defaultModel, session.user.id)
 
   const moduleRow = deckRow.moduleId ? await ownModule(deckRow.moduleId, session.user.id) : null

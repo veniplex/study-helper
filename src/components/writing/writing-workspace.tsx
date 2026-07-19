@@ -4,6 +4,7 @@ import * as React from "react"
 import { BookMarked, CalendarPlus, Loader2, Plus, Sparkles } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { useRouter } from "@/i18n/navigation"
 import type { WritingKind, WritingPhase, WritingVariant } from "@/db/schema/thesis"
 import { phasesFor } from "@/lib/writing/phases"
@@ -72,6 +73,7 @@ export function WritingWorkspace(props: {
   const { project, variant, aiAvailable, semesters, requiresSources } = props
   const t = useTranslations("writing")
   const tCommon = useTranslations("common")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const isTask = variant === "task"
   const phases = phasesFor(variant)
@@ -93,7 +95,7 @@ export function WritingWorkspace(props: {
       await fn()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(null)
     }

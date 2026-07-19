@@ -340,7 +340,7 @@
       "saved": "Profile saved."
     },
     "aiKeys": {
-      "title": "Your AI API keys (BYOK)",
+      "title": "Your AI API keys",
       "description": "Your own keys take precedence over centrally configured ones. Stored encrypted.",
       "placeholder": "Enter API key",
       "active": "Own key active",
@@ -369,7 +369,7 @@
       "saveFailed": "The setting could not be saved."
     },
     "usage": {
-      "title": "Your token usage (30 days)",
+      "title": "Your AI usage (30 days)",
       "input": "Input",
       "output": "Output",
       "limit": "Limit",
@@ -828,7 +828,7 @@
       "skippedHint": "No text could be extracted from this file.",
       "retry": "Process again"
     },
-    "notIndexedHint": "No embedding model is configured — materials are not indexed for AI search. An admin can set this up under Admin → AI.",
+    "notIndexedHint": "AI search isn't set up yet.",
     "uploadRateLimited": "Too many uploads in a short time — please wait a moment.",
     "uploadNetworkError": "Network error during upload — check your connection and try again.",
     "uploadServerError": "{name}: Server error while saving. Check in the admin area whether file storage is writable.",
@@ -975,6 +975,9 @@
       "name": "Name",
       "description": "Description",
       "empty": "No decks yet.",
+      "mistakesName": "Quiz mistakes",
+      "mistakesBadge": "Auto",
+      "mistakesTooltip": "Automatically filled from quiz questions you answered incorrectly.",
       "cards": "{count} cards",
       "due": "{count} due",
       "study": "Study",
@@ -1508,5 +1511,28 @@
   "home": {
     "title": "Welcome to StudyHelper",
     "description": "The open-source app for your entire studies: planning, learning materials, AI support and exam preparation — self-hosted and offline-capable."
+  },
+  "errors": {
+    "PLAN_NO_AVAILABILITY": "Set your availability first to compute the plan.",
+    "PLAN_INVALID_GOAL": "The selected goal doesn't belong to this module.",
+    "GOAL_MAX_ATTEMPTS": "Maximum number of attempts reached.",
+    "WRITING_NO_GOAL": "This module has no writing goal (term paper, thesis or project).",
+    "WRITING_NO_DUE_DATE": "Set a due date first.",
+    "THESIS_ACTIVE_EXISTS": "An active thesis already exists for this program.",
+    "THESIS_MAX_ATTEMPTS": "Maximum number of thesis attempts reached.",
+    "AI_NO_MODEL": "No AI model is configured. An admin can set this up under Admin → AI.",
+    "LIMIT_EXCEEDED": "You've used up your monthly AI quota.",
+    "MATERIAL_NAME_REQUIRED": "Please enter a name.",
+    "FOLDER_DUPLICATE": "A folder with this name already exists here.",
+    "GENERIC": "Something went wrong. Please try again."
+  },
+  "notifications": {
+    "eventTitle": "⏰ {title}",
+    "eventBody": "{when}",
+    "eventBodyLocation": "{when} · {location}",
+    "assignmentTitle": "📋 {title}",
+    "assignmentBody": "{module} · {due}",
+    "dailyPlanTitle": "📚 {appName}",
+    "dailyPlanBody": "{count, plural, one {You have # study session in today's plan.} other {You have # study sessions in today's plan.}}"
   }
 }

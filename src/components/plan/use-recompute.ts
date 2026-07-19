@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { useRouter } from "@/i18n/navigation"
 import { recomputeSchedule } from "@/app/[locale]/(app)/plan/schedule-actions"
 import type { ScheduleWarning } from "@/lib/plan/scheduler"
@@ -15,6 +16,7 @@ import type { ScheduleWarning } from "@/lib/plan/scheduler"
  */
 export function useRecompute(semesterId: string) {
   const t = useTranslations("plan")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [computing, setComputing] = React.useState(false)
 
@@ -28,12 +30,12 @@ export function useRecompute(semesterId: string) {
       router.refresh()
       return warnings
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
       return []
     } finally {
       setComputing(false)
     }
-  }, [semesterId, t, router])
+  }, [semesterId, t, router, showError])
 
   return { recompute, computing }
 }

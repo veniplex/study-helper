@@ -64,8 +64,9 @@ export default async function ModuleStudyPage({
     }
   })()
 
-  // Always render StudySession — the empty state lives inside it so that the
-  // completion screen survives the path revalidation triggered by reviewCard.
+  // Always render StudySession — the empty state and completion screen live
+  // inside it and are driven entirely by client state, so the session survives
+  // re-renders and reviewCard's dashboard revalidation never unmounts them.
   return (
     <StudySession
       backHref={`/studies/${programId}/${moduleId}/decks/${deckId}`}

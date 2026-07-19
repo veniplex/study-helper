@@ -3,7 +3,7 @@
 import * as React from "react"
 import { BookOpen } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { useRouter } from "@/i18n/navigation"
 import { updateModulePlanPrefs } from "@/app/[locale]/(app)/plan/plan-task-actions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -42,6 +42,7 @@ export function ModulePlanPrefs({
   moduleName?: string
 }) {
   const t = useTranslations("plan")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [active, setActive] = React.useState(value.active)
   const [weight, setWeight] = React.useState(String(value.weight))
@@ -56,7 +57,7 @@ export function ModulePlanPrefs({
       await updateModulePlanPrefs(moduleId, patch)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     }
   }
 

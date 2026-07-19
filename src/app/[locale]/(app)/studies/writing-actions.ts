@@ -8,6 +8,7 @@ import { db } from "@/db"
 import { moduleGoal, studyEvent, writingMilestone, writingProject } from "@/db/schema"
 import type { GoalType } from "@/db/schema/studies"
 import type { WritingPhase } from "@/db/schema/thesis"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { ownModule } from "@/lib/studies/access"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
@@ -29,7 +30,7 @@ const WRITING_GOAL_TYPES: readonly GoalType[] = ["thesis", "term_paper", "projec
 
 async function getModel(userId: string) {
   const defaultModel = await resolveModelForUser(userId)
-  if (!defaultModel) throw new Error("No AI model configured")
+  if (!defaultModel) actionError("AI_NO_MODEL")
   return { ref: defaultModel, model: await getLanguageModel(defaultModel, userId) }
 }
 
@@ -96,7 +97,7 @@ export async function ensureModuleWritingProject(moduleId: string) {
     (g): g is (typeof goals)[number] => Boolean(g)
   )
   if (!goal) {
-    throw new Error("Dieses Modul hat kein Schreib-Lernziel (Hausarbeit, Thesis oder Projekt).")
+    actionError("WRITING_NO_GOAL")
   }
 
   const existing = await db.query.writingProject.findFirst({
@@ -295,7 +296,7 @@ export async function generateWritingMilestones(projectId: string, addToCalendar
   const session = await requireSession()
   await assertWithinLimit(session.user.id)
   const row = await ownWriting(projectId, session.user.id)
-  if (!row.dueDate) throw new Error("Set a due date first")
+  if (!row.dueDate) actionError("WRITING_NO_DUE_DATE")
   const { ref, model } = await getModel(session.user.id)
   const today = new Date().toISOString().slice(0, 10)
 

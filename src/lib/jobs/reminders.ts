@@ -1,6 +1,8 @@
 import "server-only"
 import { and, eq, gt, gte, isNotNull, isNull, lte, ne, or } from "drizzle-orm"
+import { createTranslator } from "next-intl"
 import { db } from "@/db"
+import { routing } from "@/i18n/routing"
 import {
   assignment,
   notificationPrefs,
@@ -17,6 +19,32 @@ import { expandOccurrences, toIsoDate } from "@/lib/events/recurrence"
 import { sendPushToUser } from "@/lib/push"
 import { getAppName } from "@/lib/settings"
 import { env } from "@/lib/env"
+
+/**
+ * Resolves the notification locale for a user. This is the single seam R5 will
+ * wire to `user_prefs.locale` (the column lands in R5's migration 0042); until
+ * then every user gets the default locale. All reminder formatting below flows
+ * through the returned locale, so R5 only has to change this function's source.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- R5 wires userId → user_prefs.locale here
+async function reminderLocale(userId: string): Promise<string> {
+  return routing.defaultLocale
+}
+
+type NotificationsT = (key: string, values?: Record<string, string | number>) => string
+
+const messagesCache = new Map<string, Record<string, unknown>>()
+
+/** Server-side (request-free, job-safe) translator for the `notifications` namespace. */
+async function notificationsTranslator(locale: string): Promise<NotificationsT> {
+  let messages = messagesCache.get(locale)
+  if (!messages) {
+    messages = (await import(`../../../messages/${locale}.json`)).default
+    messagesCache.set(locale, messages!)
+  }
+  const t = createTranslator({ locale, messages, namespace: "notifications" })
+  return t as unknown as NotificationsT
+}
 
 /** Resolves the category × channel matrix, falling back to the legacy booleans. */
 async function getChannels(userId: string): Promise<NotificationChannels> {
@@ -106,13 +134,17 @@ export async function sendDueReminders(): Promise<void> {
         if (inserted.length === 0) continue
 
         const channels = await getChannels(event.userId)
-        const when = occ.startsAt.toLocaleString("de-DE", {
+        const locale = await reminderLocale(event.userId)
+        const t = await notificationsTranslator(locale)
+        const when = new Intl.DateTimeFormat(locale, {
           dateStyle: "medium",
           timeStyle: event.allDay ? undefined : "short",
-        })
+        }).format(occ.startsAt)
         await notify(event.userId, channels.events, {
-          title: `⏰ ${event.title}`,
-          body: `${when}${event.location ? ` · ${event.location}` : ""}`,
+          title: t("eventTitle", { title: event.title }),
+          body: event.location
+            ? t("eventBodyLocation", { when, location: event.location })
+            : t("eventBody", { when }),
           url: "/calendar",
         })
       }
@@ -145,9 +177,14 @@ async function sendAssignmentReminders(now: Date): Promise<void> {
     if (!(await claimNotification(row.userId, `assignment:${row.id}:1440`))) continue
 
     const channels = await getChannels(row.userId)
+    const locale = await reminderLocale(row.userId)
+    const t = await notificationsTranslator(locale)
+    const dueLabel = new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+      new Date(row.dueDate!)
+    )
     await notify(row.userId, channels.assignments, {
-      title: `📋 ${row.title}`,
-      body: `${row.module.name} · ${new Date(row.dueDate!).toLocaleDateString("de-DE", { dateStyle: "medium" })}`,
+      title: t("assignmentTitle", { title: row.title }),
+      body: t("assignmentBody", { module: row.module.name, due: dueLabel }),
       url: "/calendar",
     })
   }
@@ -173,9 +210,11 @@ export async function sendDailyPlanReminders(): Promise<void> {
   for (const [userId, count] of byUser) {
     if (!(await claimNotification(userId, `dailyplan:${today}`))) continue
     const channels = await getChannels(userId)
+    const locale = await reminderLocale(userId)
+    const t = await notificationsTranslator(locale)
     await notify(userId, channels.dailyPlan, {
-      title: `📚 ${appName}`,
-      body: `Heute stehen ${count} Lerneinheiten in deinem Lernplan.`,
+      title: t("dailyPlanTitle", { appName }),
+      body: t("dailyPlanBody", { count }),
       url: "/",
     })
   }

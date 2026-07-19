@@ -39,6 +39,7 @@ import {
 } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { Link, useRouter } from "@/i18n/navigation"
 import {
   createFolder,
@@ -459,6 +460,7 @@ export function MaterialsBrowser({
   indexingEnabled?: boolean
 }) {
   const t = useTranslations("materials")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -499,7 +501,7 @@ export function MaterialsBrowser({
       await retryMaterialProcessing(materialId)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     }
   }
   function changeView(next: "list" | "grid") {
@@ -590,7 +592,7 @@ export function MaterialsBrowser({
       await action()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     }
   }
 

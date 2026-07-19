@@ -6,6 +6,7 @@ import { z } from "zod"
 import { db } from "@/db"
 import { moduleGoal, modulePlan, planSession, planTask, semesterPlan, studyEvent } from "@/db/schema"
 import type { PlanTaskSource } from "@/db/schema"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { ownSemester } from "@/lib/studies/access"
 import { expandAbsences } from "@/lib/plan/absences"
@@ -53,7 +54,7 @@ export async function recomputeSchedule(semesterId: string) {
   const plan = await db.query.semesterPlan.findFirst({
     where: eq(semesterPlan.semesterId, semesterId),
   })
-  if (!plan) throw new Error("No availability configured")
+  if (!plan) actionError("PLAN_NO_AVAILABILITY")
 
   const modules = await db.query.studyModule.findMany({
     where: (m, { eq: e }) => e(m.semesterId, semesterId),

@@ -4,10 +4,11 @@ import { GEN_PARAMS, GRADING_PARAMS } from "@/lib/ai/params"
 import { revalidatePath } from "next/cache"
 import { and, eq, isNull } from "drizzle-orm"
 import { generateObject } from "ai"
-import { getLocale } from "next-intl/server"
+import { getLocale, getTranslations } from "next-intl/server"
 import { z } from "zod"
 import { db } from "@/db"
 import { answerLog, question, quiz, quizAttempt } from "@/db/schema"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { searchChunks, getModuleMaterialSample } from "@/lib/ai/rag"
@@ -230,7 +231,7 @@ export async function generateQuiz(input: unknown) {
   const moduleRow = data.moduleId ? await ownModule(data.moduleId, session.user.id) : null
 
   const defaultModel = await resolveModelForUser(session.user.id)
-  if (!defaultModel) throw new Error("No AI model configured")
+  if (!defaultModel) actionError("AI_NO_MODEL")
   const model = await getLanguageModel(defaultModel, session.user.id)
 
   const query = data.topics || moduleRow?.name || "key concepts"
@@ -503,9 +504,13 @@ async function addToMistakesDeck(
     ),
   })
   if (!mistakes) {
+    // Best-effort localized name at creation (the creator's current UI locale).
+    // The deck's identity is `kind === "mistakes"`, so the UI renders a
+    // localized label + badge regardless of this stored name (see deck-card).
+    const t = await getTranslations("learn.decks")
     ;[mistakes] = await db
       .insert(deck)
-      .values({ userId, moduleId, name: "Quiz-Fehler", kind: "mistakes" })
+      .values({ userId, moduleId, name: t("mistakesName"), kind: "mistakes" })
       .returning()
   }
   const existing = await db.query.flashcard.findMany({

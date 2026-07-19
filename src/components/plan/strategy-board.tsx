@@ -3,7 +3,7 @@
 import * as React from "react"
 import { AlertTriangle, CalendarClock, Loader2, RefreshCw } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
-import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { useRouter } from "@/i18n/navigation"
 import { toggleSession } from "@/app/[locale]/(app)/plan/schedule-actions"
 import type { ScheduleWarning } from "@/lib/plan/scheduler"
@@ -145,6 +145,7 @@ export function StrategyBoard({
 
 function SessionPreview({ sessions }: { sessions: PreviewSession[] }) {
   const t = useTranslations("plan")
+  const showError = useActionErrorToast()
   const format = useFormatter()
   const router = useRouter()
 
@@ -159,7 +160,7 @@ function SessionPreview({ sessions }: { sessions: PreviewSession[] }) {
       await toggleSession(id, done)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     }
   }
 

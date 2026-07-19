@@ -52,6 +52,9 @@ export function formatGrade(value: number | null, system: GradingSystem): string
   if (value == null) return "–"
   switch (system) {
     case "german":
+      // The German 1,0–4,0 scale is a fixed convention: one decimal, comma
+      // separator. `de-DE` is intentional and locale-independent here — an
+      // English UI must still render German grades as "2,0", not "2.0".
       return value.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
     case "points":
       return value.toLocaleString(undefined, { maximumFractionDigits: 1 })

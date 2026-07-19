@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
 import { semesterPlan, type PlanAvailability } from "@/db/schema"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { validateCron } from "@/lib/plan/absences"
 import { markPlanStale } from "@/lib/plan/staleness"
@@ -104,7 +105,7 @@ export async function saveWeekOverride(
     where: eq(semesterPlan.semesterId, semesterId),
     columns: { id: true, weekOverrides: true },
   })
-  if (!plan) throw new Error("No availability configured")
+  if (!plan) actionError("PLAN_NO_AVAILABILITY")
 
   const next = { ...(plan.weekOverrides ?? {}) }
   if (value == null) delete next[week]
