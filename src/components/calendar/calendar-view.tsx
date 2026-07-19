@@ -4,15 +4,16 @@ import * as React from "react"
 import FullCalendar from "@fullcalendar/react"
 import dayGridPlugin from "@fullcalendar/daygrid"
 import timeGridPlugin from "@fullcalendar/timegrid"
+import listPlugin from "@fullcalendar/list"
 import interactionPlugin from "@fullcalendar/interaction"
 import deLocale from "@fullcalendar/core/locales/de"
 import type { EventClickArg, EventDropArg, EventInput } from "@fullcalendar/core"
 import type { EventResizeDoneArg } from "@fullcalendar/interaction"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Sparkles, Trash2 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
-import { deleteEvent, moveEvent } from "@/app/[locale]/(app)/calendar/actions"
+import { deleteEvent, deleteEventOccurrence, moveEvent } from "@/app/[locale]/(app)/calendar/actions"
 import { moveSession } from "@/app/[locale]/(app)/plan/schedule-actions"
 import { EventDialog, type EventData, type ModuleOption } from "./event-dialog"
 import { SessionDialog, type SessionDialogData } from "./session-dialog"
@@ -29,7 +30,7 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
-export type CalendarEvent = EventData & { id: string }
+export type CalendarEvent = EventData & { id: string; aiGenerated?: boolean }
 
 export type PlanCalendarSession = {
   id: string
@@ -91,6 +92,7 @@ export function CalendarView({
   planSessions = [],
   assignments = [],
   absences = [],
+  focusEventId,
 }: {
   events: CalendarEvent[]
   modules: ModuleOption[]
@@ -98,6 +100,8 @@ export function CalendarView({
   assignments?: AssignmentCalendarItem[]
   /** Unavailability windows from the study plans, shown as background. */
   absences?: AbsenceWindow[]
+  /** Event id to focus/open on mount (command-palette deep link, E24). */
+  focusEventId?: string
 }) {
   const locale = useLocale()
   const t = useTranslations("calendar.filters")
@@ -110,7 +114,22 @@ export function CalendarView({
   const [sessionOpen, setSessionOpen] = React.useState(false)
   const [moduleFilter, setModuleFilter] = React.useState("")
   const [hidden, setHidden] = React.useState<Set<CategoryKey>>(new Set())
-  const [ctxMenu, setCtxMenu] = React.useState<{ id: string; x: number; y: number } | null>(null)
+  const [ctxMenu, setCtxMenu] = React.useState<{
+    id: string
+    x: number
+    y: number
+    /** Set when the right-clicked item is a single recurring occurrence (E18). */
+    occurrenceDate?: string
+  } | null>(null)
+  const calendarRef = React.useRef<FullCalendar>(null)
+
+  // Default phones to the agenda (listWeek); larger screens keep the month grid
+  // (E21). Only the initial view is derived — the toolbar lets users switch.
+  const [initialView] = React.useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches
+      ? "listWeek"
+      : "dayGridMonth"
+  )
 
   // Close the right-click menu on outside interaction or Escape. Other keys
   // (Tab/Enter/arrows) must keep working so the menu is keyboard-operable.
@@ -135,6 +154,22 @@ export function CalendarView({
     () => new Map(planSessions.map((s) => [s.id, s])),
     [planSessions]
   )
+
+  // Deep link (?event=<id>): open the event's dialog and jump the calendar to
+  // its date once on mount (E24).
+  const focusedRef = React.useRef(false)
+  React.useEffect(() => {
+    if (focusedRef.current || !focusEventId) return
+    const data = byId.get(focusEventId)
+    if (!data) return
+    focusedRef.current = true
+    // Defer so this doesn't run as a synchronous setState cascade in the effect.
+    queueMicrotask(() => {
+      setSelected(data)
+      setDialogOpen(true)
+      calendarRef.current?.getApi().gotoDate(new Date(data.startsAt))
+    })
+  }, [focusEventId, byId])
 
   const categoryLabels: Record<CategoryKey, string> = {
     exam: tEvent("typeExam"),
@@ -176,6 +211,15 @@ export function CalendarView({
   async function deleteById(id: string) {
     try {
       await deleteEvent(id)
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  async function deleteOccurrence(id: string, occurrenceDate: string) {
+    try {
+      await deleteEventOccurrence(id, occurrenceDate)
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error))
@@ -258,6 +302,7 @@ export function CalendarView({
               end: e.endsAt ? (e.allDay ? e.endsAt.slice(0, 10) : e.endsAt) : undefined,
               allDay: e.allDay ?? false,
               classNames: [TYPE_CLASS[e.type]],
+              extendedProps: { aiGenerated: e.aiGenerated ?? false },
             },
           ]
         }
@@ -274,6 +319,7 @@ export function CalendarView({
             recurrenceUntil: e.recurrenceUntil ?? null,
             recurrenceWeekdays: e.recurrenceWeekdays ?? null,
             recurrenceInterval: e.recurrenceInterval ?? null,
+            skipDates: e.skipDates ?? null,
           },
           from,
           to
@@ -289,6 +335,7 @@ export function CalendarView({
           allDay: e.allDay ?? false,
           editable: !occ.isRecurrenceInstance,
           classNames: [TYPE_CLASS[e.type]],
+          extendedProps: { aiGenerated: e.aiGenerated ?? false },
         }))
       }),
     ...(!hidden.has("plan")
@@ -377,12 +424,14 @@ export function CalendarView({
         </div>
 
         <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
+          ref={calendarRef}
+          plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+          initialView={initialView}
           headerToolbar={{
             left: "prev,next today",
             center: "title",
-            right: "dayGridMonth,timeGridWeek",
+            // listWeek gives phones a usable agenda instead of a cramped grid (E21).
+            right: "dayGridMonth,timeGridWeek,listWeek",
           }}
           locales={[deLocale]}
           locale={locale === "de" ? "de" : "en"}
@@ -392,6 +441,23 @@ export function CalendarView({
           nowIndicator
           editable
           events={fcEvents}
+          eventContent={(arg) => {
+            // Mark AI-generated events with a small sparkle, consistent with
+            // decks/assignments and the mini-calendar badge (F8). Returning
+            // `true` for everything else keeps FullCalendar's default rendering.
+            if (!(arg.event.extendedProps as { aiGenerated?: boolean }).aiGenerated) return true
+            return (
+              <div className="fc-event-main-frame">
+                {arg.timeText && <div className="fc-event-time">{arg.timeText}</div>}
+                <div className="fc-event-title-container">
+                  <div className="fc-event-title fc-sticky flex items-center gap-1">
+                    <Sparkles className="size-3 shrink-0" aria-label={tCommon("aiGenerated")} />
+                    {arg.event.title}
+                  </div>
+                </div>
+              </div>
+            )
+          }}
           eventClick={(arg) => {
             if (arg.event.id.startsWith("assignment:")) {
               const href = (arg.event.extendedProps as { href?: string }).href
@@ -414,13 +480,17 @@ export function CalendarView({
           eventDrop={onMove}
           eventResize={onMove}
           eventDidMount={(info) => {
-            // Right-click a real event → edit/delete menu (instances target the series).
+            // Right-click a real event → edit/delete menu (instances target the
+            // series, but also offer "delete only this occurrence", E18).
             const isInstance = info.event.id.startsWith("recur:")
             if (info.event.id.includes(":") && !isInstance) return
-            const baseId = isInstance ? info.event.id.split(":")[1] : info.event.id
+            // recur id shape: `recur:${baseId}:${occurrenceDate}`.
+            const parts = info.event.id.split(":")
+            const baseId = isInstance ? parts[1] : info.event.id
+            const occurrenceDate = isInstance ? parts[2] : undefined
             info.el.addEventListener("contextmenu", (e) => {
               e.preventDefault()
-              setCtxMenu({ id: baseId, x: e.clientX, y: e.clientY })
+              setCtxMenu({ id: baseId, x: e.clientX, y: e.clientY, occurrenceDate })
             })
           }}
         />
@@ -448,6 +518,20 @@ export function CalendarView({
               <Pencil className="size-4" />
               {tCommon("edit")}
             </button>
+            {ctxMenu.occurrenceDate && (
+              <button
+                type="button"
+                role="menuitem"
+                className="text-destructive hover:bg-destructive/10 focus-visible:bg-destructive/10 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-none"
+                onClick={() => {
+                  void deleteOccurrence(ctxMenu.id, ctxMenu.occurrenceDate!)
+                  setCtxMenu(null)
+                }}
+              >
+                <Trash2 className="size-4" />
+                {tEvent("deleteOccurrence")}
+              </button>
+            )}
             <button
               type="button"
               role="menuitem"
@@ -458,7 +542,7 @@ export function CalendarView({
               }}
             >
               <Trash2 className="size-4" />
-              {tCommon("delete")}
+              {ctxMenu.occurrenceDate ? tEvent("deleteSeries") : tCommon("delete")}
             </button>
           </div>
         )}

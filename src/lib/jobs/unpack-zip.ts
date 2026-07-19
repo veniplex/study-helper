@@ -90,6 +90,27 @@ export async function unpackZip(payload: UnpackZipPayload): Promise<void> {
         console.error("[unpack-zip] failed to enqueue embedding", error)
       }
     }
+  } catch (error) {
+    // The archive isn't kept as its own material, so a failed unpack would
+    // otherwise vanish silently (retryLimit 0). Record a failed material row
+    // for the archive so the materials list badge + detail banner (E1) surface
+    // the reason to the user.
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`[unpack-zip] failed to unpack ${zipName}`, error)
+    try {
+      await db.insert(material).values({
+        userId,
+        moduleId,
+        kind: "file",
+        name: zipName,
+        mimeType: "application/zip",
+        folderId: parentFolderId,
+        extractionStatus: "failed",
+        extractionError: `Could not unpack archive: ${message}`,
+      })
+    } catch (insertError) {
+      console.error("[unpack-zip] failed to record unpack error", insertError)
+    }
   } finally {
     // Discard the temporary archive regardless of outcome.
     await deleteFile(zipStoragePath)

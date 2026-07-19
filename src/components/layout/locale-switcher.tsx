@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { useParams } from "next/navigation"
 import { routing } from "@/i18n/routing"
 import { usePathname, useRouter } from "@/i18n/navigation"
+import { updateLocalePref } from "@/app/[locale]/(app)/settings/actions"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -21,6 +22,9 @@ export function LocaleSwitcher() {
   const params = useParams()
 
   function switchTo(nextLocale: string) {
+    // Remember the choice for background reminders (push/email). Fire-and-forget
+    // — a failure here must not block the UI language switch.
+    void updateLocalePref(nextLocale).catch(() => {})
     router.replace(
       // @ts-expect-error — params are compatible with the current pathname
       { pathname, params },

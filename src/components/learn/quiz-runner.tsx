@@ -1,10 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { CheckCircle2, HelpCircle, Loader2, XCircle } from "lucide-react"
+import { ArrowLeft, CheckCircle2, HelpCircle, Layers, Loader2, XCircle } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
-import { useRouter } from "@/i18n/navigation"
+import { Link, useRouter } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -21,9 +21,12 @@ export type RunnerQuestion = {
 export function QuizRunner({
   quizId,
   questions,
+  deckLinkBase,
 }: {
   quizId: string
   questions: RunnerQuestion[]
+  /** `/studies/{programId}/{moduleId}` — used to deep-link the mistakes deck. */
+  deckLinkBase?: string
 }) {
   const t = useTranslations("learn.quizzes")
   const router = useRouter()
@@ -36,6 +39,8 @@ export function QuizRunner({
   const current = questions[index]
   const isLast = index === questions.length - 1
   const answered = current ? (answers[current.id] ?? "") !== "" : false
+  // Determinate grading hint: how many free-text answers the AI must grade.
+  const freeTextCount = questions.filter((q) => q.kind === "free_text").length
 
   async function finish() {
     setGrading(true)
@@ -57,7 +62,25 @@ export function QuizRunner({
   if (result) {
     return (
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">{t("result", { score: result.score })}</h2>
+        <h2 className="text-lg font-semibold">
+          {result.score != null ? t("result", { score: result.score }) : t("resultNotGraded")}
+        </h2>
+        {result.mistakesAdded > 0 && (
+          <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <span>{t("mistakesAdded", { count: result.mistakesAdded })}</span>
+            {deckLinkBase && result.mistakesDeckId && (
+              <Button
+                variant="outline"
+                size="sm"
+                nativeButton={false}
+                render={<Link href={`${deckLinkBase}/decks/${result.mistakesDeckId}`} />}
+              >
+                <Layers className="size-3.5" />
+                {t("openMistakesDeck")}
+              </Button>
+            )}
+          </div>
+        )}
         <ul className="space-y-3">
           {result.results.map((r, i) => (
             <li key={r.questionId} className="space-y-1.5 rounded-md border p-3 text-sm">
@@ -137,17 +160,33 @@ export function QuizRunner({
           )}
         </CardContent>
       </Card>
-      <div className="flex justify-end">
-        {isLast ? (
-          <Button onClick={finish} disabled={!answered || grading}>
-            {grading && <Loader2 className="size-4 animate-spin" />}
-            {grading ? t("grading") : t("finish")}
-          </Button>
-        ) : (
-          <Button onClick={() => setIndex((i) => i + 1)} disabled={!answered}>
-            {t("next")}
-          </Button>
-        )}
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          variant="ghost"
+          onClick={() => setIndex((i) => Math.max(0, i - 1))}
+          disabled={index === 0 || grading}
+        >
+          <ArrowLeft className="size-4" />
+          {t("previous")}
+        </Button>
+        <div className="flex gap-2">
+          {/* Skip is always allowed; only submit keeps the answered-gating. */}
+          {!isLast && (
+            <Button variant="outline" onClick={() => setIndex((i) => i + 1)}>
+              {answered ? t("next") : t("skip")}
+            </Button>
+          )}
+          {isLast && (
+            <Button onClick={finish} disabled={!answered || grading}>
+              {grading && <Loader2 className="size-4 animate-spin" />}
+              {grading
+                ? freeTextCount > 0
+                  ? t("gradingCount", { count: freeTextCount })
+                  : t("grading")
+                : t("finish")}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )

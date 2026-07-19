@@ -20,14 +20,15 @@ import {
   CalendarClock,
   Clock,
   GripVertical,
+  ListChecks,
   Loader2,
   Pencil,
   Plus,
-  Sparkles,
   Trash2,
 } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { Link, useRouter } from "@/i18n/navigation"
 import {
   createPlanTask,
@@ -35,10 +36,12 @@ import {
   generateModuleTasks,
   reorderPlanTasks,
   togglePlanTask,
-  updateModulePlanPrefs,
   updatePlanTask,
 } from "@/app/[locale]/(app)/plan/plan-task-actions"
+import { AiBadge } from "@/components/ai/ai-badge"
 import { FormDialog } from "@/components/form-dialog"
+import { ModulePlanPrefs, type ModulePlanPrefsValue } from "@/components/plan/module-plan-prefs"
+import { SetupChecklist, type SetupStep } from "@/components/plan/setup-checklist"
 import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -46,7 +49,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
@@ -59,14 +61,7 @@ export type PlanTaskData = {
   goalId: string | null
   done: boolean
   scheduled: boolean
-}
-
-export type ModulePlanPrefs = {
-  active: boolean
-  weight: number
-  weeklyHoursTarget: number | null
-  phase: number
-  preferredWeekdays: number[] | null
+  aiGenerated: boolean
 }
 
 export type UpcomingSession = {
@@ -83,21 +78,30 @@ export type GoalOption = { id: string; type: string; title: string | null }
 export function ModulePlanView({
   moduleId,
   semesterId,
+  basePath,
   prefs,
   hasGoals,
+  hasExamGoal,
+  hasOutline,
   goals,
   tasks,
   sessions,
+  setupSteps = [],
 }: {
   moduleId: string
   semesterId: string
-  prefs: ModulePlanPrefs
+  basePath: string
+  prefs: ModulePlanPrefsValue
   hasGoals: boolean
+  hasExamGoal: boolean
+  hasOutline: boolean
   goals: GoalOption[]
   tasks: PlanTaskData[]
   sessions: UpcomingSession[]
+  setupSteps?: SetupStep[]
 }) {
   const t = useTranslations("plan")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [generating, setGenerating] = React.useState(false)
 
@@ -108,14 +112,22 @@ export function ModulePlanView({
       toast.success(t("tasks.generated", { count: res.created }))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setGenerating(false)
     }
   }
 
+  // A13: an exam module with neither outline topics nor tasks gets nudged to
+  // build (or derive) an outline first, so generation has something to work on.
+  const showOutlineNudge = tasks.length === 0 && hasExamGoal && !hasOutline
+
   return (
     <div className="space-y-6">
+      {setupSteps.some((s) => !s.done) && (
+        <SetupChecklist steps={setupSteps} storageKey={`module-${moduleId}`} />
+      )}
+
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
           <CardTitle className="text-base">{t("tasks.title")}</CardTitle>
@@ -124,7 +136,7 @@ export function ModulePlanView({
               {generating ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
-                <Sparkles className="size-4" />
+                <ListChecks className="size-4" />
               )}
               {t("tasks.generate")}
             </Button>
@@ -132,7 +144,21 @@ export function ModulePlanView({
         </CardHeader>
         <CardContent className="space-y-3">
           {tasks.length === 0 ? (
-            <p className="text-muted-foreground py-4 text-center text-sm">{t("tasks.empty")}</p>
+            showOutlineNudge ? (
+              <div className="space-y-2 py-4 text-center">
+                <p className="text-muted-foreground text-sm">{t("tasks.outlineNudge")}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  nativeButton={false}
+                  render={<Link href={`${basePath}/materials`} />}
+                >
+                  {t("tasks.outlineNudgeCta")}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-muted-foreground py-4 text-center text-sm">{t("tasks.empty")}</p>
+            )
           ) : (
             <TaskList moduleId={moduleId} tasks={tasks} goals={goals} />
           )}
@@ -140,7 +166,7 @@ export function ModulePlanView({
         </CardContent>
       </Card>
 
-      <PrefsForm moduleId={moduleId} semesterId={semesterId} prefs={prefs} />
+      <ModulePlanPrefs moduleId={moduleId} layout="card" value={prefs} />
 
       <UpcomingSessions semesterId={semesterId} sessions={sessions} />
     </div>
@@ -158,6 +184,7 @@ function TaskList({
   tasks: PlanTaskData[]
   goals: GoalOption[]
 }) {
+  const showError = useActionErrorToast()
   const [list, setList] = React.useState(tasks)
   const [prev, setPrev] = React.useState(tasks)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
@@ -182,7 +209,7 @@ function TaskList({
         next.map((i) => i.id)
       )
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
       setList(tasks)
     }
   }
@@ -230,6 +257,7 @@ function TaskRow({
   dragHandle: Record<string, unknown>
 }) {
   const t = useTranslations("plan")
+  const showError = useActionErrorToast()
   const format = useFormatter()
   const router = useRouter()
   const [editOpen, setEditOpen] = React.useState(false)
@@ -240,7 +268,7 @@ function TaskRow({
       await togglePlanTask(task.id, !task.done)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     }
   }
 
@@ -260,6 +288,7 @@ function TaskRow({
           <span className={cn("font-medium", task.done && "text-muted-foreground line-through")}>
             {task.title}
           </span>
+          {task.aiGenerated && <AiBadge iconOnly />}
           {task.scheduled && (
             <Badge variant="outline" className="gap-1">
               <CalendarClock className="size-3" />
@@ -410,6 +439,7 @@ function EditTaskDialog({
 
 function AddTaskForm({ moduleId, goals }: { moduleId: string; goals: GoalOption[] }) {
   const t = useTranslations("plan")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
 
@@ -430,7 +460,7 @@ function AddTaskForm({ moduleId, goals }: { moduleId: string; goals: GoalOption[
       el.reset()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(false)
     }
@@ -466,142 +496,6 @@ function AddTaskForm({ moduleId, goals }: { moduleId: string; goals: GoalOption[
         {t("tasks.add")}
       </Button>
     </form>
-  )
-}
-
-// ---- prefs form -----------------------------------------------------------------
-
-// Monday-first display order; values are JS weekday numbers.
-const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0] as const
-
-function PrefsForm({
-  moduleId,
-  semesterId,
-  prefs,
-}: {
-  moduleId: string
-  semesterId: string
-  prefs: ModulePlanPrefs
-}) {
-  const t = useTranslations("plan")
-  const router = useRouter()
-  const [pending, setPending] = React.useState(false)
-  const [active, setActive] = React.useState(prefs.active)
-  const [weight, setWeight] = React.useState(String(prefs.weight))
-  const [weeklyHours, setWeeklyHours] = React.useState(
-    prefs.weeklyHoursTarget == null ? "" : String(prefs.weeklyHoursTarget)
-  )
-  const [phase, setPhase] = React.useState(prefs.phase)
-  const [weekdays, setWeekdays] = React.useState<number[]>(prefs.preferredWeekdays ?? [])
-
-  function toggleWeekday(d: number) {
-    setWeekdays((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]))
-  }
-
-  async function onSave() {
-    setPending(true)
-    try {
-      await updateModulePlanPrefs(moduleId, {
-        active,
-        weight: Number(weight) || 1,
-        weeklyHoursTarget: weeklyHours === "" ? null : Number(weeklyHours),
-        phase,
-        preferredWeekdays: weekdays.length > 0 ? weekdays : null,
-      })
-      toast.success(t("prefs.saved"))
-      router.refresh()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-    } finally {
-      setPending(false)
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-        <CardTitle className="text-base">{t("prefs.title")}</CardTitle>
-        <Link
-          href={`/plan/${semesterId}`}
-          className="text-muted-foreground hover:text-foreground text-xs"
-        >
-          {t("prefs.linkToSemester")} →
-        </Link>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Switch id="mp-active" checked={active} onCheckedChange={setActive} />
-          <Label htmlFor="mp-active" className="font-normal">
-            {t("prefs.active")}
-          </Label>
-        </div>
-        <div className="flex flex-wrap gap-4">
-          <div className="w-28 space-y-1.5">
-            <Label htmlFor="mp-weight">{t("prefs.weight")}</Label>
-            <Input
-              id="mp-weight"
-              type="number"
-              min={0}
-              step={0.5}
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-            />
-          </div>
-          <div className="w-32 space-y-1.5">
-            <Label htmlFor="mp-hours">{t("prefs.weeklyHours")}</Label>
-            <Input
-              id="mp-hours"
-              type="number"
-              min={0}
-              step={0.5}
-              placeholder="—"
-              value={weeklyHours}
-              onChange={(e) => setWeeklyHours(e.target.value)}
-            />
-          </div>
-          <div className="w-32 space-y-1.5">
-            <Label htmlFor="mp-phase">{t("prefs.phase")}</Label>
-            <select
-              id="mp-phase"
-              value={phase}
-              onChange={(e) => setPhase(Number(e.target.value))}
-              className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-            >
-              <option value={1}>{t("phases.1")}</option>
-              <option value={2}>{t("phases.2")}</option>
-              <option value={3}>{t("phases.3")}</option>
-            </select>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label>{t("prefs.weekdays")}</Label>
-          <div className="flex gap-1">
-            {WEEKDAYS.map((d) => {
-              const on = weekdays.includes(d)
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => toggleWeekday(d)}
-                  className={
-                    on
-                      ? "bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-md text-xs font-medium"
-                      : "hover:bg-muted flex size-8 items-center justify-center rounded-md border text-xs"
-                  }
-                >
-                  {t(`weekdaysShort.${d}`)}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-        <Button disabled={pending} onClick={() => void onSave()}>
-          {pending && <Loader2 className="size-4 animate-spin" />}
-          {t("prefs.save")}
-        </Button>
-      </CardContent>
-    </Card>
   )
 }
 

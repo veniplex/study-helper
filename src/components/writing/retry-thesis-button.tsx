@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Loader2, RotateCcw } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { useRouter } from "@/i18n/navigation"
 import { retryThesis } from "@/app/[locale]/(app)/thesis/actions"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,7 @@ import {
 export function RetryThesisButton({ thesisId }: { thesisId: string }) {
   const t = useTranslations("thesis")
   const tCommon = useTranslations("common")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
@@ -29,7 +30,7 @@ export function RetryThesisButton({ thesisId }: { thesisId: string }) {
       setOpen(false)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(false)
     }

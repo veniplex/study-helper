@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { and, eq } from "drizzle-orm"
 import { db } from "@/db"
 import { aiConversation } from "@/db/schema"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { ownModule } from "@/lib/studies/access"
 
@@ -95,7 +96,7 @@ export async function explainSnippet(materialId: string, snippet: string, contex
   await assertWithinLimit(session.user.id)
   const { resolveModelForUser, getLanguageModel } = await import("@/lib/ai/registry")
   const modelRef = await resolveModelForUser(session.user.id)
-  if (!modelRef) throw new Error("No AI model configured")
+  if (!modelRef) actionError("AI_NO_MODEL")
   const model = await getLanguageModel(modelRef, session.user.id)
   const { generateText } = await import("ai")
   const { GEN_PARAMS } = await import("@/lib/ai/params")

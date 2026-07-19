@@ -11,6 +11,7 @@ import { deleteConversation } from "@/app/[locale]/(app)/ai/actions"
 import { NewChatButton } from "@/components/ai/new-chat-button"
 import { DeleteButton } from "@/components/studies/delete-button"
 import { Card, CardContent } from "@/components/ui/card"
+import { EmptyState } from "@/components/ui/empty-state"
 
 export default async function ModuleChatPage({
   params,
@@ -59,11 +60,7 @@ export default async function ModuleChatPage({
           </CardContent>
         </Card>
       ) : conversations.length === 0 ? (
-        <Card>
-          <CardContent className="text-muted-foreground py-10 text-center text-sm">
-            {t("noConversations")}
-          </CardContent>
-        </Card>
+        <EmptyState icon={MessageSquare} title={t("noConversations")} />
       ) : (
         <ul className="space-y-2">
           {conversations.map((c) => (

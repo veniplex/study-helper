@@ -55,7 +55,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           }
         />
         <div className="flex flex-1 flex-col pb-16 md:pb-0 md:pl-[var(--sidebar-width,15rem)]">
-          <AppHeader user={user} />
+          <AppHeader user={user} aiAvailable={aiAvailable} />
           <main className="flex-1 p-4 md:p-6">{children}</main>
         </div>
         <BottomNav context={context} aiAvailable={aiAvailable} />

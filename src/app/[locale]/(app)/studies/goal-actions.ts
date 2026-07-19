@@ -4,9 +4,59 @@ import { revalidatePath } from "next/cache"
 import { asc, eq } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
-import { goalAttempt, moduleGoal } from "@/db/schema"
+import { goalAttempt, moduleGoal, studyEvent } from "@/db/schema"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { ownModule } from "@/lib/studies/access"
+import { markPlanStale } from "@/lib/plan/staleness"
+import { recomputeSchedule } from "../plan/schedule-actions"
+
+const EXAM_TYPES = new Set(["exam", "oral_exam"])
+
+/**
+ * A3: keeps an all-day calendar event in sync with an exam/oral_exam goal's
+ * date, keyed idempotently on `goal_id`. The scheduler treats all-day events as
+ * whole-day blockers → the exam day is blocked. Non-exam goals, or exams
+ * without a date, have their (any) event removed.
+ */
+async function syncExamEvent(opts: {
+  userId: string
+  goalId: string
+  type: string
+  dueDate: string | null
+  title: string | null
+  moduleName: string
+}) {
+  const existing = await db.query.studyEvent.findFirst({
+    where: eq(studyEvent.goalId, opts.goalId),
+    columns: { id: true },
+  })
+  if (!EXAM_TYPES.has(opts.type) || !opts.dueDate) {
+    if (existing) await db.delete(studyEvent).where(eq(studyEvent.goalId, opts.goalId))
+    return
+  }
+  const title = opts.title?.trim() || opts.moduleName
+  const startsAt = new Date(`${opts.dueDate}T00:00:00`) // local midnight → all-day
+  if (existing) {
+    await db
+      .update(studyEvent)
+      .set({ type: "exam", title, startsAt, allDay: true })
+      .where(eq(studyEvent.id, existing.id))
+  } else {
+    await db
+      .insert(studyEvent)
+      .values({ userId: opts.userId, goalId: opts.goalId, type: "exam", title, startsAt, allDay: true })
+  }
+}
+
+/** Best-effort auto-replan after an exam date changed (never fails the caller). */
+async function autoReplan(semesterId: string) {
+  try {
+    await recomputeSchedule(semesterId)
+  } catch {
+    // best-effort; the goal mutation already succeeded
+  }
+}
 
 const attemptSchema = z.object({
   resultPercent: z.number().min(0).max(100).optional().nullable(),
@@ -99,7 +149,21 @@ export async function createGoal(moduleId: string, input: unknown) {
     .insert(moduleGoal)
     .values({ ...goalValues(data), moduleId, sortOrder: nextOrder })
     .returning({ id: moduleGoal.id })
+  // A3 exam-event sync + A2 staleness/auto-replan when a dated exam is added.
+  await syncExamEvent({
+    userId: session.user.id,
+    goalId: created.id,
+    type: data.type,
+    dueDate: data.dueDate ?? null,
+    title: data.title ?? null,
+    moduleName: mod.name,
+  })
+  if (EXAM_TYPES.has(data.type) && data.dueDate) {
+    await markPlanStale(mod.semesterId)
+    await autoReplan(mod.semesterId)
+  }
   revalidatePath(`/studies/${mod.semester.programId}/${moduleId}`)
+  revalidatePath("/", "layout")
   return { ok: true as const, id: created.id }
 }
 
@@ -107,16 +171,42 @@ export async function updateGoal(goalId: string, input: unknown) {
   const session = await requireSession()
   const row = await ownGoal(goalId, session.user.id)
   const data = goalSchema.parse(input)
+  const oldDue = row.dueDate
+  const newDue = data.dueDate ?? null
+  const wasExam = EXAM_TYPES.has(row.type)
+  const isExam = EXAM_TYPES.has(data.type)
   await db.update(moduleGoal).set(goalValues(data)).where(eq(moduleGoal.id, goalId))
+  // A3 exam-event sync (keyed on goal_id).
+  await syncExamEvent({
+    userId: session.user.id,
+    goalId,
+    type: data.type,
+    dueDate: newDue,
+    title: data.title ?? null,
+    moduleName: row.module.name,
+  })
+  // A2: an exam window opened/closed/moved → stale + auto-replan.
+  if ((wasExam || isExam) && (oldDue !== newDue || wasExam !== isExam)) {
+    await markPlanStale(row.module.semesterId)
+    await autoReplan(row.module.semesterId)
+  }
   revalidatePath(`/studies/${row.module.semester.programId}/${row.moduleId}`)
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
 export async function deleteGoal(goalId: string) {
   const session = await requireSession()
   const row = await ownGoal(goalId, session.user.id)
+  const wasDatedExam = EXAM_TYPES.has(row.type) && row.dueDate != null
+  // The exam event is removed automatically (event.goal_id ON DELETE CASCADE).
   await db.delete(moduleGoal).where(eq(moduleGoal.id, goalId))
+  if (wasDatedExam) {
+    await markPlanStale(row.module.semesterId)
+    await autoReplan(row.module.semesterId)
+  }
   revalidatePath(`/studies/${row.module.semester.programId}/${row.moduleId}`)
+  revalidatePath("/", "layout")
   return { ok: true as const }
 }
 
@@ -166,7 +256,7 @@ export async function addAttempt(goalId: string, input: unknown) {
     columns: { attempt: true },
   })
   if (existing.length >= goal.maxAttempts) {
-    throw new Error("Maximale Versuchszahl erreicht")
+    actionError("GOAL_MAX_ATTEMPTS")
   }
   const nextAttempt = existing.reduce((max, a) => Math.max(max, a.attempt), 0) + 1
 

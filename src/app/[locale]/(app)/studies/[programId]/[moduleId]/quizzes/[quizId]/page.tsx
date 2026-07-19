@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { and, asc, desc, eq } from "drizzle-orm"
 import { getFormatter, getTranslations } from "next-intl/server"
 import { db } from "@/db"
@@ -40,9 +40,10 @@ export default async function ModuleQuizDetailPage({
       })
       const wrongIds =
         latest?.answers.filter((a) => a.correct === false).map((a) => a.questionId) ?? []
-      if (wrongIds.length > 0) {
-        selectedQuestions = quizRow.questions.filter((q) => wrongIds.includes(q.id))
-      }
+      // No wrong answers to retry → don't silently fall back to the full quiz
+      // (E11); send the user back to the quiz overview.
+      if (wrongIds.length === 0) redirect(`${basePath}/quizzes/${quizId}`)
+      selectedQuestions = quizRow.questions.filter((q) => wrongIds.includes(q.id))
     }
     const runnerQuestions: RunnerQuestion[] = selectedQuestions.map((q) => ({
       id: q.id,
@@ -50,16 +51,19 @@ export default async function ModuleQuizDetailPage({
       prompt: q.prompt,
       options: q.options,
     }))
-    return <QuizRunner quizId={quizId} questions={runnerQuestions} />
+    return <QuizRunner quizId={quizId} questions={runnerQuestions} deckLinkBase={basePath} />
   }
 
   const attempts = await db.query.quizAttempt.findMany({
     where: and(eq(quizAttempt.quizId, quizId), eq(quizAttempt.userId, session.user.id)),
     orderBy: [desc(quizAttempt.startedAt)],
     limit: 20,
+    with: { answers: { columns: { correct: true } } },
   })
   const finished = attempts.filter((a) => a.finishedAt)
-  const hasWrong = finished.length > 0
+  // Only offer "retry wrong" when the latest finished attempt actually has
+  // wrong answers (E11) — otherwise retry would just replay the whole quiz.
+  const hasWrong = finished[0]?.answers.some((a) => a.correct === false) ?? false
 
   return (
     <div className="space-y-4">
@@ -113,7 +117,9 @@ export default async function ModuleQuizDetailPage({
                 key={a.id}
                 className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
               >
-                <span className="font-semibold tabular-nums">{Number(a.score ?? 0)}%</span>
+                <span className="font-semibold tabular-nums">
+                  {a.score != null ? `${Number(a.score)}%` : t("notScored")}
+                </span>
                 <span className="text-muted-foreground text-xs">
                   {format.dateTime(a.startedAt, { dateStyle: "medium", timeStyle: "short" })}
                 </span>

@@ -14,6 +14,7 @@ import {
 import { requireSession } from "@/lib/auth/session"
 import { encrypt } from "@/lib/crypto"
 import { ownModule, ownProgram, ownSemester } from "@/lib/studies/access"
+import { sweepModuleFiles, sweepProgramFiles, sweepSemesterFiles } from "@/lib/studies/orphan-cleanup"
 
 // ---- Degree programs -------------------------------------------------------
 
@@ -83,6 +84,9 @@ export async function updateProgram(programId: string, input: unknown) {
 export async function deleteProgram(programId: string) {
   const session = await requireSession()
   await ownProgram(programId, session.user.id)
+  // The FK cascade removes the material rows but not their storage blobs — sweep
+  // them first (collect paths → background delete) so files aren't orphaned.
+  await sweepProgramFiles(programId)
   await db.delete(degreeProgram).where(eq(degreeProgram.id, programId))
   revalidatePath("/studies")
   return { ok: true as const }
@@ -117,6 +121,7 @@ export async function updateSemester(semesterId: string, input: unknown) {
 export async function deleteSemester(semesterId: string) {
   const session = await requireSession()
   const sem = await ownSemester(semesterId, session.user.id)
+  await sweepSemesterFiles(semesterId)
   await db.delete(semester).where(eq(semester.id, semesterId))
   revalidatePath(`/studies/${sem.programId}`)
   return { ok: true as const }
@@ -170,16 +175,25 @@ export async function createModule(semesterId: string, input: unknown) {
   const session = await requireSession()
   const sem = await ownSemester(semesterId, session.user.id)
   const data = createModuleSchema.parse(input)
-  const [created] = await db
-    .insert(studyModule)
-    .values({ ...moduleValues(data), semesterId })
-    .returning({ id: studyModule.id })
-  // Seed one goal per selected type (deduped); modules created without a
-  // selection keep a single default exam goal so they are immediately gradable.
+  // Module insert + goal seeding must be atomic: a module with no goals breaks
+  // grade/tab derivation, so a failed goal insert must roll back the module too.
   const types = data.goalTypes?.length ? [...new Set(data.goalTypes)] : ["exam" as const]
-  await db.insert(moduleGoal).values(
-    types.map((type, i) => ({ moduleId: created.id, type, gradingRole: "grade" as const, sortOrder: i }))
-  )
+  await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(studyModule)
+      .values({ ...moduleValues(data), semesterId })
+      .returning({ id: studyModule.id })
+    // Seed one goal per selected type (deduped); modules created without a
+    // selection keep a single default exam goal so they are immediately gradable.
+    await tx.insert(moduleGoal).values(
+      types.map((type, i) => ({
+        moduleId: created.id,
+        type,
+        gradingRole: "grade" as const,
+        sortOrder: i,
+      }))
+    )
+  })
   revalidatePath(`/studies/${sem.programId}`)
   return { ok: true as const }
 }
@@ -204,6 +218,7 @@ export async function updateModule(moduleId: string, input: unknown) {
 export async function deleteModule(moduleId: string) {
   const session = await requireSession()
   const mod = await ownModule(moduleId, session.user.id)
+  await sweepModuleFiles(moduleId)
   await db.delete(studyModule).where(eq(studyModule.id, moduleId))
   revalidatePath(`/studies/${mod.semester.programId}`)
   return { ok: true as const }

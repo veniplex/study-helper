@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Layers, MoreHorizontal, Pencil, Play, Trash2 } from "lucide-react"
+import { Layers, MoreHorizontal, Pencil, Play, Trash2, Wand2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
 import { deleteDeck } from "@/app/[locale]/(app)/deck-actions"
@@ -11,6 +11,7 @@ import { ConfirmDeleteDialog } from "@/components/studies/confirm-delete-dialog"
 import { EntityContextMenu, type ContextMenuAction } from "@/components/entity-context-menu"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +25,8 @@ export type DeckCardData = {
   name: string
   description: string | null
   aiGenerated: boolean
+  /** `"mistakes"` decks are auto-created from wrong quiz answers (system-owned). */
+  kind: "normal" | "mistakes"
   cardCount: number
   dueCount: number
 }
@@ -44,6 +47,10 @@ export function DeckCard({
   const t = useTranslations("learn.decks")
   const tCommon = useTranslations("common")
   const router = useRouter()
+  // A mistakes deck is system-owned: render a stable localized label + badge
+  // regardless of the (locale-at-creation) name stored in the DB.
+  const isMistakes = deck.kind === "mistakes"
+  const displayName = isMistakes ? t("mistakesName") : deck.name
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
 
@@ -81,8 +88,21 @@ export function DeckCard({
               href={`${basePath}/decks/${deck.id}`}
               className="min-w-0 flex-1 font-medium underline-offset-4 hover:underline"
             >
-              {deck.name}
+              {displayName}
             </Link>
+            {isMistakes && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Badge variant="secondary" className="gap-1">
+                      <Wand2 className="size-3" />
+                      {t("mistakesBadge")}
+                    </Badge>
+                  }
+                />
+                <TooltipContent>{t("mistakesTooltip")}</TooltipContent>
+              </Tooltip>
+            )}
             {deck.aiGenerated && <AiBadge iconOnly />}
             <DropdownMenu>
               <DropdownMenuTrigger

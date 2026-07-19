@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Loader2, Plus, Sparkles } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { useRouter } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,6 +35,7 @@ export function ThesisCreateDialog({
 }) {
   const t = useTranslations("thesis")
   const tCommon = useTranslations("common")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
@@ -55,7 +56,7 @@ export function ThesisCreateDialog({
       setOpen(false)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(false)
     }
@@ -130,6 +131,7 @@ export function BrainstormDialog({
 }) {
   const t = useTranslations("thesis.brainstormDialog")
   const tThesis = useTranslations("thesis")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
@@ -146,7 +148,7 @@ export function BrainstormDialog({
       const result = await brainstormTopics(String(form.get("interests")))
       setTopics(result)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(false)
     }
@@ -160,7 +162,7 @@ export function BrainstormDialog({
       setOpen(false)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setAdopting(null)
     }

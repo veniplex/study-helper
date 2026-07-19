@@ -38,7 +38,7 @@ const EMPTY: SearchResults = {
   contacts: [],
 }
 
-export function CommandPalette() {
+export function CommandPalette({ aiAvailable }: { aiAvailable: boolean }) {
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
   const [results, setResults] = React.useState<SearchResults>(EMPTY)
@@ -139,7 +139,7 @@ export function CommandPalette() {
           {results.events.length > 0 && (
             <CommandGroup heading={tSearch("events")}>
               {results.events.map((e) => (
-                <CommandItem key={e.id} onSelect={() => go("/calendar")}>
+                <CommandItem key={e.id} onSelect={() => go(`/calendar?event=${e.id}`)}>
                   <CalendarDays className="size-4" />
                   {e.title}
                 </CommandItem>
@@ -203,7 +203,9 @@ export function CommandPalette() {
             </CommandGroup>
           )}
           <CommandGroup heading={t("navigation")}>
-            {navItems.map((item) => (
+            {navItems
+              .filter((item) => aiAvailable || item.key !== "ai")
+              .map((item) => (
               <CommandItem key={item.key} onSelect={() => go(item.href)}>
                 <item.icon className="size-4" />
                 {tNav(item.key)}

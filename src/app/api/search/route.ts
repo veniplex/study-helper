@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server"
-import { and, eq, ilike, or, sql } from "drizzle-orm"
+import { and, eq, exists, ilike, or, sql } from "drizzle-orm"
 import { db } from "@/db"
 import {
   assignment,
   deck,
   degreeProgram,
+  flashcard,
   material,
   moduleContact,
+  question,
   quiz,
   semester,
   studyEvent,
   studyModule,
 } from "@/db/schema"
 import { getSession } from "@/lib/auth/session"
+import { likePattern } from "@/lib/search/query"
 import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit"
 
 export async function GET(request: Request) {
@@ -37,7 +40,11 @@ export async function GET(request: Request) {
     })
   }
   // Escape LIKE wildcards so user input matches literally
-  const pattern = `%${q.replace(/[\\%_]/g, "\\$&")}%`
+  const pattern = likePattern(q)
+  // Full-text match over the (indexed) material text. websearch_to_tsquery
+  // parses the raw user query safely (no manual escaping needed) and matches
+  // the 'german' config of the generated text_content_tsv column + GIN index.
+  const materialTextMatch = sql`${material.textContentTsv} @@ websearch_to_tsquery('german', ${q})`
 
   // Module-scoped entities join up to the program for link building.
   const moduleScope = {
@@ -69,10 +76,7 @@ export async function GET(request: Request) {
       .where(
         and(
           eq(material.userId, session.user.id),
-          or(
-            ilike(material.name, pattern),
-            sql`${material.textContent} ILIKE ${pattern}`
-          )
+          or(ilike(material.name, pattern), materialTextMatch)
         )
       )
       .limit(5),
@@ -86,14 +90,47 @@ export async function GET(request: Request) {
       .from(deck)
       .innerJoin(studyModule, eq(deck.moduleId, studyModule.id))
       .innerJoin(semester, eq(studyModule.semesterId, semester.id))
-      .where(and(eq(deck.userId, session.user.id), ilike(deck.name, pattern)))
+      .where(
+        and(
+          eq(deck.userId, session.user.id),
+          or(
+            ilike(deck.name, pattern),
+            // Widen to card content (front/back) — bounded to this deck.
+            exists(
+              db
+                .select({ one: sql`1` })
+                .from(flashcard)
+                .where(
+                  and(
+                    eq(flashcard.deckId, deck.id),
+                    or(ilike(flashcard.front, pattern), ilike(flashcard.back, pattern))
+                  )
+                )
+            )
+          )
+        )
+      )
       .limit(5),
     db
       .select({ id: quiz.id, title: quiz.title, ...moduleScope })
       .from(quiz)
       .innerJoin(studyModule, eq(quiz.moduleId, studyModule.id))
       .innerJoin(semester, eq(studyModule.semesterId, semester.id))
-      .where(and(eq(quiz.userId, session.user.id), ilike(quiz.title, pattern)))
+      .where(
+        and(
+          eq(quiz.userId, session.user.id),
+          or(
+            ilike(quiz.title, pattern),
+            // Widen to question prompts — bounded to this quiz.
+            exists(
+              db
+                .select({ one: sql`1` })
+                .from(question)
+                .where(and(eq(question.quizId, quiz.id), ilike(question.prompt, pattern)))
+            )
+          )
+        )
+      )
       .limit(5),
     db
       .select({ id: assignment.id, title: assignment.title, ...moduleScope })

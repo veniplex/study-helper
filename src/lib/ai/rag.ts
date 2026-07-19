@@ -7,6 +7,7 @@ import { getSetting } from "@/lib/settings"
 import { deleteFile, readStoredText, saveText } from "@/lib/storage"
 import { getEmbeddingModel, getLanguageModel, resolveModelForUser } from "./registry"
 import { recordAiAudit, runAi } from "./run"
+import { isOverLimit } from "./usage"
 import { extractText } from "./extract"
 import { annDimensionFor, populateAnn } from "./ann"
 
@@ -79,6 +80,18 @@ export async function processMaterial(materialId: string): Promise<void> {
       return
     }
 
+    // Gate the (paid) embedding pass on the user's monthly AI cap. Ingest is
+    // user-initiated, so a user at their limit simply gets no embeddings until
+    // they're back under it — retryable via retryMaterialProcessing. Extraction
+    // already ran, so lexical (full-text) search still covers this material.
+    if (await isOverLimit(row.userId)) {
+      await setStatus(materialId, "skipped", {
+        extractionError:
+          "Monthly AI usage limit reached — embedding skipped. Retry when under the limit.",
+      })
+      return
+    }
+
     // Contextual retrieval: situate each chunk in its document (title + summary
     // when available) so ambiguous chunks retrieve better.
     const contextHeader = [row.name, row.summary].filter(Boolean).join(" — ").slice(0, 500)
@@ -124,6 +137,9 @@ async function ensureExtractedText(
       const { resolveModelForUser } = await import("./registry")
       if (!(await resolveModelForUser(row.userId))) {
         skipReason = "No AI model configured — image text (OCR) was not extracted."
+      } else if (await isOverLimit(row.userId)) {
+        // OCR is a paid model call; gate it on the monthly cap (retryable).
+        skipReason = "Monthly AI usage limit reached — image OCR was skipped."
       } else {
         const { extractImageText } = await import("./media")
         text = await extractImageText(row.storagePath!, row.mimeType, row.userId)
@@ -134,6 +150,9 @@ async function ensureExtractedText(
       if (!(await getTranscriptionModel(row.userId))) {
         skipReason =
           "No transcription model available — audio/video needs an OpenAI or Groq provider."
+      } else if (await isOverLimit(row.userId)) {
+        // Transcription is a paid model call; gate it on the monthly cap.
+        skipReason = "Monthly AI usage limit reached — transcription was skipped."
       } else {
         const { transcribeMedia } = await import("./media")
         text = await transcribeMedia(row.storagePath!, row.userId)
@@ -349,6 +368,9 @@ async function hybridSearch(
   const ai = await getSetting("ai")
   const embeddingRef = ai?.defaultEmbeddingModel
   if (!embeddingRef) return []
+  // Over the monthly cap, degrade gracefully: skip the (paid) query embedding
+  // and rerank and serve lexical-only results rather than hard-failing search.
+  const overLimit = await isOverLimit(userId)
   const pool = Math.max(limit * 4, 24)
   const base = and(eq(material.userId, userId), ...extraWhere)
 
@@ -373,40 +395,47 @@ async function hybridSearch(
 
   // Vector (cosine) ranking — uses the HNSW ANN column when an admin has built
   // it for the active model, otherwise the dimensionless sequential scan.
-  const annDim = await annDimensionFor(embeddingRef)
-  const model = await getEmbeddingModel(embeddingRef, userId)
-  const { embedding } = await runAi(
-    {
-      userId,
-      model: embeddingRef,
-      feature: "embedding-query",
-      operation: "ai_embed",
-      audit: false, // retrieval happens constantly — ledger only, no audit spam
-    },
-    () => embed({ model, value: query })
-  )
-  const vectorLiteral = `[${embedding.join(",")}]`
-  const embCol = annDim ? sql.raw("material_chunk.embedding_hnsw") : sql`${materialChunk.embedding}`
-  const distExpr = sql`${embCol} <=> ${vectorLiteral}::vector`
-  const vectorWhere = annDim
-    ? and(base, eq(materialChunk.embeddingModel, embeddingRef), sql`${embCol} IS NOT NULL`)
-    : and(base, eq(materialChunk.embeddingModel, embeddingRef))
-  const vector = await db
-    .select({
-      id: materialChunk.id,
-      content: materialChunk.content,
-      materialName: material.name,
-      materialId: material.id,
-      similarity: sql<number>`1 - (${distExpr})`,
-    })
-    .from(materialChunk)
-    .innerJoin(material, eq(materialChunk.materialId, material.id))
-    .where(vectorWhere)
-    .orderBy(distExpr)
-    .limit(pool)
+  // Skipped entirely when over the monthly cap (see `overLimit`).
+  let vector: ScoredRow[] = []
+  if (!overLimit) {
+    const annDim = await annDimensionFor(embeddingRef)
+    const model = await getEmbeddingModel(embeddingRef, userId)
+    const { embedding } = await runAi(
+      {
+        userId,
+        model: embeddingRef,
+        feature: "embedding-query",
+        operation: "ai_embed",
+        audit: false, // retrieval happens constantly — ledger only, no audit spam
+      },
+      () => embed({ model, value: query })
+    )
+    const vectorLiteral = `[${embedding.join(",")}]`
+    const embCol = annDim
+      ? sql.raw("material_chunk.embedding_hnsw")
+      : sql`${materialChunk.embedding}`
+    const distExpr = sql`${embCol} <=> ${vectorLiteral}::vector`
+    const vectorWhere = annDim
+      ? and(base, eq(materialChunk.embeddingModel, embeddingRef), sql`${embCol} IS NOT NULL`)
+      : and(base, eq(materialChunk.embeddingModel, embeddingRef))
+    vector = await db
+      .select({
+        id: materialChunk.id,
+        content: materialChunk.content,
+        materialName: material.name,
+        materialId: material.id,
+        similarity: sql<number>`1 - (${distExpr})`,
+      })
+      .from(materialChunk)
+      .innerJoin(material, eq(materialChunk.materialId, material.id))
+      .where(vectorWhere)
+      .orderBy(distExpr)
+      .limit(pool)
+  }
 
   // Optional precision pass: let the chat model re-rank a wider candidate set.
-  if (ai?.rerank) {
+  // Also skipped over the cap (the rerank call is a paid model invocation).
+  if (ai?.rerank && !overLimit) {
     const candidates = rrfFuse(vector, lexical, Math.min(pool, limit * 3))
     if (candidates.length > limit) return rerankHits(userId, query, candidates, limit)
     return candidates

@@ -8,9 +8,15 @@ import { db } from "@/db"
 import { moduleGoal, studyEvent, writingMilestone, writingProject } from "@/db/schema"
 import type { GoalType } from "@/db/schema/studies"
 import type { WritingPhase } from "@/db/schema/thesis"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { ownModule } from "@/lib/studies/access"
-import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
+import {
+  getLanguageModel,
+  resolveModelForUser,
+  userHasUsableKeyForModel,
+} from "@/lib/ai/registry"
+import { GEN_PARAMS, maxTokensForItems, maxTokensForText } from "@/lib/ai/params"
 import { assertWithinLimit } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 import { searchChunks } from "@/lib/ai/rag"
@@ -29,7 +35,11 @@ const WRITING_GOAL_TYPES: readonly GoalType[] = ["thesis", "term_paper", "projec
 
 async function getModel(userId: string) {
   const defaultModel = await resolveModelForUser(userId)
-  if (!defaultModel) throw new Error("No AI model configured")
+  if (!defaultModel) actionError("AI_NO_MODEL")
+  // BYOK dead-end: a model is configured but the user has no usable key for its
+  // provider — surface an actionable "add your key in Settings" error instead of
+  // letting the request fail deep inside the SDK with a generic auth error (F4).
+  if (!(await userHasUsableKeyForModel(defaultModel, userId))) actionError("AI_SETUP_REQUIRED")
   return { ref: defaultModel, model: await getLanguageModel(defaultModel, userId) }
 }
 
@@ -96,7 +106,7 @@ export async function ensureModuleWritingProject(moduleId: string) {
     (g): g is (typeof goals)[number] => Boolean(g)
   )
   if (!goal) {
-    throw new Error("Dieses Modul hat kein Schreib-Lernziel (Hausarbeit, Thesis oder Projekt).")
+    actionError("WRITING_NO_GOAL")
   }
 
   const existing = await db.query.writingProject.findFirst({
@@ -130,6 +140,10 @@ export async function ensureModuleWritingProject(moduleId: string) {
   }
 
   const variant = isThesis ? "scientific" : goal.config.variant ?? "scientific"
+  // Concurrent first-touches of the same goal would both pass the `existing`
+  // check above and double-insert, tripping `writing_active_per_goal_uq` (or the
+  // thesis-per-program index). `onConflictDoNothing` makes the loser a no-op; we
+  // then re-select the row the winner created and return that.
   const [created] = await db
     .insert(writingProject)
     .values({
@@ -144,9 +158,42 @@ export async function ensureModuleWritingProject(moduleId: string) {
       semesterId: mod.semesterId,
       dueDate: goal.dueDate ?? null,
     })
+    .onConflictDoNothing()
     .returning({ id: writingProject.id })
-  revalidateWriting(await ownWriting(created.id, session.user.id))
-  return created.id
+  if (created) {
+    revalidateWriting(await ownWriting(created.id, session.user.id))
+    return created.id
+  }
+
+  // Lost the race — the live row already exists. Both code paths set
+  // `goalId = goal.id`, so re-selecting the live row by goal resolves either a
+  // term-paper or a thesis conflict.
+  const raced = await db.query.writingProject.findFirst({
+    where: and(eq(writingProject.goalId, goal.id), isNull(writingProject.supersededById)),
+    columns: { id: true },
+  })
+  if (raced) return raced.id
+  // Thesis conflict where the winning row hasn't been goal-linked yet: fall back
+  // to the program-scoped live thesis and link it.
+  if (isThesis) {
+    const liveThesis = await db.query.writingProject.findFirst({
+      where: and(
+        eq(writingProject.userId, session.user.id),
+        eq(writingProject.programId, mod.semester.programId),
+        eq(writingProject.kind, "thesis"),
+        isNull(writingProject.supersededById)
+      ),
+      columns: { id: true },
+    })
+    if (liveThesis) {
+      await db
+        .update(writingProject)
+        .set({ goalId: goal.id })
+        .where(eq(writingProject.id, liveThesis.id))
+      return liveThesis.id
+    }
+  }
+  throw new Error("Not found")
 }
 
 // ---- Project CRUD -----------------------------------------------------------
@@ -284,7 +331,13 @@ export async function generateWritingOutline(projectId: string) {
       entityId: projectId,
       entityLabel: row.title,
     },
-    () => generateText({ model, prompt: buildOutlinePrompt(promptFields(row), grounding) })
+    () =>
+      generateText({
+        model,
+        prompt: buildOutlinePrompt(promptFields(row), grounding),
+        ...GEN_PARAMS,
+        maxOutputTokens: maxTokensForText(),
+      })
   )
   await db.update(writingProject).set({ outline: text }).where(eq(writingProject.id, projectId))
   revalidateWriting(row)
@@ -295,7 +348,7 @@ export async function generateWritingMilestones(projectId: string, addToCalendar
   const session = await requireSession()
   await assertWithinLimit(session.user.id)
   const row = await ownWriting(projectId, session.user.id)
-  if (!row.dueDate) throw new Error("Set a due date first")
+  if (!row.dueDate) actionError("WRITING_NO_DUE_DATE")
   const { ref, model } = await getModel(session.user.id)
   const today = new Date().toISOString().slice(0, 10)
 
@@ -313,6 +366,8 @@ export async function generateWritingMilestones(projectId: string, addToCalendar
         model,
         schema: milestonesSchema,
         prompt: buildMilestonesPrompt(promptFields(row), today),
+        ...GEN_PARAMS,
+        maxOutputTokens: maxTokensForItems(15),
       })
   )
 
@@ -362,6 +417,8 @@ export async function suggestWritingSources(projectId: string) {
         model,
         schema: sourcesSchema,
         prompt: buildSourcesPrompt(promptFields(row)),
+        ...GEN_PARAMS,
+        maxOutputTokens: maxTokensForItems(20),
       })
   )
   return object

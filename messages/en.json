@@ -340,7 +340,7 @@
       "saved": "Profile saved."
     },
     "aiKeys": {
-      "title": "Your AI API keys (BYOK)",
+      "title": "Your AI API keys",
       "description": "Your own keys take precedence over centrally configured ones. Stored encrypted.",
       "placeholder": "Enter API key",
       "active": "Own key active",
@@ -366,10 +366,11 @@
       "unsupported": "This browser does not support push notifications.",
       "denied": "Notifications are blocked in the browser.",
       "swUnavailable": "The background service for push is unavailable. Reload the page and try again.",
-      "saveFailed": "The setting could not be saved."
+      "saveFailed": "The setting could not be saved.",
+      "pushInactiveHint": "Push notifications aren't enabled on this device — the push switches only take effect once you enable push below."
     },
     "usage": {
-      "title": "Your token usage (30 days)",
+      "title": "Your AI usage (30 days)",
       "input": "Input",
       "output": "Output",
       "limit": "Limit",
@@ -656,7 +657,9 @@
         "4": "Th",
         "5": "Fr",
         "6": "Sa"
-      }
+      },
+      "deleteOccurrence": "Delete only this occurrence",
+      "deleteSeries": "Delete entire series"
     },
     "ics": {
       "title": "Calendar subscription (ICS)",
@@ -715,7 +718,8 @@
       "planItems": "{count} study sessions today",
       "examIn": "{title} in {days} days",
       "prepared": "{percent}% prepared",
-      "start": "Start learning"
+      "start": "Start learning",
+      "viewPlan": "View plan"
     }
   },
   "stats": {
@@ -787,7 +791,10 @@
     "viewer": {
       "unsupported": "No preview available for this file type — please download.",
       "fileMissing": "File no longer available",
-      "fileMissingHint": "The entry exists, but the file is missing on the server (e.g. lost in an earlier redeploy without a persistent upload volume). Please upload it again."
+      "fileMissingHint": "The entry exists, but the file is missing on the server (e.g. lost in an earlier redeploy without a persistent upload volume). Please upload it again.",
+      "processingTitle": "Document is being processed",
+      "processingHint": "Chat and search become available once processing is complete.",
+      "processingFailedTitle": "Processing failed"
     },
     "annotator": {
       "hint": "Drag on a page to highlight; click a highlight to add a note or delete it.",
@@ -828,11 +835,12 @@
       "skippedHint": "No text could be extracted from this file.",
       "retry": "Process again"
     },
-    "notIndexedHint": "No embedding model is configured — materials are not indexed for AI search. An admin can set this up under Admin → AI.",
+    "notIndexedHint": "AI search isn't set up yet.",
     "uploadRateLimited": "Too many uploads in a short time — please wait a moment.",
     "uploadNetworkError": "Network error during upload — check your connection and try again.",
     "uploadServerError": "{name}: Server error while saving. Check in the admin area whether file storage is writable.",
-    "askDocument": "Ask in chat"
+    "askDocument": "Ask in chat",
+    "askDocumentProcessing": "Document is still being processed"
   },
   "search": {
     "modules": "Modules",
@@ -848,7 +856,11 @@
     "title": "AI Assistant",
     "newChat": "New chat",
     "noConversations": "No conversations yet.",
-    "notConfigured": "No AI providers are configured yet.",
+    "notConfigured": {
+      "title": "AI isn't set up",
+      "description": "No AI model is configured. Set it up in Settings to use chat.",
+      "cta": "Go to Settings"
+    },
     "configureNow": "Configure now in the admin panel",
     "emptyChat": "Ask anything about your studies.",
     "quickChat": "AI chat",
@@ -872,6 +884,25 @@
         "createQuizWithQuestions": "Create quiz",
         "createCalendarEvent": "Create event",
         "createAssignment": "Create assignment"
+      },
+      "fields": {
+        "name": "Name",
+        "title": "Title",
+        "module": "Module",
+        "type": "Type",
+        "startsAt": "Starts",
+        "endsAt": "Ends",
+        "location": "Location",
+        "dueDate": "Due",
+        "cards": "Cards",
+        "questions": "Questions",
+        "pointsMax": "Points"
+      },
+      "eventTypes": {
+        "exam": "Exam",
+        "deadline": "Deadline",
+        "lecture": "Lecture",
+        "other": "Other"
       }
     },
     "suggestions": {
@@ -930,7 +961,9 @@
       "stop": "Stop recording",
       "empty": "No speech detected.",
       "micDenied": "Microphone access was denied."
-    }
+    },
+    "errorNoKey": "No API key is set for this AI model.",
+    "errorNoKeyCta": "Set it up in Settings"
   },
   "learn": {
     "title": "Learn",
@@ -975,6 +1008,9 @@
       "name": "Name",
       "description": "Description",
       "empty": "No decks yet.",
+      "mistakesName": "Quiz mistakes",
+      "mistakesBadge": "Auto",
+      "mistakesTooltip": "Automatically filled from quiz questions you answered incorrectly.",
       "cards": "{count} cards",
       "due": "{count} due",
       "study": "Study",
@@ -1040,7 +1076,14 @@
       "description": "Description (optional)",
       "correctAnswer": "Correct answer",
       "edit": "Edit",
-      "notGraded": "Not graded automatically (no AI configured) — compare with the reference answer."
+      "notGraded": "Not graded automatically (no AI configured) — compare with the reference answer.",
+      "resultNotGraded": "Result: not graded",
+      "notScored": "not graded",
+      "mistakesAdded": "{count} cards added to the mistakes deck",
+      "openMistakesDeck": "Open mistakes deck",
+      "previous": "Back",
+      "skip": "Skip",
+      "gradingCount": "Grading {count} answers …"
     },
     "aiUnavailable": "No AI model configured — AI features disabled.",
     "questionForm": {
@@ -1071,7 +1114,8 @@
       "produced": "{count} created",
       "completed": "Done — {count} items, {total} topics covered.",
       "failed": "Failed: {error}",
-      "close": "Close"
+      "close": "Close",
+      "failedGeneric": "Generation failed. Please try again."
     },
     "selectModuleFirst": "Please select a module first."
   },
@@ -1179,7 +1223,10 @@
     "cta": "Set up now",
     "aiTitle": "Enable AI features",
     "aiDesc": "As an admin you can add an AI provider to unlock chat, quiz and flashcard generation.",
-    "aiCta": "Set up AI"
+    "aiCta": "Set up AI",
+    "planTitle": "Set up your study plan",
+    "planDesc": "Set your availability and compute your personal study plan.",
+    "planCta": "To study plan"
   },
   "context": {
     "program": "Degree program",
@@ -1229,6 +1276,15 @@
       "4": "Th",
       "5": "Fr",
       "6": "Sa"
+    },
+    "weekOverride": {
+      "title": "Less time this week",
+      "hint": "Cap the study time for a specific week (e.g. holidays or exam crunch).",
+      "weekLabel": "Week",
+      "hoursLabel": "Hours",
+      "hours": "{hours} h",
+      "add": "Add",
+      "remove": "Remove"
     }
   },
   "plan": {
@@ -1262,7 +1318,9 @@
       "due": "by",
       "scheduled": "Scheduled",
       "goal": "Goal",
-      "noGoal": "No goal"
+      "noGoal": "No goal",
+      "outlineNudge": "There's no outline and no tasks for this exam yet. Create an outline or derive one from your materials.",
+      "outlineNudgeCta": "To materials"
     },
     "prefs": {
       "title": "Planning settings",
@@ -1273,7 +1331,8 @@
       "weekdays": "Preferred weekdays",
       "save": "Save",
       "saved": "Saved.",
-      "linkToSemester": "To semester coordination"
+      "linkToSemester": "To semester coordination",
+      "weightHint": "Weight: how much of your study time this module gets relative to others. 2 means twice as much time as a module with 1."
     },
     "sessions": {
       "title": "Upcoming sessions",
@@ -1303,6 +1362,56 @@
       "done": "Done",
       "tasks": "Tasks",
       "noTasks": "No tasks in this session."
+    },
+    "recompute": {
+      "summary": "Plan updated: {sessions} sessions, {warnings} warnings"
+    },
+    "staleness": {
+      "message": "Your plan is out of date — recompute it.",
+      "action": "Compute plan"
+    },
+    "catchUp": {
+      "message": "{count, plural, one {# missed session} other {# missed sessions}} — catch up.",
+      "action": "Catch up"
+    },
+    "readiness": {
+      "on_track": "On track",
+      "at_risk": "At risk",
+      "unreachable": "Unreachable",
+      "setupHint": "Set up plan"
+    },
+    "warningText": {
+      "deadline_unreachable": "There isn't enough time for all tasks before the exam. Add more availability or move/remove tasks.",
+      "no_capacity": "Too little free time in the period. Add more available time windows.",
+      "horizon_clipped": "Some tasks are too far in the future and haven't been scheduled yet. They'll appear closer to the date."
+    },
+    "checklist": {
+      "title": "Finish setup",
+      "progress": "{done} of {total} done",
+      "dismiss": "Dismiss",
+      "go": "Go",
+      "steps": {
+        "module": {
+          "title": "Module created",
+          "desc": "Create a module for your subject."
+        },
+        "examDate": {
+          "title": "Exam date set",
+          "desc": "Enter the date of your exam."
+        },
+        "availability": {
+          "title": "Availability configured",
+          "desc": "Set when you can study each week."
+        },
+        "tasks": {
+          "title": "Tasks generated",
+          "desc": "Create tasks from your goals."
+        },
+        "plan": {
+          "title": "Plan computed",
+          "desc": "Compute your study plan."
+        }
+      }
     }
   },
   "learnSession": {
@@ -1407,7 +1516,8 @@
         "none": "No bonus",
         "percent_points": "Percentage points on result",
         "grade_steps": "Grade steps better"
-      }
+      },
+      "minCompletedShareHint": "Share as a decimal between 0 and 1 (e.g. 0.5 = half of the submissions must be done)."
     }
   },
   "goalCard": {
@@ -1442,5 +1552,54 @@
   "home": {
     "title": "Welcome to StudyHelper",
     "description": "The open-source app for your entire studies: planning, learning materials, AI support and exam preparation — self-hosted and offline-capable."
+  },
+  "errors": {
+    "PLAN_NO_AVAILABILITY": "Set your availability first to compute the plan.",
+    "PLAN_INVALID_GOAL": "The selected goal doesn't belong to this module.",
+    "GOAL_MAX_ATTEMPTS": "Maximum number of attempts reached.",
+    "WRITING_NO_GOAL": "This module has no writing goal (term paper, thesis or project).",
+    "WRITING_NO_DUE_DATE": "Set a due date first.",
+    "THESIS_ACTIVE_EXISTS": "An active thesis already exists for this program.",
+    "THESIS_MAX_ATTEMPTS": "Maximum number of thesis attempts reached.",
+    "AI_NO_MODEL": "No AI model is configured. An admin can set this up under Admin → AI.",
+    "LIMIT_EXCEEDED": "You've used up your monthly AI quota.",
+    "MATERIAL_NAME_REQUIRED": "Please enter a name.",
+    "FOLDER_DUPLICATE": "A folder with this name already exists here.",
+    "GENERIC": "Something went wrong. Please try again.",
+    "AI_SETUP_REQUIRED": "Add your API key in Settings to use AI features."
+  },
+  "notifications": {
+    "eventTitle": "⏰ {title}",
+    "eventBody": "{when}",
+    "eventBodyLocation": "{when} · {location}",
+    "assignmentTitle": "📋 {title}",
+    "assignmentBody": "{module} · {due}",
+    "dailyPlanTitle": "📚 {appName}",
+    "dailyPlanBody": "{count, plural, one {You have # study session in today's plan.} other {You have # study sessions in today's plan.}}"
+  },
+  "usage": {
+    "features": {
+      "chat": "Chat",
+      "flashcards": "Flashcards",
+      "quiz": "Quiz",
+      "quiz-grading": "Quiz grading",
+      "outline": "Outline",
+      "summary": "Summary",
+      "summary-doc": "Document summary",
+      "summary-section": "Section summary",
+      "analysis": "Analysis",
+      "explain": "Explanation",
+      "embedding": "Embedding",
+      "embedding-dedup": "Embedding (dedup)",
+      "embedding-query": "Embedding (search)",
+      "rerank": "Reranking",
+      "ocr": "Text recognition (OCR)",
+      "transcription": "Transcription",
+      "voice-input": "Voice input",
+      "thesis-topics": "Topic ideas (thesis)",
+      "writing-milestones": "Milestones (writing)",
+      "writing-outline": "Outline (writing)",
+      "writing-sources": "Source suggestions (writing)"
+    }
   }
 }

@@ -34,6 +34,11 @@ export function expandAbsences(
 ): AbsenceWindow[] {
   const windows: AbsenceWindow[] = []
 
+  // Defensive bound: never iterate more than ~400 days internally even if the
+  // caller passes a far-future `to` (the day-loops below are O(days)).
+  const maxTo = new Date(from.getTime() + 400 * 86400000)
+  if (to.getTime() > maxTo.getTime()) to = maxTo
+
   // One-off date ranges (vacations) — all-day per day
   for (const b of availability.blackouts ?? []) {
     const start = new Date(b.from)

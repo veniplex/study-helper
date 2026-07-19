@@ -43,38 +43,42 @@ export function ModuleTabs({
   }
 
   return (
-    <nav className="flex items-center gap-1 overflow-x-auto border-b pb-px">
-      {visible.map((tab) => {
-        const href = `${basePath}${tab.segment}`
-        const active = tab.segment === "" ? pathname === basePath : pathname.startsWith(href)
-        return (
+    <div className="flex items-stretch border-b">
+      {/* Tabs scroll horizontally; the "more tools" button stays pinned so it
+          never scrolls off-screen on phones (D5). */}
+      <nav className="flex items-center gap-1 overflow-x-auto pb-px">
+        {visible.map((tab) => {
+          const href = `${basePath}${tab.segment}`
+          const active = tab.segment === "" ? pathname === basePath : pathname.startsWith(href)
+          return (
+            <Link
+              key={tab.key}
+              href={href}
+              className={cn(
+                "-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+                active
+                  ? "border-primary text-foreground"
+                  : "text-muted-foreground hover:text-foreground border-transparent"
+              )}
+            >
+              {t(tab.key)}
+            </Link>
+          )
+        })}
+        {hasThesisGoal && (
           <Link
-            key={tab.key}
-            href={href}
+            href="/thesis"
             className={cn(
               "-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-              active
+              pathname.startsWith("/thesis")
                 ? "border-primary text-foreground"
                 : "text-muted-foreground hover:text-foreground border-transparent"
             )}
           >
-            {t(tab.key)}
+            {t("thesisPlanner")}
           </Link>
-        )
-      })}
-      {hasThesisGoal && (
-        <Link
-          href="/thesis"
-          className={cn(
-            "-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-            pathname.startsWith("/thesis")
-              ? "border-primary text-foreground"
-              : "text-muted-foreground hover:text-foreground border-transparent"
-          )}
-        >
-          {t("thesisPlanner")}
-        </Link>
-      )}
+        )}
+      </nav>
       {optionalToolKeys.length > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -82,7 +86,7 @@ export function ModuleTabs({
               <button
                 type="button"
                 aria-label={t("moreTools")}
-                className="text-muted-foreground hover:text-foreground -mb-px ml-auto shrink-0 rounded p-2 transition-colors"
+                className="text-muted-foreground hover:text-foreground ml-auto shrink-0 self-center rounded p-2 transition-colors"
               >
                 <Plus className="size-4" />
               </button>
@@ -105,6 +109,6 @@ export function ModuleTabs({
           </DropdownMenuContent>
         </DropdownMenu>
       )}
-    </nav>
+    </div>
   )
 }

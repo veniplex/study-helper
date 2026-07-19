@@ -20,5 +20,8 @@ export const userPrefs = pgTable("user_prefs", {
   preferredModel: text("preferred_model"),
   /** Weekly study-time goal in minutes; null = no goal set. */
   weeklyGoalMinutes: integer("weekly_goal_minutes"),
+  /** Preferred UI/notification locale (e.g. "de", "en"); null = app default.
+   *  Read by the reminder job to localize push/email. */
+  locale: text("locale"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })

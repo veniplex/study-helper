@@ -2,6 +2,7 @@ import { index, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { user } from "./auth"
 import { semester } from "./studies"
+import type { ScheduleWarning } from "@/lib/plan/scheduler"
 
 export type PlanAvailability = {
   /** Weekly study windows, weekday 0 (Sunday) – 6. */
@@ -37,6 +38,13 @@ export type SemesterPlanConfig = {
   sessionMinutes?: { min: number; max: number }
 }
 
+/**
+ * Per-ISO-week study-hour overrides ("this week I only have 4h"). Keyed by the
+ * ISO-8601 week key ("YYYY-Www", e.g. "2026-W31"), value = hours for that week.
+ * The scheduler caps the whole plan's assigned minutes that week at hours×60.
+ */
+export type WeekOverrides = Record<string, number>
+
 /** One AI-generated study plan per semester, based on the user's availability,
  * exam dates and assignment deadlines. */
 export const semesterPlan = pgTable(
@@ -55,6 +63,12 @@ export const semesterPlan = pgTable(
     availability: jsonb("availability").$type<PlanAvailability>().notNull(),
     /** Scheduler tuning; null → default (2 sessions/day, 45–180 min). */
     config: jsonb("config").$type<SemesterPlanConfig>(),
+    /** Per-ISO-week hour overrides ({"2026-W31": 4}). null/absent → no override. */
+    weekOverrides: jsonb("week_overrides").$type<WeekOverrides>(),
+    /** Set when a mutation invalidated the plan; null = fresh (up to date). */
+    staleAt: timestamp("stale_at", { withTimezone: true }),
+    /** Warnings from the last successful recompute (readiness/UI surface). */
+    lastWarnings: jsonb("last_warnings").$type<ScheduleWarning[]>(),
     generatedAt: timestamp("generated_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

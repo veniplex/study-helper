@@ -42,6 +42,8 @@ export default async function ModuleMaterialsPage({
         createdAt: m.createdAt.toISOString(),
         extractionStatus: m.extractionStatus,
         extractionError: m.extractionError,
+        chunksTotal: m.chunksTotal,
+        chunksEmbedded: m.chunksEmbedded,
       }))}
       folders={folders.map((f) => ({ id: f.id, parentId: f.parentId, name: f.name }))}
     />

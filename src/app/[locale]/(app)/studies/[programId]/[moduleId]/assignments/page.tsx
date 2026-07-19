@@ -1,5 +1,5 @@
 import { and, asc, desc, eq } from "drizzle-orm"
-import { CalendarDays, FileText } from "lucide-react"
+import { CalendarDays, ClipboardList, FileText } from "lucide-react"
 import { getFormatter, getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { assignment, material } from "@/db/schema"
@@ -12,6 +12,7 @@ import { SubtaskList } from "@/components/learn/subtask-list"
 import { AiBadge } from "@/components/ai/ai-badge"
 import { DeleteButton } from "@/components/studies/delete-button"
 import { Badge } from "@/components/ui/badge"
+import { EmptyState } from "@/components/ui/empty-state"
 
 const statusVariant = { open: "outline", submitted: "secondary", graded: "default" } as const
 
@@ -50,7 +51,7 @@ export default async function ModuleAssignmentsPage({
       </div>
 
       {assignments.length === 0 ? (
-        <p className="text-muted-foreground py-8 text-center text-sm">{t("empty")}</p>
+        <EmptyState icon={ClipboardList} title={t("empty")} />
       ) : (
         <ul className="space-y-2">
           {assignments.map((a) => {

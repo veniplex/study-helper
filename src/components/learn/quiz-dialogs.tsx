@@ -28,6 +28,11 @@ import { startCompleteQuiz } from "@/app/[locale]/(app)/generation-actions"
 import { FormDialog } from "@/components/form-dialog"
 import { ModuleSelect, type ModuleOption } from "./module-select"
 import { GenerationProgress } from "./generation-progress"
+import { EstimatedProgress } from "./estimated-progress"
+
+/** Above this many items, a single-shot generation shows an estimated progress
+ *  bar (E14) rather than a bare spinner. */
+const LARGE_GENERATION = 10
 
 /** Controlled edit dialog for a quiz's title/description (used by row menus). */
 export function EditQuizDialog({
@@ -151,6 +156,8 @@ export function GenerateQuizDialog({
   const [complete, setComplete] = React.useState(false)
   const [jobId, setJobId] = React.useState<string | null>(null)
   const [createdQuizId, setCreatedQuizId] = React.useState<string | null>(null)
+  // >0 while a large single-shot generation is running → estimated progress bar.
+  const [estCount, setEstCount] = React.useState(0)
 
   if (!aiAvailable) return null
 
@@ -159,6 +166,7 @@ export function GenerateQuizDialog({
     setCreatedQuizId(null)
     setPending(false)
     setComplete(false)
+    setEstCount(0)
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -178,9 +186,11 @@ export function GenerateQuizDialog({
         setCreatedQuizId(res.quizId)
         setJobId(res.jobId)
       } else {
+        const count = Number(form.get("count"))
+        if (count >= LARGE_GENERATION) setEstCount(count)
         const result = await generateQuiz({
           moduleId: moduleId || null,
-          count: Number(form.get("count")),
+          count,
           topics: String(form.get("topics") || "") || undefined,
           mixed,
         })
@@ -191,6 +201,7 @@ export function GenerateQuizDialog({
       toast.error(error instanceof Error ? error.message : String(error))
     } finally {
       setPending(false)
+      setEstCount(0)
     }
   }
 
@@ -231,6 +242,8 @@ export function GenerateQuizDialog({
               </Button>
             </div>
           </div>
+        ) : estCount > 0 ? (
+          <EstimatedProgress count={estCount} label={t("generating")} />
         ) : (
           <form onSubmit={onSubmit} className="space-y-4">
             <label className="flex items-start gap-2 rounded-md border p-3">

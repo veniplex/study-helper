@@ -1,18 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Pencil, Plus } from "lucide-react"
+import { Pencil, Plus } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { FormDialog } from "@/components/form-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -74,16 +67,8 @@ export function ModuleDialog({
   const t = useTranslations("studies")
   const tDialog = useTranslations("studies.moduleDialog")
   const tGoals = useTranslations("goals")
-  const tCommon = useTranslations("common")
   const router = useRouter()
-  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
   const controlled = controlledOpen !== undefined
-  const open = controlled ? controlledOpen : uncontrolledOpen
-  const setOpen = (v: boolean) => {
-    if (controlled) onOpenChange?.(v)
-    else setUncontrolledOpen(v)
-  }
-  const [pending, setPending] = React.useState(false)
   const [status, setStatus] = React.useState<ModuleStatus>(module?.status ?? "planned")
   const [icon, setIcon] = React.useState<string | null>(module?.icon ?? null)
   const [color, setColor] = React.useState<string | null>(module?.color ?? null)
@@ -97,9 +82,7 @@ export function ModuleDialog({
     failed: t("module.statusFailed"),
   }
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
+  async function onSubmit(form: FormData) {
     const numOrNull = (key: string) =>
       form.get(key) !== null && String(form.get(key)).trim() !== ""
         ? Number(form.get(key))
@@ -113,45 +96,35 @@ export function ModuleDialog({
       icon,
       color,
     }
-    setPending(true)
-    try {
-      if (isEdit) await updateModule(module!.id!, payload)
-      else await createModule(semesterId, { ...payload, goalTypes })
-      toast.success(isEdit ? t("updated") : t("created"))
-      setOpen(false)
-      router.refresh()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-    } finally {
-      setPending(false)
-    }
+    if (isEdit) await updateModule(module!.id!, payload)
+    else await createModule(semesterId, { ...payload, goalTypes })
+    toast.success(isEdit ? t("updated") : t("created"))
+    router.refresh()
   }
 
   const previewColor = getModuleColorClasses(color)
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      {!controlled && (
-        <DialogTrigger
-          render={
-            isEdit ? <Button variant="ghost" size="icon-sm" /> : <Button variant="outline" size="sm" />
-          }
-        >
-          {isEdit ? (
-            <Pencil className="size-3.5" />
-          ) : (
-            <>
-              <Plus className="size-4" />
-              {t("newModule")}
-            </>
-          )}
-        </DialogTrigger>
-      )}
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? t("editModule") : t("newModule")}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-5">
+    <FormDialog
+      title={isEdit ? t("editModule") : t("newModule")}
+      onSubmit={onSubmit}
+      scrollable
+      contentClassName="sm:max-w-lg"
+      {...(controlled
+        ? { open: controlledOpen, onOpenChange }
+        : {
+            trigger: isEdit ? (
+              <Pencil className="size-3.5" />
+            ) : (
+              <>
+                <Plus className="size-4" />
+                {t("newModule")}
+              </>
+            ),
+            triggerVariant: isEdit ? ("ghost" as const) : ("outline" as const),
+            triggerSize: isEdit ? ("icon-sm" as const) : ("sm" as const),
+          })}
+    >
           <div className="flex items-center gap-3">
             <span
               className={cn(
@@ -275,18 +248,6 @@ export function ModuleDialog({
               </div>
             </div>
           )}
-
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              {tCommon("cancel")}
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending && <Loader2 className="size-4 animate-spin" />}
-              {tCommon("save")}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    </FormDialog>
   )
 }

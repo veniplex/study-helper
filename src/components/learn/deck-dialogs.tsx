@@ -27,6 +27,11 @@ import { startCompleteDeck } from "@/app/[locale]/(app)/generation-actions"
 import { FormDialog } from "@/components/form-dialog"
 import { ModuleSelect, type ModuleOption } from "./module-select"
 import { GenerationProgress } from "./generation-progress"
+import { EstimatedProgress } from "./estimated-progress"
+
+/** Above this many cards, a single-shot generation shows an estimated progress
+ *  bar (E14) rather than a bare spinner. */
+const LARGE_GENERATION = 10
 
 /** Controlled edit dialog for a flashcard's front/back (used by row menus). */
 export function EditCardDialog({
@@ -228,6 +233,8 @@ export function GenerateCardsDialog({
   const [pending, setPending] = React.useState(false)
   const [complete, setComplete] = React.useState(false)
   const [jobId, setJobId] = React.useState<string | null>(null)
+  // >0 while a large single-shot generation is running → estimated progress bar.
+  const [estCount, setEstCount] = React.useState(0)
 
   if (!aiAvailable) return null
 
@@ -235,6 +242,7 @@ export function GenerateCardsDialog({
     setJobId(null)
     setPending(false)
     setComplete(false)
+    setEstCount(0)
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -249,9 +257,11 @@ export function GenerateCardsDialog({
         })
         setJobId(res.jobId)
       } else {
+        const count = Number(form.get("count"))
+        if (count >= LARGE_GENERATION) setEstCount(count)
         await generateCards({
           deckId,
-          count: Number(form.get("count")),
+          count,
           topics: String(form.get("topics") || "") || undefined,
         })
         setOpen(false)
@@ -261,6 +271,7 @@ export function GenerateCardsDialog({
       toast.error(error instanceof Error ? error.message : String(error))
     } finally {
       setPending(false)
+      setEstCount(0)
     }
   }
 
@@ -295,6 +306,8 @@ export function GenerateCardsDialog({
               </Button>
             </div>
           </div>
+        ) : estCount > 0 ? (
+          <EstimatedProgress count={estCount} label={t("generating")} />
         ) : (
           <form onSubmit={onSubmit} className="space-y-4">
             <label className="flex items-start gap-2 rounded-md border p-3">

@@ -6,9 +6,15 @@ import { generateObject } from "ai"
 import { z } from "zod"
 import { db } from "@/db"
 import { writingProject } from "@/db/schema"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { ownProgram } from "@/lib/studies/access"
-import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
+import {
+  getLanguageModel,
+  resolveModelForUser,
+  userHasUsableKeyForModel,
+} from "@/lib/ai/registry"
+import { GEN_PARAMS, maxTokensForItems } from "@/lib/ai/params"
 import { assertWithinLimit } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 import { brainstormSchema, buildBrainstormPrompt } from "@/lib/writing/ai"
@@ -23,7 +29,9 @@ async function ownThesis(thesisId: string, userId: string) {
 
 async function getModel(userId: string) {
   const defaultModel = await resolveModelForUser(userId)
-  if (!defaultModel) throw new Error("No AI model configured")
+  if (!defaultModel) actionError("AI_NO_MODEL")
+  // BYOK dead-end: model configured but no usable key for its provider (F4).
+  if (!(await userHasUsableKeyForModel(defaultModel, userId))) actionError("AI_SETUP_REQUIRED")
   return { ref: defaultModel, model: await getLanguageModel(defaultModel, userId) }
 }
 
@@ -62,7 +70,7 @@ export async function createThesis(input: unknown) {
       columns: { id: true },
     })
     if (existing) {
-      throw new Error("Für diesen Studiengang existiert bereits eine aktive Abschlussarbeit.")
+      actionError("THESIS_ACTIVE_EXISTS")
     }
   }
 
@@ -89,29 +97,47 @@ export async function retryThesis(thesisId: string) {
   if (prev.programId) {
     const program = await ownProgram(prev.programId, session.user.id)
     if (prev.attempt >= program.thesisMaxAttempts) {
-      throw new Error("Maximale Versuchszahl für die Abschlussarbeit erreicht.")
+      actionError("THESIS_MAX_ATTEMPTS")
     }
   }
 
-  const [created] = await db
-    .insert(writingProject)
-    .values({
-      userId: session.user.id,
-      title: prev.title,
-      thesisType: prev.thesisType,
-      programId: prev.programId,
-      goalId: prev.goalId,
-      semesterId: prev.semesterId,
-      attempt: prev.attempt + 1,
-      phase: "topic",
-    })
-    .returning({ id: writingProject.id })
-  await db
-    .update(writingProject)
-    .set({ supersededById: created.id })
-    .where(eq(writingProject.id, thesisId))
+  // `thesis_active_per_program_uq` is a partial unique index over
+  // (userId, programId) where `supersededById is null and programId is not
+  // null`. Partial indexes aren't deferrable, so it's checked per-statement:
+  // inserting the new attempt with `programId` set while the old row is still
+  // live would momentarily leave TWO live rows for the program → violation.
+  // Order the writes inside a transaction so the predicate never matches two
+  // rows at once: (1) insert the new attempt WITHOUT programId (predicate
+  // false), (2) supersede the old row (it drops out of the predicate),
+  // (3) attach programId to the new row (now the only live row for the program).
+  const newId = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(writingProject)
+      .values({
+        userId: session.user.id,
+        title: prev.title,
+        thesisType: prev.thesisType,
+        programId: null,
+        goalId: prev.goalId,
+        semesterId: prev.semesterId,
+        attempt: prev.attempt + 1,
+        phase: "topic",
+      })
+      .returning({ id: writingProject.id })
+    await tx
+      .update(writingProject)
+      .set({ supersededById: created.id })
+      .where(eq(writingProject.id, thesisId))
+    if (prev.programId) {
+      await tx
+        .update(writingProject)
+        .set({ programId: prev.programId })
+        .where(eq(writingProject.id, created.id))
+    }
+    return created.id
+  })
   revalidatePath("/thesis")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: newId }
 }
 
 const thesisUpdateSchema = thesisSchema.partial().extend({
@@ -152,6 +178,8 @@ export async function brainstormTopics(interests: string) {
         model,
         schema: brainstormSchema,
         prompt: buildBrainstormPrompt(interests),
+        ...GEN_PARAMS,
+        maxOutputTokens: maxTokensForItems(8),
       })
   )
   return object.topics

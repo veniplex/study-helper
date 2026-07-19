@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { and, eq } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { assertWithinLimit } from "@/lib/ai/usage"
@@ -135,7 +136,7 @@ export async function analyzeProgress(moduleId: string) {
     : ""
 
   const defaultModel = await resolveModelForUser(session.user.id)
-  if (!defaultModel) throw new Error("No AI model configured")
+  if (!defaultModel) actionError("AI_NO_MODEL")
   const model = await getLanguageModel(defaultModel, session.user.id)
 
   const { text } = await runAi(

@@ -1,10 +1,12 @@
-import { and, asc, eq, gte, inArray } from "drizzle-orm"
+import { and, asc, eq, gte, inArray, lt } from "drizzle-orm"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { modulePlan, planSession, semesterPlan, studyModule } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { ownSemester } from "@/lib/studies/access"
 import { AvailabilityEditor } from "@/components/plan/availability-editor"
+import { PlanBanners } from "@/components/plan/plan-banners"
+import { type SetupStep } from "@/components/plan/setup-checklist"
 import { StrategyBoard, type StrategyModule } from "@/components/plan/strategy-board"
 
 export default async function SemesterPlanPage({
@@ -19,7 +21,13 @@ export default async function SemesterPlanPage({
 
   const plan = await db.query.semesterPlan.findFirst({
     where: eq(semesterPlan.semesterId, semesterId),
-    columns: { id: true, availability: true, generatedAt: true },
+    columns: {
+      id: true,
+      availability: true,
+      generatedAt: true,
+      staleAt: true,
+      weekOverrides: true,
+    },
   })
 
   const modules = await db.query.studyModule.findMany({
@@ -48,6 +56,27 @@ export default async function SemesterPlanPage({
       })
     : []
 
+  // A10 catch-up: past sessions that were never done and still carry open tasks.
+  const pastSessions = plan
+    ? await db.query.planSession.findMany({
+        where: and(
+          eq(planSession.semesterPlanId, plan.id),
+          lt(planSession.date, today),
+          eq(planSession.done, false)
+        ),
+        columns: { id: true },
+        with: { tasks: { columns: { done: true } } },
+      })
+    : []
+  const missedCount = pastSessions.filter((s) => s.tasks.some((t) => !t.done)).length
+
+  const hasAvailability = (plan?.availability.weekly?.length ?? 0) > 0
+  const setupSteps: SetupStep[] = [
+    { key: "module", done: modules.length > 0, href: `/studies/${sem.programId}` },
+    { key: "availability", done: hasAvailability, href: `/plan/${semesterId}` },
+    { key: "plan", done: sessions.length > 0 || plan?.generatedAt != null, href: `/plan/${semesterId}` },
+  ]
+
   const strategyModules: StrategyModule[] = modules.map((m) => {
     const mp = planByModule.get(m.id)
     return {
@@ -71,12 +100,19 @@ export default async function SemesterPlanPage({
         </p>
       </div>
 
-      <AvailabilityEditor semesterId={semesterId} initial={plan?.availability ?? null} />
+      <PlanBanners semesterId={semesterId} stale={plan?.staleAt != null} missedCount={missedCount} />
+
+      <AvailabilityEditor
+        semesterId={semesterId}
+        initial={plan?.availability ?? null}
+        weekOverrides={plan?.weekOverrides ?? null}
+      />
 
       <StrategyBoard
         semesterId={semesterId}
         hasAvailability={Boolean(plan)}
         modules={strategyModules}
+        setupSteps={setupSteps}
         sessions={sessions.map((s) => ({
           id: s.id,
           date: s.date,

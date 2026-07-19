@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useFormatter, useTranslations } from "next-intl"
-import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { useRouter } from "@/i18n/navigation"
 import { togglePlanTask } from "@/app/[locale]/(app)/plan/plan-task-actions"
 import { toggleSession } from "@/app/[locale]/(app)/plan/schedule-actions"
@@ -33,16 +33,22 @@ export function SessionDialog({
   const t = useTranslations("plan.session")
   const format = useFormatter()
   const router = useRouter()
+  const showError = useActionErrorToast()
+  const [pending, startTransition] = React.useTransition()
 
   if (!session) return null
 
-  async function run(fn: () => Promise<unknown>) {
-    try {
-      await fn()
-      router.refresh()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-    }
+  function run(fn: () => Promise<unknown>) {
+    // Disable the controls while a toggle is in flight so rapid taps can't
+    // double-fire against the server (D13).
+    startTransition(async () => {
+      try {
+        await fn()
+        router.refresh()
+      } catch (error) {
+        showError(error)
+      }
+    })
   }
 
   return (
@@ -64,7 +70,8 @@ export function SessionDialog({
         <label className="bg-muted/40 flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
           <Checkbox
             checked={session.done}
-            onCheckedChange={(on) => void run(() => toggleSession(session.id, Boolean(on)))}
+            disabled={pending}
+            onCheckedChange={(on) => run(() => toggleSession(session.id, Boolean(on)))}
           />
           <span className={cn("font-medium", session.done && "line-through")}>{t("done")}</span>
         </label>
@@ -82,9 +89,8 @@ export function SessionDialog({
                 >
                   <Checkbox
                     checked={task.done}
-                    onCheckedChange={(on) =>
-                      void run(() => togglePlanTask(task.id, Boolean(on)))
-                    }
+                    disabled={pending}
+                    onCheckedChange={(on) => run(() => togglePlanTask(task.id, Boolean(on)))}
                   />
                   <span className={cn(task.done && "text-muted-foreground line-through")}>
                     {task.title}

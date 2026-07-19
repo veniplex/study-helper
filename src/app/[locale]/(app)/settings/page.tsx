@@ -19,6 +19,7 @@ import { Link } from "@/i18n/navigation"
 export default async function SettingsPage() {
   const session = await requireSession()
   const t = await getTranslations("settings")
+  const tf = await getTranslations("usage.features")
   // Calendar-month window — the SAME window the monthly token limit uses
   // (usage.ts assertWithinLimit), so the shown numbers match the enforcement.
   const monthStart = new Date()
@@ -219,7 +220,9 @@ export default async function SettingsPage() {
                   <ul className="space-y-0.5">
                     {featureRows.map((row) => (
                       <li key={row.feature} className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">{row.feature}</span>
+                        <span className="text-muted-foreground">
+                          {tf.has(row.feature) ? tf(row.feature) : row.feature}
+                        </span>
                         <span className="tabular-nums">{row.tokens.toLocaleString()}</span>
                       </li>
                     ))}

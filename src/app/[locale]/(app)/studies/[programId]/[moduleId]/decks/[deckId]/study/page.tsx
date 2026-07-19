@@ -28,7 +28,26 @@ export default async function ModuleStudyPage({
   })
   if (!deckRow || deckRow.moduleId !== moduleId) notFound()
 
-  const base = { columns: { id: true, front: true, back: true } as const, limit: count }
+  // Include the FSRS scheduling fields so StudySession can render the
+  // client-side next-interval preview on the rating buttons (E8).
+  const base = {
+    columns: {
+      id: true,
+      front: true,
+      back: true,
+      due: true,
+      stability: true,
+      difficulty: true,
+      elapsedDays: true,
+      scheduledDays: true,
+      learningSteps: true,
+      reps: true,
+      lapses: true,
+      state: true,
+      lastReview: true,
+    } as const,
+    limit: count,
+  }
   const cards = await (() => {
     switch (mode) {
       case "order":
@@ -64,8 +83,9 @@ export default async function ModuleStudyPage({
     }
   })()
 
-  // Always render StudySession — the empty state lives inside it so that the
-  // completion screen survives the path revalidation triggered by reviewCard.
+  // Always render StudySession — the empty state and completion screen live
+  // inside it and are driven entirely by client state, so the session survives
+  // re-renders and reviewCard's dashboard revalidation never unmounts them.
   return (
     <StudySession
       backHref={`/studies/${programId}/${moduleId}/decks/${deckId}`}

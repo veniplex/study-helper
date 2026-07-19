@@ -20,7 +20,22 @@ export default async function DueStudyPage() {
   const [cards, totalRows] = deckIds.length
     ? await Promise.all([
         db.query.flashcard.findMany({
-          columns: { id: true, front: true, back: true },
+          // FSRS fields included for the rating-button interval preview (E8).
+          columns: {
+            id: true,
+            front: true,
+            back: true,
+            due: true,
+            stability: true,
+            difficulty: true,
+            elapsedDays: true,
+            scheduledDays: true,
+            learningSteps: true,
+            reps: true,
+            lapses: true,
+            state: true,
+            lastReview: true,
+          },
           where: (f, { and: a }) => a(inArray(f.deckId, deckIds), lte(f.due, now)),
           orderBy: [asc(flashcard.due)],
           limit: SESSION_LIMIT,

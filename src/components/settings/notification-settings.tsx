@@ -173,13 +173,24 @@ export function NotificationSettings({
                 aria-label={`${t(`categories.${category}`)} ${t("email")}`}
               />
               <Switch
-                checked={channels[category].push}
+                checked={channels[category].push && pushSubscribed === true}
+                // Push can't be delivered without an active subscription, so
+                // don't let a category push toggle read as "on" when it can't
+                // fire (E23).
+                disabled={pushSubscribed !== true}
                 onCheckedChange={(on) => toggle(category, "push", on)}
                 aria-label={`${t(`categories.${category}`)} ${t("push")}`}
               />
             </React.Fragment>
           ))}
         </div>
+        {/* Contextual prompt: push toggles are inert until the browser is
+            subscribed (E23). */}
+        {pushSubscribed === false && (
+          <p className="text-muted-foreground bg-muted/40 rounded-md border px-3 py-2 text-xs">
+            {t("pushInactiveHint")}
+          </p>
+        )}
         <p className="text-muted-foreground text-xs">{t("emailHint", { email })}</p>
         <div className="border-t pt-3">
           {pushSubscribed === null ? (

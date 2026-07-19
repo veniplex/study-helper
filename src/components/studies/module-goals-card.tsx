@@ -21,6 +21,7 @@ import {
   GoalCard,
   type BonusProgressDTO,
   type GoalCardData,
+  type GoalReadinessDTO,
 } from "@/components/learn/goal-card"
 
 const GOAL_ICON: Record<GoalType, React.ComponentType<{ className?: string }>> = {
@@ -54,6 +55,7 @@ export function ModuleGoalsCard({
   gradingSystem,
   stats,
   bonus,
+  readiness,
 }: {
   moduleId: string
   basePath: string
@@ -61,6 +63,7 @@ export function ModuleGoalsCard({
   gradingSystem: GradingSystem
   stats: { dueCards: number; lastQuizScore: number | null }
   bonus: BonusProgressDTO | null
+  readiness?: GoalReadinessDTO
 }) {
   const t = useTranslations("goals")
   const [dialog, setDialog] = React.useState<DialogState>({ mode: "closed" })
@@ -138,6 +141,7 @@ export function ModuleGoalsCard({
           gradingSystem={gradingSystem}
           stats={stats}
           bonus={bonus}
+          readiness={readiness}
         />
       ))}
       {dialogEl}

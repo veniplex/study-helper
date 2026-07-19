@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react"
-import { useLocale, useTranslations } from "next-intl"
+import { useFormatter, useTranslations } from "next-intl"
 import { getMonthEvents, type MiniCalendarEvent } from "@/app/[locale]/(app)/dashboard-actions"
 import { AiBadge } from "@/components/ai/ai-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -39,7 +39,7 @@ export function MiniCalendar({
 }) {
   const t = useTranslations("dashboard.miniCalendar")
   const tCal = useTranslations("calendar")
-  const locale = useLocale()
+  const format = useFormatter()
 
   const [events, setEvents] = React.useState<MiniCalendarEvent[]>(initialEvents)
   const [view, setView] = React.useState({ year, month })
@@ -105,11 +105,11 @@ export function MiniCalendar({
   while (cells.length % 7 !== 0) cells.push(null)
 
   const todayKey = dayKey(new Date())
-  const monthLabel = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(first)
+  const monthLabel = format.dateTime(first, { month: "long", year: "numeric" })
   const weekdays = Array.from({ length: 7 }, (_, i) => {
     // 2024-01-01 is a Monday — build short weekday names starting Monday.
     const d = new Date(2024, 0, 1 + i)
-    return new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d)
+    return format.dateTime(d, { weekday: "short" })
   })
 
   const selectedEvents = (byDay.get(selected) ?? []).sort((a, b) => {
@@ -118,11 +118,11 @@ export function MiniCalendar({
     return at - bt
   })
 
-  const timeFmt = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" })
+  const timeOpts = { hour: "2-digit", minute: "2-digit" } as const
   function eventTime(e: MiniCalendarEvent): string {
     if (e.allDay) return t("allDay")
-    const start = timeFmt.format(new Date(e.startsAt))
-    if (e.endsAt) return `${start}–${timeFmt.format(new Date(e.endsAt))}`
+    const start = format.dateTime(new Date(e.startsAt), timeOpts)
+    if (e.endsAt) return `${start}–${format.dateTime(new Date(e.endsAt), timeOpts)}`
     return start
   }
 

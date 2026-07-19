@@ -340,7 +340,7 @@
       "saved": "Profil gespeichert."
     },
     "aiKeys": {
-      "title": "Eigene KI-API-Keys (BYOK)",
+      "title": "Eigene KI-API-Keys",
       "description": "Eigene Keys haben Vorrang vor den zentral konfigurierten. Verschlüsselt gespeichert.",
       "placeholder": "API-Key eingeben",
       "active": "Eigener Key aktiv",
@@ -366,10 +366,11 @@
       "unsupported": "Dieser Browser unterstützt keine Push-Benachrichtigungen.",
       "denied": "Benachrichtigungen wurden im Browser blockiert.",
       "swUnavailable": "Der Hintergrunddienst für Push ist nicht verfügbar. Lade die Seite neu und versuche es erneut.",
-      "saveFailed": "Einstellung konnte nicht gespeichert werden."
+      "saveFailed": "Einstellung konnte nicht gespeichert werden.",
+      "pushInactiveHint": "Push-Benachrichtigungen sind auf diesem Gerät nicht aktiviert — die Push-Schalter wirken erst, wenn du unten Push aktivierst."
     },
     "usage": {
-      "title": "Dein Token-Verbrauch (30 Tage)",
+      "title": "Deine KI-Nutzung (30 Tage)",
       "input": "Input",
       "output": "Output",
       "limit": "Limit",
@@ -656,7 +657,9 @@
         "4": "Do",
         "5": "Fr",
         "6": "Sa"
-      }
+      },
+      "deleteOccurrence": "Nur dieses Vorkommen löschen",
+      "deleteSeries": "Ganze Serie löschen"
     },
     "ics": {
       "title": "Kalender-Abo (ICS)",
@@ -715,7 +718,8 @@
       "planItems": "{count} Lerneinheiten heute",
       "examIn": "{title} in {days} Tagen",
       "prepared": "{percent} % vorbereitet",
-      "start": "Jetzt lernen"
+      "start": "Jetzt lernen",
+      "viewPlan": "Plan ansehen"
     }
   },
   "stats": {
@@ -787,7 +791,10 @@
     "viewer": {
       "unsupported": "Vorschau für diesen Dateityp nicht verfügbar — bitte herunterladen.",
       "fileMissing": "Datei nicht mehr vorhanden",
-      "fileMissingHint": "Der Eintrag existiert, aber die Datei fehlt auf dem Server (z. B. durch ein früheres Redeploy ohne persistentes Upload-Volume verloren). Bitte lade die Datei neu hoch."
+      "fileMissingHint": "Der Eintrag existiert, aber die Datei fehlt auf dem Server (z. B. durch ein früheres Redeploy ohne persistentes Upload-Volume verloren). Bitte lade die Datei neu hoch.",
+      "processingTitle": "Dokument wird verarbeitet",
+      "processingHint": "Chat und Suche sind verfügbar, sobald die Verarbeitung abgeschlossen ist.",
+      "processingFailedTitle": "Verarbeitung fehlgeschlagen"
     },
     "annotator": {
       "hint": "Auf der Seite ziehen zum Markieren; Markierung anklicken für Notiz oder Löschen.",
@@ -828,11 +835,12 @@
       "skippedHint": "Aus dieser Datei konnte kein Text gewonnen werden.",
       "retry": "Neu verarbeiten"
     },
-    "notIndexedHint": "Es ist kein Embedding-Modell konfiguriert — Materialien werden nicht für die AI-Suche indexiert. Ein Admin kann das unter Admin → AI einrichten.",
+    "notIndexedHint": "Die KI-Suche ist noch nicht eingerichtet.",
     "uploadRateLimited": "Zu viele Uploads in kurzer Zeit — bitte kurz warten.",
     "uploadNetworkError": "Netzwerkfehler beim Upload — Verbindung prüfen und erneut versuchen.",
     "uploadServerError": "{name}: Serverfehler beim Speichern. Prüfe im Admin-Bereich, ob der Datei-Speicher beschreibbar ist.",
-    "askDocument": "Im Chat fragen"
+    "askDocument": "Im Chat fragen",
+    "askDocumentProcessing": "Dokument wird noch verarbeitet"
   },
   "search": {
     "modules": "Module",
@@ -848,7 +856,11 @@
     "title": "KI-Assistent",
     "newChat": "Neuer Chat",
     "noConversations": "Noch keine Unterhaltungen.",
-    "notConfigured": "Es sind noch keine KI-Provider konfiguriert.",
+    "notConfigured": {
+      "title": "KI ist nicht eingerichtet",
+      "description": "Es ist kein KI-Modell konfiguriert. Richte es in den Einstellungen ein, um den Chat zu nutzen.",
+      "cta": "Zu den Einstellungen"
+    },
     "configureNow": "Jetzt im Admin-Panel konfigurieren",
     "emptyChat": "Stelle eine Frage zu deinem Studium.",
     "quickChat": "KI-Chat",
@@ -873,6 +885,25 @@
         "createQuizWithQuestions": "Quiz anlegen",
         "createCalendarEvent": "Termin anlegen",
         "createAssignment": "Abgabe anlegen"
+      },
+      "fields": {
+        "name": "Name",
+        "title": "Titel",
+        "module": "Modul",
+        "type": "Art",
+        "startsAt": "Beginn",
+        "endsAt": "Ende",
+        "location": "Ort",
+        "dueDate": "Fällig",
+        "cards": "Karten",
+        "questions": "Fragen",
+        "pointsMax": "Punkte"
+      },
+      "eventTypes": {
+        "exam": "Prüfung",
+        "deadline": "Frist",
+        "lecture": "Vorlesung",
+        "other": "Sonstiges"
       }
     },
     "suggestions": {
@@ -930,7 +961,9 @@
       "stop": "Aufnahme beenden",
       "empty": "Keine Sprache erkannt.",
       "micDenied": "Mikrofonzugriff wurde verweigert."
-    }
+    },
+    "errorNoKey": "Für dieses KI-Modell ist kein API-Key hinterlegt.",
+    "errorNoKeyCta": "In den Einstellungen einrichten"
   },
   "learn": {
     "title": "Lernen",
@@ -975,6 +1008,9 @@
       "name": "Name",
       "description": "Beschreibung",
       "empty": "Noch keine Decks.",
+      "mistakesName": "Quiz-Fehler",
+      "mistakesBadge": "Auto",
+      "mistakesTooltip": "Automatisch aus falsch beantworteten Quizfragen befüllt.",
       "cards": "{count} Karten",
       "due": "{count} fällig",
       "study": "Lernen",
@@ -1040,7 +1076,14 @@
       "description": "Beschreibung (optional)",
       "correctAnswer": "Richtige Antwort",
       "edit": "Bearbeiten",
-      "notGraded": "Nicht automatisch bewertet (kein AI-Provider) — vergleiche mit der Referenzantwort."
+      "notGraded": "Nicht automatisch bewertet (kein AI-Provider) — vergleiche mit der Referenzantwort.",
+      "resultNotGraded": "Ergebnis: nicht bewertet",
+      "notScored": "nicht bewertet",
+      "mistakesAdded": "{count} Karten zum Fehler-Deck hinzugefügt",
+      "openMistakesDeck": "Fehler-Deck öffnen",
+      "previous": "Zurück",
+      "skip": "Überspringen",
+      "gradingCount": "Bewerte {count} Antworten …"
     },
     "aiUnavailable": "Kein KI-Modell konfiguriert — KI-Funktionen deaktiviert.",
     "questionForm": {
@@ -1071,7 +1114,8 @@
       "produced": "{count} erzeugt",
       "completed": "Fertig — {count} Elemente, {total} Themen abgedeckt.",
       "failed": "Fehlgeschlagen: {error}",
-      "close": "Schließen"
+      "close": "Schließen",
+      "failedGeneric": "Die Generierung ist fehlgeschlagen. Bitte versuche es erneut."
     },
     "selectModuleFirst": "Bitte wähle zuerst ein Modul aus."
   },
@@ -1179,7 +1223,10 @@
     "cta": "Jetzt einrichten",
     "aiTitle": "KI-Funktionen aktivieren",
     "aiDesc": "Als Administrator kannst du einen KI-Anbieter hinterlegen, um Chat, Quiz- und Karten-Generierung freizuschalten.",
-    "aiCta": "KI einrichten"
+    "aiCta": "KI einrichten",
+    "planTitle": "Lernplan einrichten",
+    "planDesc": "Lege deine Verfügbarkeit fest und berechne deinen persönlichen Lernplan.",
+    "planCta": "Zum Lernplan"
   },
   "context": {
     "program": "Studiengang",
@@ -1229,6 +1276,15 @@
       "4": "Do",
       "5": "Fr",
       "6": "Sa"
+    },
+    "weekOverride": {
+      "title": "Diese Woche weniger Zeit",
+      "hint": "Begrenze die Lernzeit für eine bestimmte Woche (z. B. wegen Urlaub oder Prüfungsstress).",
+      "weekLabel": "Woche",
+      "hoursLabel": "Stunden",
+      "hours": "{hours} h",
+      "add": "Hinzufügen",
+      "remove": "Entfernen"
     }
   },
   "plan": {
@@ -1262,7 +1318,9 @@
       "due": "bis",
       "scheduled": "Verplant",
       "goal": "Lernziel",
-      "noGoal": "Kein Lernziel"
+      "noGoal": "Kein Lernziel",
+      "outlineNudge": "Für die Prüfung gibt es noch keine Gliederung und keine Aufgaben. Lege eine Gliederung an oder leite sie aus deinen Materialien ab.",
+      "outlineNudgeCta": "Zu den Materialien"
     },
     "prefs": {
       "title": "Planungs-Einstellungen",
@@ -1273,7 +1331,8 @@
       "weekdays": "Bevorzugte Wochentage",
       "save": "Speichern",
       "saved": "Gespeichert.",
-      "linkToSemester": "Zur Semester-Koordination"
+      "linkToSemester": "Zur Semester-Koordination",
+      "weightHint": "Gewichtung: Wie viel deiner Lernzeit dieses Modul im Vergleich bekommt. 2 heißt doppelt so viel Zeit wie ein Modul mit 1."
     },
     "sessions": {
       "title": "Kommende Termine",
@@ -1303,6 +1362,56 @@
       "done": "Erledigt",
       "tasks": "Aufgaben",
       "noTasks": "Keine Aufgaben in dieser Einheit."
+    },
+    "recompute": {
+      "summary": "Plan aktualisiert: {sessions} Sitzungen, {warnings} Warnungen"
+    },
+    "staleness": {
+      "message": "Dein Plan ist veraltet — neu berechnen.",
+      "action": "Plan berechnen"
+    },
+    "catchUp": {
+      "message": "{count, plural, one {# verpasste Session} other {# verpasste Sessions}} — nachholen.",
+      "action": "Nachholen"
+    },
+    "readiness": {
+      "on_track": "Auf Kurs",
+      "at_risk": "Knapp",
+      "unreachable": "Nicht schaffbar",
+      "setupHint": "Plan einrichten"
+    },
+    "warningText": {
+      "deadline_unreachable": "Die Zeit reicht nicht für alle Aufgaben vor der Prüfung. Erhöhe deine Verfügbarkeit oder verschiebe bzw. entferne Aufgaben.",
+      "no_capacity": "Zu wenig freie Zeit im Zeitraum. Trage mehr verfügbare Zeitfenster ein.",
+      "horizon_clipped": "Einige Aufgaben liegen zu weit in der Zukunft und wurden noch nicht verplant. Sie erscheinen näher am Termin."
+    },
+    "checklist": {
+      "title": "Einrichtung abschließen",
+      "progress": "{done} von {total} erledigt",
+      "dismiss": "Ausblenden",
+      "go": "Los",
+      "steps": {
+        "module": {
+          "title": "Modul angelegt",
+          "desc": "Lege ein Modul für dein Fach an."
+        },
+        "examDate": {
+          "title": "Prüfungstermin gesetzt",
+          "desc": "Trage das Datum deiner Prüfung ein."
+        },
+        "availability": {
+          "title": "Verfügbarkeit konfiguriert",
+          "desc": "Lege fest, wann du wöchentlich lernen kannst."
+        },
+        "tasks": {
+          "title": "Aufgaben generiert",
+          "desc": "Erstelle Aufgaben aus deinen Lernzielen."
+        },
+        "plan": {
+          "title": "Plan berechnet",
+          "desc": "Berechne deinen Lernplan."
+        }
+      }
     }
   },
   "learnSession": {
@@ -1407,7 +1516,8 @@
         "none": "Kein Bonus",
         "percent_points": "Prozentpunkte auf Ergebnis",
         "grade_steps": "Notenschritte besser"
-      }
+      },
+      "minCompletedShareHint": "Anteil als Dezimalzahl zwischen 0 und 1 (z. B. 0,5 = die Hälfte der Abgaben muss erledigt sein)."
     }
   },
   "goalCard": {
@@ -1442,5 +1552,54 @@
   "home": {
     "title": "Willkommen bei StudyHelper",
     "description": "Die Open-Source-App für dein gesamtes Studium: Planung, Lernmaterialien, KI-Unterstützung und Prüfungsvorbereitung — self-hosted und offline-fähig."
+  },
+  "errors": {
+    "PLAN_NO_AVAILABILITY": "Lege zuerst deine Verfügbarkeit fest, um den Plan zu berechnen.",
+    "PLAN_INVALID_GOAL": "Das ausgewählte Lernziel gehört nicht zu diesem Modul.",
+    "GOAL_MAX_ATTEMPTS": "Maximale Versuchszahl erreicht.",
+    "WRITING_NO_GOAL": "Dieses Modul hat kein Schreib-Lernziel (Hausarbeit, Thesis oder Projekt).",
+    "WRITING_NO_DUE_DATE": "Lege zuerst ein Abgabedatum fest.",
+    "THESIS_ACTIVE_EXISTS": "Für diesen Studiengang existiert bereits eine aktive Abschlussarbeit.",
+    "THESIS_MAX_ATTEMPTS": "Maximale Versuchszahl für die Abschlussarbeit erreicht.",
+    "AI_NO_MODEL": "Es ist kein KI-Modell konfiguriert. Ein Admin kann das unter Admin → KI einrichten.",
+    "LIMIT_EXCEEDED": "Dein monatliches KI-Kontingent ist aufgebraucht.",
+    "MATERIAL_NAME_REQUIRED": "Bitte gib einen Namen ein.",
+    "FOLDER_DUPLICATE": "Ein Ordner mit diesem Namen existiert hier bereits.",
+    "GENERIC": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+    "AI_SETUP_REQUIRED": "Hinterlege deinen API-Key in den Einstellungen, um KI-Funktionen zu nutzen."
+  },
+  "notifications": {
+    "eventTitle": "⏰ {title}",
+    "eventBody": "{when}",
+    "eventBodyLocation": "{when} · {location}",
+    "assignmentTitle": "📋 {title}",
+    "assignmentBody": "{module} · {due}",
+    "dailyPlanTitle": "📚 {appName}",
+    "dailyPlanBody": "{count, plural, one {Heute steht # Lerneinheit in deinem Lernplan.} other {Heute stehen # Lerneinheiten in deinem Lernplan.}}"
+  },
+  "usage": {
+    "features": {
+      "chat": "Chat",
+      "flashcards": "Karteikarten",
+      "quiz": "Quiz",
+      "quiz-grading": "Quiz-Bewertung",
+      "outline": "Gliederung",
+      "summary": "Zusammenfassung",
+      "summary-doc": "Dokument-Zusammenfassung",
+      "summary-section": "Abschnitts-Zusammenfassung",
+      "analysis": "Analyse",
+      "explain": "Erklärung",
+      "embedding": "Embedding",
+      "embedding-dedup": "Embedding (Duplikate)",
+      "embedding-query": "Embedding (Suche)",
+      "rerank": "Reranking",
+      "ocr": "Texterkennung (OCR)",
+      "transcription": "Transkription",
+      "voice-input": "Spracheingabe",
+      "thesis-topics": "Themen-Ideen (Abschlussarbeit)",
+      "writing-milestones": "Meilensteine (Schreiben)",
+      "writing-outline": "Gliederung (Schreiben)",
+      "writing-sources": "Quellen-Vorschläge (Schreiben)"
+    }
   }
 }

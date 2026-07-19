@@ -90,6 +90,24 @@ export async function updatePreferredModel(ref: string) {
   return { ok: true as const }
 }
 
+/**
+ * Persists the user's preferred locale (from the language switcher) so
+ * background reminders (push/email) are localized to match the UI. Falls back
+ * to the app default when the value isn't a supported locale.
+ */
+export async function updateLocalePref(locale: string) {
+  const session = await requireSession()
+  const { routing } = await import("@/i18n/routing")
+  if (!routing.locales.includes(locale as (typeof routing.locales)[number])) {
+    throw new Error("Unsupported locale")
+  }
+  await db
+    .insert(userPrefs)
+    .values({ userId: session.user.id, locale })
+    .onConflictDoUpdate({ target: userPrefs.userId, set: { locale } })
+  return { ok: true as const }
+}
+
 /** Sets the weekly study-time goal in minutes. null/0 clears it. */
 export async function updateWeeklyGoal(minutes: number | null) {
   const session = await requireSession()

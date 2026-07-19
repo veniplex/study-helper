@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import { and, eq } from "drizzle-orm"
-import { ArrowLeft, Download } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Download, Loader2 } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { asc } from "drizzle-orm"
 import { db } from "@/db"
@@ -66,12 +66,33 @@ export default async function MaterialViewerPage({
           <h1 className="truncate font-heading text-lg font-semibold tracking-tight">{row.name}</h1>
           <p className="text-muted-foreground text-xs">{row.module.name}</p>
         </div>
-        <AskDocumentButton materialId={row.id} />
+        <AskDocumentButton materialId={row.id} extractionStatus={row.extractionStatus} />
         <Button variant="outline" size="sm" nativeButton={false} render={<a href={fileUrl} download={row.name} />}>
           <Download className="size-3.5" />
           {t("download")}
         </Button>
       </div>
+
+      {["pending", "extracting", "embedding", "summarizing"].includes(row.extractionStatus) && (
+        <div className="text-muted-foreground bg-muted/40 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
+          <Loader2 className="size-4 shrink-0 animate-spin" />
+          <div>
+            <p className="text-foreground font-medium">{t("viewer.processingTitle")}</p>
+            <p className="text-xs">
+              {t(`processing.${row.extractionStatus}`)} — {t("viewer.processingHint")}
+            </p>
+          </div>
+        </div>
+      )}
+      {row.extractionStatus === "failed" && (
+        <div className="text-destructive border-destructive/40 bg-destructive/5 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm">
+          <AlertTriangle className="size-4 shrink-0" />
+          <div>
+            <p className="font-medium">{t("viewer.processingFailedTitle")}</p>
+            {row.extractionError && <p className="text-xs opacity-90">{row.extractionError}</p>}
+          </div>
+        </div>
+      )}
 
       {!fileAvailable ? (
         <Card>

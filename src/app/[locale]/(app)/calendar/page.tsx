@@ -1,6 +1,7 @@
-import { asc, eq, ne, and, isNotNull, inArray } from "drizzle-orm"
+import { asc, eq, ne, and, isNotNull, inArray, gte, lte } from "drizzle-orm"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
+import { toIsoDate } from "@/lib/events/recurrence"
 import {
   assignment,
   degreeProgram,
@@ -12,7 +13,7 @@ import {
 import { requireSession } from "@/lib/auth/session"
 import { env } from "@/lib/env"
 import { expandAbsences } from "@/lib/plan/absences"
-import { CalendarView } from "@/components/calendar/calendar-view"
+import { CalendarView } from "@/components/calendar/calendar-view-dynamic"
 import { EventDialog, type ModuleOption } from "@/components/calendar/event-dialog"
 import { IcsCard } from "@/components/calendar/ics-card"
 import { IcsImportCard } from "@/components/calendar/ics-import-card"
@@ -22,15 +23,26 @@ function toLocalInputValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export default async function CalendarPage() {
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ event?: string }>
+}) {
   const session = await requireSession()
   const t = await getTranslations("calendar")
+  // Deep link from the command palette: focus/open this event on load (E24).
+  const { event: focusEventId } = await searchParams
 
   const userPlans = await db.query.semesterPlan.findMany({
     where: eq(semesterPlan.userId, session.user.id),
     columns: { id: true, availability: true },
   })
   const planIds = userPlans.map((p) => p.id)
+
+  // Bound plan sessions to a sane window instead of loading every session ever.
+  const now = new Date()
+  const sessionFrom = toIsoDate(new Date(now.getTime() - 60 * 86400000))
+  const sessionTo = toIsoDate(new Date(now.getTime() + 365 * 86400000))
 
   const [allEvents, prefs, programs, planSessions, dueAssignments] = await Promise.all([
     db.query.studyEvent.findMany({
@@ -45,7 +57,11 @@ export default async function CalendarPage() {
     }),
     planIds.length
       ? db.query.planSession.findMany({
-          where: inArray(planSession.semesterPlanId, planIds),
+          where: and(
+            inArray(planSession.semesterPlanId, planIds),
+            gte(planSession.date, sessionFrom),
+            lte(planSession.date, sessionTo)
+          ),
           with: {
             module: { columns: { name: true } },
             tasks: {
@@ -85,6 +101,7 @@ export default async function CalendarPage() {
 
       <CalendarView
         modules={modules}
+        focusEventId={focusEventId}
         events={allEvents.map((e) => ({
           id: e.id,
           title: e.title,
@@ -100,6 +117,8 @@ export default async function CalendarPage() {
           recurrenceUntil: e.recurrenceUntil,
           recurrenceWeekdays: e.recurrenceWeekdays,
           recurrenceInterval: e.recurrenceInterval,
+          skipDates: e.skipDates,
+          aiGenerated: e.aiGenerated,
         }))}
         planSessions={planSessions.map((s) => ({
           id: s.id,

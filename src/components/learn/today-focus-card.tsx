@@ -66,11 +66,20 @@ export async function TodayFocusCard({
             </div>
           )}
         </div>
-        {dueCards > 0 && (
+        {dueCards > 0 ? (
           <Button nativeButton={false} render={<Link href="/study/due" />}>
             {t("start")}
             <ArrowRight className="size-4" />
           </Button>
+        ) : (
+          // No cards due, but there's still an exam to prepare for or open plan
+          // sessions — point the user at their plan instead of a dead end (E17).
+          (openPlanItems > 0 || nextExam) && (
+            <Button variant="outline" nativeButton={false} render={<Link href="/calendar" />}>
+              {t("viewPlan")}
+              <ArrowRight className="size-4" />
+            </Button>
+          )
         )}
       </CardContent>
     </Card>

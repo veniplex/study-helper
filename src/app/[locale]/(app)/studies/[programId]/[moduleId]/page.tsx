@@ -1,12 +1,21 @@
 import { notFound } from "next/navigation"
-import { asc, eq } from "drizzle-orm"
+import { and, asc, eq } from "drizzle-orm"
 import { ExternalLink, KeyRound } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
-import { assignment, externalResource, moduleContact, studyModule } from "@/db/schema"
+import {
+  assignment,
+  externalResource,
+  moduleContact,
+  planTask,
+  semesterPlan,
+  studyModule,
+} from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { isAiAvailable } from "@/lib/ai/registry"
 import { decrypt } from "@/lib/crypto"
+import { expandAbsences } from "@/lib/plan/absences"
+import { capacityMinutes, computeReadiness } from "@/lib/plan/readiness"
 import { gradeGoalResult } from "@/lib/grades"
 import { getModuleFinalGrade } from "@/lib/studies/grades-server"
 import { getModuleStats } from "@/lib/learning/stats-server"
@@ -17,6 +26,7 @@ import { AnalyzeButton } from "@/components/learn/analyze-button"
 import type { GoalCardData } from "@/components/learn/goal-card"
 import { ModuleGradeSummaryCard } from "@/components/learn/module-grade-summary-card"
 import { ModuleContactsCard } from "@/components/learn/module-contacts-card"
+import type { GoalReadinessDTO } from "@/components/learn/goal-card"
 import { ModuleGoalsCard } from "@/components/studies/module-goals-card"
 import { SessionStartDialog } from "@/components/learn/session-start-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -115,6 +125,48 @@ export default async function ModuleOverviewPage({
   const hasBonusGoal = mod.goals.some((g) => g.gradingRole === "bonus")
   const readinessStats = { dueCards: stats.dueCards, lastQuizScore: stats.lastQuizScore }
 
+  // A7: traffic-light readiness for the module's nearest upcoming exam — open
+  // task minutes vs. study capacity until the exam. null → no plan yet (the
+  // goal card shows a neutral "set up your plan" hint instead of a light).
+  const examGoal =
+    mod.goals
+      .filter((g) => (g.type === "exam" || g.type === "oral_exam") && g.dueDate)
+      .sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : 1))[0] ?? null
+  const todayIso = new Date().toISOString().slice(0, 10)
+  let readiness: GoalReadinessDTO = null
+  if (examGoal?.dueDate && examGoal.dueDate > todayIso) {
+    const [semPlan, openTasks] = await Promise.all([
+      db.query.semesterPlan.findFirst({
+        where: eq(semesterPlan.semesterId, mod.semesterId),
+        columns: { availability: true, lastWarnings: true },
+      }),
+      db.query.planTask.findMany({
+        where: and(eq(planTask.moduleId, moduleId), eq(planTask.done, false)),
+        columns: { estimatedMinutes: true },
+      }),
+    ])
+    if (semPlan && (semPlan.availability.weekly?.length ?? 0) > 0) {
+      const remainingMinutes = openTasks.reduce((sum, t) => sum + t.estimatedMinutes, 0)
+      const blocked = expandAbsences(
+        semPlan.availability,
+        new Date(`${todayIso}T00:00:00`),
+        new Date(`${examGoal.dueDate}T00:00:00`)
+      ).map((w) => ({ date: w.date, from: w.from, to: w.to }))
+      const capacity = capacityMinutes({
+        today: todayIso,
+        examDate: examGoal.dueDate,
+        weekly: semPlan.availability.weekly,
+        blocked,
+      })
+      readiness = {
+        status: computeReadiness({ remainingMinutes, capacityMinutes: capacity }),
+        warningKinds: (semPlan.lastWarnings ?? [])
+          .filter((w) => w.moduleId == null || w.moduleId === moduleId)
+          .map((w) => w.kind),
+      }
+    }
+  }
+
   const goalCards: GoalCardData[] = mod.goals.map((g) => {
     const attempts = g.attempts.map((a) => ({
       id: a.id,
@@ -206,6 +258,7 @@ export default async function ModuleOverviewPage({
         gradingSystem={gradingSystem}
         stats={readinessStats}
         bonus={finalGrade?.bonus ?? null}
+        readiness={readiness}
       />
 
       {finalGrade &&

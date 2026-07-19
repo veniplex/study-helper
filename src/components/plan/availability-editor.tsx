@@ -4,9 +4,10 @@ import * as React from "react"
 import { Loader2, Plus, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { useRouter } from "@/i18n/navigation"
-import { saveAvailability } from "@/app/[locale]/(app)/plan/actions"
-import type { PlanAvailability } from "@/db/schema"
+import { saveAvailability, saveWeekOverride } from "@/app/[locale]/(app)/plan/actions"
+import type { PlanAvailability, WeekOverrides } from "@/db/schema"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -21,11 +22,14 @@ type WeeklyRow = { enabled: boolean; from: string; to: string }
 export function AvailabilityEditor({
   semesterId,
   initial,
+  weekOverrides,
 }: {
   semesterId: string
   initial: PlanAvailability | null
+  weekOverrides?: WeekOverrides | null
 }) {
   const t = useTranslations("semesterPlan")
+  const showError = useActionErrorToast()
   const router = useRouter()
   const [pending, setPending] = React.useState<"save" | null>(null)
   const [weekly, setWeekly] = React.useState<Record<number, WeeklyRow>>(() => {
@@ -58,7 +62,7 @@ export function AvailabilityEditor({
       toast.success(t("saved"))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(null)
     }
@@ -362,6 +366,8 @@ export function AvailabilityEditor({
           </Button>
         </div>
 
+        <WeekOverridesSection semesterId={semesterId} initial={weekOverrides ?? null} />
+
         <div className="flex flex-wrap gap-2">
           <Button disabled={pending !== null} onClick={() => void onSave()}>
             {pending === "save" && <Loader2 className="size-4 animate-spin" />}
@@ -370,5 +376,101 @@ export function AvailabilityEditor({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * A9: "this week I have less time". Picks an ISO week (native <input type="week">
+ * already yields "YYYY-Www") plus an hour cap; the scheduler caps the whole
+ * plan's assigned minutes that week. Save-on-change; removing clears the entry.
+ */
+function WeekOverridesSection({
+  semesterId,
+  initial,
+}: {
+  semesterId: string
+  initial: WeekOverrides | null
+}) {
+  const t = useTranslations("semesterPlan.weekOverride")
+  const showError = useActionErrorToast()
+  const router = useRouter()
+  const [week, setWeek] = React.useState("")
+  const [hours, setHours] = React.useState("")
+  const [pending, setPending] = React.useState(false)
+
+  const entries = Object.entries(initial ?? {}).sort(([a], [b]) => (a < b ? -1 : 1))
+
+  async function save(isoWeek: string, value: number | null) {
+    setPending(true)
+    try {
+      await saveWeekOverride(semesterId, isoWeek, value)
+      router.refresh()
+    } catch (error) {
+      showError(error)
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function onAdd() {
+    if (!week || hours === "") return
+    await save(week, Math.max(0, Number(hours)))
+    setWeek("")
+    setHours("")
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">{t("title")}</p>
+      <p className="text-muted-foreground text-xs">{t("hint")}</p>
+      {entries.length > 0 && (
+        <ul className="space-y-1">
+          {entries.map(([w, h]) => (
+            <li key={w} className="flex items-center gap-2 text-sm">
+              <span className="font-medium tabular-nums">{w}</span>
+              <span className="text-muted-foreground">{t("hours", { hours: h })}</span>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                disabled={pending}
+                onClick={() => void save(w, null)}
+              >
+                <Trash2 className="size-3.5" />
+                <span className="sr-only">{t("remove")}</span>
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <Input
+          type="week"
+          value={week}
+          onChange={(e) => setWeek(e.target.value)}
+          aria-label={t("weekLabel")}
+          className="h-8 w-40"
+        />
+        <Input
+          type="number"
+          min={0}
+          max={168}
+          step={0.5}
+          value={hours}
+          onChange={(e) => setHours(e.target.value)}
+          placeholder={t("hoursLabel")}
+          aria-label={t("hoursLabel")}
+          className="h-8 w-24"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={pending || !week || hours === ""}
+          onClick={() => void onAdd()}
+        >
+          <Plus className="size-3.5" />
+          {t("add")}
+        </Button>
+      </div>
+    </div>
   )
 }

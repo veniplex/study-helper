@@ -5,6 +5,7 @@ import { and, eq, inArray } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
 import { material, materialAnnotation, materialFolder } from "@/db/schema"
+import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { logAudit } from "@/lib/audit"
 import { deleteFile } from "@/lib/storage"
@@ -83,7 +84,7 @@ export async function retryMaterialProcessing(materialId: string) {
 export async function renameMaterial(materialId: string, name: string) {
   const session = await requireSession()
   const clean = name.trim().slice(0, 300)
-  if (!clean) throw new Error("Name required")
+  if (!clean) actionError("MATERIAL_NAME_REQUIRED")
   const before = await ownMaterial(materialId, session.user.id)
   await db.update(material).set({ name: clean }).where(eq(material.id, materialId))
   await logAudit({
@@ -165,7 +166,7 @@ export async function createFolder(input: unknown) {
   const parentId = data.parentId ?? null
   await assertFolderInModule(parentId, data.moduleId, session.user.id)
   const name = sanitizeSegment(data.name)
-  if (!name) throw new Error("Name required")
+  if (!name) actionError("MATERIAL_NAME_REQUIRED")
   let created
   try {
     ;[created] = await db
@@ -173,7 +174,7 @@ export async function createFolder(input: unknown) {
       .values({ userId: session.user.id, moduleId: data.moduleId, parentId, name })
       .returning()
   } catch {
-    throw new Error("A folder with this name already exists here")
+    actionError("FOLDER_DUPLICATE")
   }
   await logAudit({
     userId: session.user.id,
@@ -191,11 +192,11 @@ export async function renameFolder(folderId: string, newName: string) {
   const session = await requireSession()
   const before = await ownFolder(folderId, session.user.id)
   const name = sanitizeSegment(newName)
-  if (!name) throw new Error("Name required")
+  if (!name) actionError("MATERIAL_NAME_REQUIRED")
   try {
     await db.update(materialFolder).set({ name }).where(eq(materialFolder.id, folderId))
   } catch {
-    throw new Error("A folder with this name already exists here")
+    actionError("FOLDER_DUPLICATE")
   }
   await logAudit({
     userId: session.user.id,
@@ -224,7 +225,7 @@ export async function moveFolder(folderId: string, newParentId: string | null) {
   try {
     await db.update(materialFolder).set({ parentId: newParentId }).where(eq(materialFolder.id, folderId))
   } catch {
-    throw new Error("A folder with this name already exists in the target")
+    actionError("FOLDER_DUPLICATE")
   }
   revalidatePath("/", "layout")
   return { ok: true as const }

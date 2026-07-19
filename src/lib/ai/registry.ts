@@ -163,6 +163,52 @@ export async function isAiAvailable(): Promise<boolean> {
   return models.length > 0
 }
 
+/** Provider types that authenticate against a hosted API and therefore need a
+ *  key. Self-hosted/local endpoints (Ollama, generic OpenAI-compatible gateways)
+ *  commonly accept requests without one, so a missing key isn't a dead-end. */
+const KEY_REQUIRED_TYPES: ReadonlySet<AiProvider["type"]> = new Set([
+  "anthropic",
+  "openai",
+  "google",
+  "mistral",
+  "groq",
+])
+
+/**
+ * True when a request for `provider` can authenticate: the provider type needs
+ * no key, a shared admin/env key is configured, or the user has stored their
+ * own BYOK key. Lets callers distinguish "AI is configured" from "this user can
+ * actually run it" and surface an actionable setup hint before a request
+ * dead-ends deep inside the SDK with a generic auth error (F4).
+ */
+export async function providerHasUsableKey(
+  provider: AiProvider,
+  userId: string
+): Promise<boolean> {
+  if (!KEY_REQUIRED_TYPES.has(provider.type)) return true
+  if (provider.apiKey) return true
+  const byok = await db.query.userAiKey.findFirst({
+    where: and(eq(userAiKey.userId, userId), eq(userAiKey.providerId, provider.id)),
+    columns: { id: true },
+  })
+  return Boolean(byok)
+}
+
+/**
+ * True when the user can authenticate a request for the given "providerId:modelId"
+ * ref (provider needs no key, shared key, or the user's BYOK key). Unknown
+ * provider/ref → false.
+ */
+export async function userHasUsableKeyForModel(ref: string, userId: string): Promise<boolean> {
+  try {
+    const { providerId } = parseModelRef(ref)
+    const provider = await getProvider(providerId)
+    return await providerHasUsableKey(provider, userId)
+  } catch {
+    return false
+  }
+}
+
 /**
  * The model a user's AI requests should use: their preferred model (if still
  * available), otherwise the admin-configured global default. Null when no
