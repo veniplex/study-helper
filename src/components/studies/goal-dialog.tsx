@@ -318,6 +318,7 @@ export function GoalDialog({
                       max={1}
                       defaultValue={cfg.bonus?.minCompletedShare ?? ""}
                     />
+                    <p className="text-muted-foreground text-xs">{t("bonus.minCompletedShareHint")}</p>
                   </div>
                 </div>
               )}

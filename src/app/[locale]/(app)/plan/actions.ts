@@ -1,11 +1,13 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
 import { semesterPlan, type PlanAvailability } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
 import { validateCron } from "@/lib/plan/absences"
+import { markPlanStale } from "@/lib/plan/staleness"
 import { ownSemester } from "@/lib/studies/access"
 import { recomputeSchedule } from "./schedule-actions"
 
@@ -77,6 +79,42 @@ export async function saveAvailability(semesterId: string, input: unknown) {
   } catch {
     // best-effort; availability was saved regardless
   }
+  revalidatePath("/", "layout")
+  return { ok: true as const }
+}
+
+const isoWeekSchema = z.string().regex(/^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$/)
+
+/**
+ * A9: sets ("this week I only have Nh") or clears (`hours == null`) a per-ISO-week
+ * study-hour cap on the semester plan. Marks the plan stale so the UI offers a
+ * recompute; the scheduler applies the cap on the next recompute.
+ */
+export async function saveWeekOverride(
+  semesterId: string,
+  isoWeek: string,
+  hours: number | null
+) {
+  const session = await requireSession()
+  await ownSemester(semesterId, session.user.id)
+  const week = isoWeekSchema.parse(isoWeek)
+  const value = hours == null ? null : z.number().min(0).max(168).parse(hours)
+
+  const plan = await db.query.semesterPlan.findFirst({
+    where: eq(semesterPlan.semesterId, semesterId),
+    columns: { id: true, weekOverrides: true },
+  })
+  if (!plan) throw new Error("No availability configured")
+
+  const next = { ...(plan.weekOverrides ?? {}) }
+  if (value == null) delete next[week]
+  else next[week] = value
+
+  await db
+    .update(semesterPlan)
+    .set({ weekOverrides: next })
+    .where(eq(semesterPlan.id, plan.id))
+  await markPlanStale(semesterId)
   revalidatePath("/", "layout")
   return { ok: true as const }
 }

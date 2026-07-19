@@ -1,18 +1,18 @@
 "use client"
 
 import * as React from "react"
-import { AlertTriangle, BookOpen, CalendarClock, Loader2, Sparkles } from "lucide-react"
+import { AlertTriangle, CalendarClock, Loader2, RefreshCw } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useRouter } from "@/i18n/navigation"
-import { updateModulePlanPrefs } from "@/app/[locale]/(app)/plan/plan-task-actions"
-import { recomputeSchedule, toggleSession } from "@/app/[locale]/(app)/plan/schedule-actions"
+import { toggleSession } from "@/app/[locale]/(app)/plan/schedule-actions"
 import type { ScheduleWarning } from "@/lib/plan/scheduler"
+import { ModulePlanPrefs } from "@/components/plan/module-plan-prefs"
+import { SetupChecklist, type SetupStep } from "@/components/plan/setup-checklist"
+import { useRecompute } from "@/components/plan/use-recompute"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 
 export type StrategyModule = {
@@ -34,9 +34,6 @@ export type PreviewSession = {
   moduleName: string | null
   taskCount: number
 }
-
-// Monday-first display order; values are JS weekday numbers.
-const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0] as const
 
 function isoWeekKey(dateStr: string): string {
   const d = new Date(dateStr)
@@ -60,15 +57,16 @@ export function StrategyBoard({
   hasAvailability,
   modules,
   sessions,
+  setupSteps = [],
 }: {
   semesterId: string
   hasAvailability: boolean
   modules: StrategyModule[]
   sessions: PreviewSession[]
+  setupSteps?: SetupStep[]
 }) {
   const t = useTranslations("plan")
-  const router = useRouter()
-  const [computing, setComputing] = React.useState(false)
+  const { recompute, computing } = useRecompute(semesterId)
   const [warnings, setWarnings] = React.useState<ScheduleWarning[]>([])
 
   const nameById = React.useMemo(
@@ -77,29 +75,24 @@ export function StrategyBoard({
   )
 
   async function onCompute() {
-    setComputing(true)
-    try {
-      const res = await recomputeSchedule(semesterId)
-      setWarnings(res.warnings)
-      toast.success(t("strategy.computed", { count: res.sessions ?? 0 }))
-      router.refresh()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-    } finally {
-      setComputing(false)
-    }
+    setWarnings(await recompute())
   }
+
+  const showChecklist = sessions.length === 0 && setupSteps.some((s) => !s.done)
 
   return (
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle className="text-base">{t("strategy.title")}</CardTitle>
         <Button size="sm" disabled={computing || !hasAvailability} onClick={() => void onCompute()}>
-          {computing ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+          {computing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
           {t("strategy.compute")}
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
+        {showChecklist && (
+          <SetupChecklist steps={setupSteps} storageKey={`strategy-${semesterId}`} />
+        )}
         {!hasAvailability && (
           <p className="text-muted-foreground text-sm">{t("strategy.needAvailability")}</p>
         )}
@@ -108,7 +101,19 @@ export function StrategyBoard({
         ) : (
           <div className="space-y-2">
             {modules.map((m) => (
-              <ModuleRow key={m.moduleId} module={m} />
+              <ModulePlanPrefs
+                key={m.moduleId}
+                moduleId={m.moduleId}
+                moduleName={m.name}
+                layout="row"
+                value={{
+                  active: m.active,
+                  weight: m.weight,
+                  weeklyHoursTarget: m.weeklyHoursTarget,
+                  phase: m.phase,
+                  preferredWeekdays: m.preferredWeekdays,
+                }}
+              />
             ))}
           </div>
         )}
@@ -122,7 +127,7 @@ export function StrategyBoard({
               >
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
                 <span>
-                  {t(`strategy.warning.${w.kind}`)}
+                  {t(`warningText.${w.kind}`)}
                   {w.moduleId && nameById.has(w.moduleId) && (
                     <span className="text-muted-foreground"> · {nameById.get(w.moduleId)}</span>
                   )}
@@ -135,112 +140,6 @@ export function StrategyBoard({
         <SessionPreview sessions={sessions} />
       </CardContent>
     </Card>
-  )
-}
-
-function ModuleRow({ module: m }: { module: StrategyModule }) {
-  const t = useTranslations("plan")
-  const router = useRouter()
-  const [active, setActive] = React.useState(m.active)
-  const [weight, setWeight] = React.useState(String(m.weight))
-  const [hours, setHours] = React.useState(m.weeklyHoursTarget == null ? "" : String(m.weeklyHoursTarget))
-  const [phase, setPhase] = React.useState(m.phase)
-  const [weekdays, setWeekdays] = React.useState<number[]>(m.preferredWeekdays ?? [])
-
-  async function save(patch: Record<string, unknown>) {
-    try {
-      await updateModulePlanPrefs(m.moduleId, patch)
-      router.refresh()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
-    }
-  }
-
-  return (
-    <div className={cn("rounded-md border p-3", !active && "opacity-60")}>
-      <div className="flex flex-wrap items-center gap-3">
-        <Switch
-          checked={active}
-          onCheckedChange={(on) => {
-            setActive(on)
-            void save({ active: on })
-          }}
-          aria-label={t("prefs.active")}
-        />
-        <span className="flex items-center gap-1.5 font-medium">
-          <BookOpen className="text-muted-foreground size-4" />
-          {m.name}
-        </span>
-        <div className="ml-auto flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-1.5 text-xs">
-            <span className="text-muted-foreground">{t("prefs.weight")}</span>
-            <Input
-              type="number"
-              min={0}
-              step={0.5}
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              onBlur={() => void save({ weight: Number(weight) || 1 })}
-              className="h-8 w-16"
-            />
-          </label>
-          <label className="flex items-center gap-1.5 text-xs">
-            <span className="text-muted-foreground">{t("prefs.weeklyHours")}</span>
-            <Input
-              type="number"
-              min={0}
-              step={0.5}
-              placeholder="—"
-              value={hours}
-              onChange={(e) => setHours(e.target.value)}
-              onBlur={() => void save({ weeklyHoursTarget: hours === "" ? null : Number(hours) })}
-              className="h-8 w-16"
-            />
-          </label>
-          <label className="flex items-center gap-1.5 text-xs">
-            <span className="text-muted-foreground">{t("prefs.phase")}</span>
-            <select
-              value={phase}
-              onChange={(e) => {
-                const v = Number(e.target.value)
-                setPhase(v)
-                void save({ phase: v })
-              }}
-              className="border-input bg-background h-8 rounded-md border px-2 text-sm"
-            >
-              <option value={1}>{t("phases.1")}</option>
-              <option value={2}>{t("phases.2")}</option>
-              <option value={3}>{t("phases.3")}</option>
-            </select>
-          </label>
-        </div>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span className="text-muted-foreground text-xs">{t("prefs.weekdays")}</span>
-        {WEEKDAYS.map((d) => {
-          const on = weekdays.includes(d)
-          return (
-            <button
-              key={d}
-              type="button"
-              aria-pressed={on}
-              onClick={() => {
-                const next = on ? weekdays.filter((x) => x !== d) : [...weekdays, d]
-                setWeekdays(next)
-                void save({ preferredWeekdays: next.length > 0 ? next : null })
-              }}
-              className={
-                on
-                  ? "bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-md text-xs font-medium"
-                  : "hover:bg-muted flex size-7 items-center justify-center rounded-md border text-xs"
-              }
-            >
-              {t(`weekdaysShort.${d}`)}
-            </button>
-          )
-        })}
-      </div>
-    </div>
   )
 }
 

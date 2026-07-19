@@ -13,8 +13,10 @@ import {
   Pencil,
   Plus,
   Presentation,
+  Settings2,
   Target,
   Trash2,
+  TriangleAlert,
 } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
 import { toast } from "sonner"
@@ -30,6 +32,8 @@ import type {
   GoalType,
   GradingSystem,
 } from "@/db/schema/studies"
+import type { Readiness } from "@/lib/plan/readiness"
+import type { ScheduleWarning } from "@/lib/plan/scheduler"
 import { formatGrade } from "@/lib/grades"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -104,6 +108,32 @@ export type GoalCardData = {
   attempts: AttemptDTO[]
   goalResult: GoalResultDTO | null
   assignmentStats: AssignmentStatsDTO | null
+}
+
+/**
+ * A7 exam readiness: the traffic light plus any persisted scheduler warnings
+ * for the module. `null` means there is no plan/availability yet, so the card
+ * shows a neutral "set up your plan" hint instead of a light.
+ */
+export type GoalReadinessDTO = {
+  status: Readiness
+  warningKinds: ScheduleWarning["kind"][]
+} | null
+
+const READINESS_DOT: Record<Readiness, string> = {
+  on_track: "bg-emerald-500",
+  at_risk: "bg-amber-500",
+  unreachable: "bg-red-500",
+}
+
+function ReadinessBadge({ status }: { status: Readiness }) {
+  const t = useTranslations("plan.readiness")
+  return (
+    <Badge variant="outline" className="gap-1.5">
+      <span className={cn("size-2 rounded-full", READINESS_DOT[status])} />
+      {t(status)}
+    </Badge>
+  )
 }
 
 /** Whole-day difference from today to a "YYYY-MM-DD" date (negative = past). */
@@ -205,22 +235,45 @@ function GoalCardShell({
 /** Readiness row for exam-like goals: due cards + last quiz score. */
 function ReadinessRow({
   stats,
+  dueCardsHref,
 }: {
   stats: { dueCards: number; lastQuizScore: number | null }
+  dueCardsHref: string
 }) {
   const t = useTranslations("goalCard")
   return (
     <div className="grid grid-cols-2 gap-3">
-      <div className="rounded-md border px-3 py-2">
+      <Link href={dueCardsHref} className="hover:bg-accent/50 rounded-md border px-3 py-2 transition-colors">
         <p className="text-muted-foreground text-xs">{t("dueCards")}</p>
         <p className="text-lg font-semibold tabular-nums">{stats.dueCards}</p>
-      </div>
+      </Link>
       <div className="rounded-md border px-3 py-2">
         <p className="text-muted-foreground text-xs">{t("lastScore")}</p>
         <p className="text-lg font-semibold tabular-nums">
           {stats.lastQuizScore != null ? `${stats.lastQuizScore}%` : t("noScore")}
         </p>
       </div>
+    </div>
+  )
+}
+
+/** Persisted scheduler warnings (human text) shown on an exam goal card. */
+function ReadinessWarnings({ kinds }: { kinds: ScheduleWarning["kind"][] }) {
+  const t = useTranslations("plan")
+  const seen = new Set<string>()
+  const unique = kinds.filter((k) => (seen.has(k) ? false : (seen.add(k), true)))
+  if (unique.length === 0) return null
+  return (
+    <div className="space-y-1.5">
+      {unique.map((kind) => (
+        <div
+          key={kind}
+          className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs"
+        >
+          <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
+          <span>{t(`warningText.${kind}`)}</span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -486,6 +539,7 @@ export function GoalCard({
   gradingSystem,
   stats,
   bonus,
+  readiness,
 }: {
   moduleId: string
   basePath: string
@@ -493,8 +547,10 @@ export function GoalCard({
   gradingSystem: GradingSystem
   stats: { dueCards: number; lastQuizScore: number | null }
   bonus: BonusProgressDTO | null
+  readiness?: GoalReadinessDTO
 }) {
   const t = useTranslations("goalCard")
+  const tPlan = useTranslations("plan.readiness")
   const tBonus = useTranslations("studies.bonus")
   const format = useFormatter()
   const { goal } = data
@@ -510,6 +566,7 @@ export function GoalCard({
         right={
           <>
             <CountdownBadge dueDate={goal.dueDate} />
+            {readiness && <ReadinessBadge status={readiness.status} />}
             {isGrade && (
               <GradeChip
                 passFail={goal.passFail}
@@ -522,8 +579,21 @@ export function GoalCard({
       >
         <div className="space-y-1.5">
           <p className="text-muted-foreground text-xs font-medium">{t("readiness")}</p>
-          <ReadinessRow stats={stats} />
+          <ReadinessRow stats={stats} dueCardsHref={`${basePath}/decks`} />
         </div>
+        {readiness ? (
+          <ReadinessWarnings kinds={readiness.warningKinds} />
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link href={`${basePath}/plan`} />}
+          >
+            <Settings2 className="size-4" />
+            {tPlan("setupHint")}
+          </Button>
+        )}
         {showAttempts && (
           <GoalAttempts
             goalId={goal.id}

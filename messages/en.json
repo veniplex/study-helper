@@ -1179,7 +1179,10 @@
     "cta": "Set up now",
     "aiTitle": "Enable AI features",
     "aiDesc": "As an admin you can add an AI provider to unlock chat, quiz and flashcard generation.",
-    "aiCta": "Set up AI"
+    "aiCta": "Set up AI",
+    "planTitle": "Set up your study plan",
+    "planDesc": "Set your availability and compute your personal study plan.",
+    "planCta": "To study plan"
   },
   "context": {
     "program": "Degree program",
@@ -1229,6 +1232,15 @@
       "4": "Th",
       "5": "Fr",
       "6": "Sa"
+    },
+    "weekOverride": {
+      "title": "Less time this week",
+      "hint": "Cap the study time for a specific week (e.g. holidays or exam crunch).",
+      "weekLabel": "Week",
+      "hoursLabel": "Hours",
+      "hours": "{hours} h",
+      "add": "Add",
+      "remove": "Remove"
     }
   },
   "plan": {
@@ -1262,7 +1274,9 @@
       "due": "by",
       "scheduled": "Scheduled",
       "goal": "Goal",
-      "noGoal": "No goal"
+      "noGoal": "No goal",
+      "outlineNudge": "There's no outline and no tasks for this exam yet. Create an outline or derive one from your materials.",
+      "outlineNudgeCta": "To materials"
     },
     "prefs": {
       "title": "Planning settings",
@@ -1273,7 +1287,8 @@
       "weekdays": "Preferred weekdays",
       "save": "Save",
       "saved": "Saved.",
-      "linkToSemester": "To semester coordination"
+      "linkToSemester": "To semester coordination",
+      "weightHint": "Weight: how much of your study time this module gets relative to others. 2 means twice as much time as a module with 1."
     },
     "sessions": {
       "title": "Upcoming sessions",
@@ -1303,6 +1318,56 @@
       "done": "Done",
       "tasks": "Tasks",
       "noTasks": "No tasks in this session."
+    },
+    "recompute": {
+      "summary": "Plan updated: {sessions} sessions, {warnings} warnings"
+    },
+    "staleness": {
+      "message": "Your plan is out of date — recompute it.",
+      "action": "Compute plan"
+    },
+    "catchUp": {
+      "message": "{count, plural, one {# missed session} other {# missed sessions}} — catch up.",
+      "action": "Catch up"
+    },
+    "readiness": {
+      "on_track": "On track",
+      "at_risk": "At risk",
+      "unreachable": "Unreachable",
+      "setupHint": "Set up plan"
+    },
+    "warningText": {
+      "deadline_unreachable": "There isn't enough time for all tasks before the exam. Add more availability or move/remove tasks.",
+      "no_capacity": "Too little free time in the period. Add more available time windows.",
+      "horizon_clipped": "Some tasks are too far in the future and haven't been scheduled yet. They'll appear closer to the date."
+    },
+    "checklist": {
+      "title": "Finish setup",
+      "progress": "{done} of {total} done",
+      "dismiss": "Dismiss",
+      "go": "Go",
+      "steps": {
+        "module": {
+          "title": "Module created",
+          "desc": "Create a module for your subject."
+        },
+        "examDate": {
+          "title": "Exam date set",
+          "desc": "Enter the date of your exam."
+        },
+        "availability": {
+          "title": "Availability configured",
+          "desc": "Set when you can study each week."
+        },
+        "tasks": {
+          "title": "Tasks generated",
+          "desc": "Create tasks from your goals."
+        },
+        "plan": {
+          "title": "Plan computed",
+          "desc": "Compute your study plan."
+        }
+      }
     }
   },
   "learnSession": {
@@ -1407,7 +1472,8 @@
         "none": "No bonus",
         "percent_points": "Percentage points on result",
         "grade_steps": "Grade steps better"
-      }
+      },
+      "minCompletedShareHint": "Share as a decimal between 0 and 1 (e.g. 0.5 = half of the submissions must be done)."
     }
   },
   "goalCard": {

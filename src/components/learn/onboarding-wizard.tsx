@@ -44,6 +44,7 @@ export function OnboardingWizard({
     { key: "module" as const, done: hasModule, enabled: hasSemester },
   ]
   const current = steps.find((s) => !s.done && s.enabled) ?? steps[steps.length - 1]
+  const allDone = steps.every((s) => s.done)
 
   return (
     <div className="space-y-4">
@@ -97,6 +98,23 @@ export function OnboardingWizard({
           })}
         </CardContent>
       </Card>
+
+      {allDone && semesterId && (
+        <Card>
+          <CardContent className="flex items-center gap-3 py-4">
+            <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
+              <ArrowRight className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">{t("planTitle")}</p>
+              <p className="text-muted-foreground text-xs">{t("planDesc")}</p>
+            </div>
+            <Button size="sm" nativeButton={false} render={<Link href={`/plan/${semesterId}`} />}>
+              {t("planCta")}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {isAdmin && !aiConfigured && (
         <Card>

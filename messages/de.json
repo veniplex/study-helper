@@ -1179,7 +1179,10 @@
     "cta": "Jetzt einrichten",
     "aiTitle": "KI-Funktionen aktivieren",
     "aiDesc": "Als Administrator kannst du einen KI-Anbieter hinterlegen, um Chat, Quiz- und Karten-Generierung freizuschalten.",
-    "aiCta": "KI einrichten"
+    "aiCta": "KI einrichten",
+    "planTitle": "Lernplan einrichten",
+    "planDesc": "Lege deine Verfügbarkeit fest und berechne deinen persönlichen Lernplan.",
+    "planCta": "Zum Lernplan"
   },
   "context": {
     "program": "Studiengang",
@@ -1229,6 +1232,15 @@
       "4": "Do",
       "5": "Fr",
       "6": "Sa"
+    },
+    "weekOverride": {
+      "title": "Diese Woche weniger Zeit",
+      "hint": "Begrenze die Lernzeit für eine bestimmte Woche (z. B. wegen Urlaub oder Prüfungsstress).",
+      "weekLabel": "Woche",
+      "hoursLabel": "Stunden",
+      "hours": "{hours} h",
+      "add": "Hinzufügen",
+      "remove": "Entfernen"
     }
   },
   "plan": {
@@ -1262,7 +1274,9 @@
       "due": "bis",
       "scheduled": "Verplant",
       "goal": "Lernziel",
-      "noGoal": "Kein Lernziel"
+      "noGoal": "Kein Lernziel",
+      "outlineNudge": "Für die Prüfung gibt es noch keine Gliederung und keine Aufgaben. Lege eine Gliederung an oder leite sie aus deinen Materialien ab.",
+      "outlineNudgeCta": "Zu den Materialien"
     },
     "prefs": {
       "title": "Planungs-Einstellungen",
@@ -1273,7 +1287,8 @@
       "weekdays": "Bevorzugte Wochentage",
       "save": "Speichern",
       "saved": "Gespeichert.",
-      "linkToSemester": "Zur Semester-Koordination"
+      "linkToSemester": "Zur Semester-Koordination",
+      "weightHint": "Gewichtung: Wie viel deiner Lernzeit dieses Modul im Vergleich bekommt. 2 heißt doppelt so viel Zeit wie ein Modul mit 1."
     },
     "sessions": {
       "title": "Kommende Termine",
@@ -1303,6 +1318,56 @@
       "done": "Erledigt",
       "tasks": "Aufgaben",
       "noTasks": "Keine Aufgaben in dieser Einheit."
+    },
+    "recompute": {
+      "summary": "Plan aktualisiert: {sessions} Sitzungen, {warnings} Warnungen"
+    },
+    "staleness": {
+      "message": "Dein Plan ist veraltet — neu berechnen.",
+      "action": "Plan berechnen"
+    },
+    "catchUp": {
+      "message": "{count, plural, one {# verpasste Session} other {# verpasste Sessions}} — nachholen.",
+      "action": "Nachholen"
+    },
+    "readiness": {
+      "on_track": "Auf Kurs",
+      "at_risk": "Knapp",
+      "unreachable": "Nicht schaffbar",
+      "setupHint": "Plan einrichten"
+    },
+    "warningText": {
+      "deadline_unreachable": "Die Zeit reicht nicht für alle Aufgaben vor der Prüfung. Erhöhe deine Verfügbarkeit oder verschiebe bzw. entferne Aufgaben.",
+      "no_capacity": "Zu wenig freie Zeit im Zeitraum. Trage mehr verfügbare Zeitfenster ein.",
+      "horizon_clipped": "Einige Aufgaben liegen zu weit in der Zukunft und wurden noch nicht verplant. Sie erscheinen näher am Termin."
+    },
+    "checklist": {
+      "title": "Einrichtung abschließen",
+      "progress": "{done} von {total} erledigt",
+      "dismiss": "Ausblenden",
+      "go": "Los",
+      "steps": {
+        "module": {
+          "title": "Modul angelegt",
+          "desc": "Lege ein Modul für dein Fach an."
+        },
+        "examDate": {
+          "title": "Prüfungstermin gesetzt",
+          "desc": "Trage das Datum deiner Prüfung ein."
+        },
+        "availability": {
+          "title": "Verfügbarkeit konfiguriert",
+          "desc": "Lege fest, wann du wöchentlich lernen kannst."
+        },
+        "tasks": {
+          "title": "Aufgaben generiert",
+          "desc": "Erstelle Aufgaben aus deinen Lernzielen."
+        },
+        "plan": {
+          "title": "Plan berechnet",
+          "desc": "Berechne deinen Lernplan."
+        }
+      }
     }
   },
   "learnSession": {
@@ -1407,7 +1472,8 @@
         "none": "Kein Bonus",
         "percent_points": "Prozentpunkte auf Ergebnis",
         "grade_steps": "Notenschritte besser"
-      }
+      },
+      "minCompletedShareHint": "Anteil als Dezimalzahl zwischen 0 und 1 (z. B. 0,5 = die Hälfte der Abgaben muss erledigt sein)."
     }
   },
   "goalCard": {
