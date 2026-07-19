@@ -131,6 +131,10 @@ export async function ensureModuleWritingProject(moduleId: string) {
   }
 
   const variant = isThesis ? "scientific" : goal.config.variant ?? "scientific"
+  // Concurrent first-touches of the same goal would both pass the `existing`
+  // check above and double-insert, tripping `writing_active_per_goal_uq` (or the
+  // thesis-per-program index). `onConflictDoNothing` makes the loser a no-op; we
+  // then re-select the row the winner created and return that.
   const [created] = await db
     .insert(writingProject)
     .values({
@@ -145,9 +149,42 @@ export async function ensureModuleWritingProject(moduleId: string) {
       semesterId: mod.semesterId,
       dueDate: goal.dueDate ?? null,
     })
+    .onConflictDoNothing()
     .returning({ id: writingProject.id })
-  revalidateWriting(await ownWriting(created.id, session.user.id))
-  return created.id
+  if (created) {
+    revalidateWriting(await ownWriting(created.id, session.user.id))
+    return created.id
+  }
+
+  // Lost the race — the live row already exists. Both code paths set
+  // `goalId = goal.id`, so re-selecting the live row by goal resolves either a
+  // term-paper or a thesis conflict.
+  const raced = await db.query.writingProject.findFirst({
+    where: and(eq(writingProject.goalId, goal.id), isNull(writingProject.supersededById)),
+    columns: { id: true },
+  })
+  if (raced) return raced.id
+  // Thesis conflict where the winning row hasn't been goal-linked yet: fall back
+  // to the program-scoped live thesis and link it.
+  if (isThesis) {
+    const liveThesis = await db.query.writingProject.findFirst({
+      where: and(
+        eq(writingProject.userId, session.user.id),
+        eq(writingProject.programId, mod.semester.programId),
+        eq(writingProject.kind, "thesis"),
+        isNull(writingProject.supersededById)
+      ),
+      columns: { id: true },
+    })
+    if (liveThesis) {
+      await db
+        .update(writingProject)
+        .set({ goalId: goal.id })
+        .where(eq(writingProject.id, liveThesis.id))
+      return liveThesis.id
+    }
+  }
+  throw new Error("Not found")
 }
 
 // ---- Project CRUD -----------------------------------------------------------

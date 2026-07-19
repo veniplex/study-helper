@@ -15,6 +15,7 @@ export const QUEUE_FINALIZE_UPLOAD = "finalize-upload"
 export const QUEUE_SEND_REMINDERS = "send-reminders"
 export const QUEUE_DAILY_PLAN = "daily-plan-reminder"
 export const QUEUE_CHECK_UPDATES = "check-updates"
+export const QUEUE_SWEEP_ORPHAN_FILES = "sweep-orphan-files"
 
 const ALL_QUEUES = [
   QUEUE_EMBED_MATERIAL,
@@ -28,7 +29,12 @@ const ALL_QUEUES = [
   QUEUE_SEND_REMINDERS,
   QUEUE_DAILY_PLAN,
   QUEUE_CHECK_UPDATES,
+  QUEUE_SWEEP_ORPHAN_FILES,
 ]
+
+/** Payload for the orphan-file sweep: storage paths whose material rows were
+ *  (or are about to be) removed by a cascade delete. */
+export type SweepOrphanFilesPayload = { paths: string[] }
 
 /** Whether this process should run job handlers in-process (default true). Set
  *  WORKERS_IN_PROCESS=false on the web tier when a dedicated worker runs. */
@@ -45,10 +51,15 @@ export async function startClient(): Promise<PgBoss> {
   boss.on("error", (error: Error) => console.error("[pg-boss]", error))
   await boss.start()
   for (const queue of ALL_QUEUES) await boss.createQueue(queue)
-  await boss.schedule(QUEUE_SEND_REMINDERS, "*/5 * * * *")
-  await boss.schedule(QUEUE_POLL_BATCHES, "*/5 * * * *")
-  await boss.schedule(QUEUE_DAILY_PLAN, "0 7 * * *")
-  await boss.schedule(QUEUE_CHECK_UPDATES, "0 6 * * *")
+  // pg-boss evaluates cron in the schedule's timezone. It defaults to UTC, which
+  // makes "0 7 * * *" fire at 07:00 UTC — often the wrong local morning for a
+  // self-hosted single-tenant deploy. `CRON_TZ` (IANA name, e.g.
+  // "Europe/Berlin") overrides it; UTC stays the default.
+  const tz = process.env.CRON_TZ || "UTC"
+  await boss.schedule(QUEUE_SEND_REMINDERS, "*/5 * * * *", {}, { tz })
+  await boss.schedule(QUEUE_POLL_BATCHES, "*/5 * * * *", {}, { tz })
+  await boss.schedule(QUEUE_DAILY_PLAN, "0 7 * * *", {}, { tz })
+  await boss.schedule(QUEUE_CHECK_UPDATES, "0 6 * * *", {}, { tz })
   return boss
 }
 
@@ -129,6 +140,21 @@ export async function registerWorkers(boss: PgBoss): Promise<void> {
       await checkForUpdate()
     } catch (error) {
       console.error("[check-updates]", error)
+    }
+  })
+
+  await boss.work<SweepOrphanFilesPayload>(QUEUE_SWEEP_ORPHAN_FILES, async (jobs) => {
+    const { deleteFile } = await import("@/lib/storage")
+    for (const job of jobs) {
+      for (const path of job.data.paths) {
+        // Best-effort: a path that's already gone (double-run, prior partial
+        // sweep) is a no-op — never fail the whole batch over one missing file.
+        try {
+          await deleteFile(path)
+        } catch (error) {
+          console.warn("[sweep-orphan-files] delete failed", path, error)
+        }
+      }
     }
   })
 }
@@ -238,4 +264,24 @@ export async function enqueueFinalizeUpload(
     retryDelay: 30,
     singletonKey: payload.tusId,
   })
+}
+
+/**
+ * Enqueues deletion of storage blobs orphaned by a cascade delete (a program /
+ * semester / module and all its materials). Deleting the underlying files is
+ * deferred to this job so the delete action returns fast and a crash mid-sweep
+ * just retries (each unlink is idempotent). Chunked so a huge subtree doesn't
+ * produce one oversized job payload.
+ */
+export async function enqueueSweepOrphanFiles(paths: string[]): Promise<void> {
+  if (paths.length === 0) return
+  const boss = await getBoss()
+  const CHUNK = 500
+  for (let i = 0; i < paths.length; i += CHUNK) {
+    await boss.send(
+      QUEUE_SWEEP_ORPHAN_FILES,
+      { paths: paths.slice(i, i + CHUNK) },
+      { retryLimit: 5, retryDelay: 60 }
+    )
+  }
 }

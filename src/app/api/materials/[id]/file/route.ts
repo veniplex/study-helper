@@ -48,6 +48,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           },
         })
       }
+      // A range was requested but is unsatisfiable (start past EOF, or start >
+      // end). Per RFC 7233 answer 416 with `Content-Range: bytes */<size>`
+      // rather than silently returning the full 200 body.
+      return new Response(null, {
+        status: 416,
+        headers: {
+          "Content-Range": `bytes */${size}`,
+          "Accept-Ranges": "bytes",
+        },
+      })
     }
   }
 

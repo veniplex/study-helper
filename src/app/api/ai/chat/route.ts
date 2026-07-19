@@ -5,7 +5,7 @@ import { db } from "@/db"
 import { aiConversation, aiMessage, studyEvent } from "@/db/schema"
 import { getSession } from "@/lib/auth/session"
 import { getLanguageModel, listAvailableModels } from "@/lib/ai/registry"
-import { assertWithinLimit } from "@/lib/ai/usage"
+import { assertWithinLimit, isOverLimit } from "@/lib/ai/usage"
 import { normalizeUsage, recordAiAudit, recordAiUsage } from "@/lib/ai/run"
 import { searchChunks, searchChunksInMaterials } from "@/lib/ai/rag"
 import { MODE_PROMPTS, type ChatMode } from "@/lib/ai/modes"
@@ -76,6 +76,16 @@ export async function POST(request: Request) {
     return new Response(error instanceof Error ? error.message : "Limit reached", {
       status: 429,
     })
+  }
+
+  // Reject oversized bodies before buffering them: `request.json()` reads the
+  // whole payload into memory, so the per-message char/history caps below apply
+  // too late to stop a huge upload. The real message cap is ~32k chars; 1 MB
+  // leaves generous headroom for JSON/attachment overhead.
+  const MAX_BODY_BYTES = 1_000_000
+  const contentLength = Number(request.headers.get("content-length") ?? "")
+  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+    return new Response("Payload too large", { status: 413 })
   }
 
   const body = (await request.json().catch(() => null)) as {
@@ -449,7 +459,9 @@ export async function POST(request: Request) {
           .filter((p): p is { type: "text"; text: string } => p.type === "text")
           .map((p) => p.text)
           .join(" ")
-        if (userText) {
+        // Title generation is a paid model call; degrade gracefully over the
+        // monthly cap by keeping the truncated placeholder title.
+        if (userText && !(await isOverLimit(userId))) {
           try {
             const { generateText } = await import("ai")
             const { UTILITY_PARAMS } = await import("@/lib/ai/params")

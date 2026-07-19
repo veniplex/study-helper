@@ -4,6 +4,7 @@ import { z } from "zod"
 import { db } from "@/db"
 import { appConfig } from "@/db/schema"
 import { decrypt, encrypt } from "./crypto"
+import { createTtlCache } from "./ttl-cache"
 
 // ---- Setting schemas -------------------------------------------------------
 
@@ -184,7 +185,35 @@ const defaults: { [K in SettingKey]: SettingValue<K> } = {
 
 // ---- Store -----------------------------------------------------------------
 
+/**
+ * Short-TTL in-process cache for resolved (already decrypted + validated)
+ * settings. `getSetting` is on very hot paths — every RAG search reads `ai` 3×,
+ * every chat turn reads it — and each miss hits the DB and AES-decrypts. A 30s
+ * TTL keeps admin-panel changes near-instant while collapsing the repeated
+ * reads. Survives HMR via a global (mirrors the lazy auth/db singletons) and is
+ * invalidated eagerly on write. The cached value is the post-decrypt result, so
+ * a hit never re-decrypts.
+ */
+const SETTINGS_TTL_MS = 30_000
+const globalForSettings = globalThis as unknown as {
+  settingsCache?: ReturnType<typeof createTtlCache<unknown>>
+}
+const settingsCache = (globalForSettings.settingsCache ??= createTtlCache<unknown>(SETTINGS_TTL_MS))
+
+/** Drops the settings cache (all keys). Call when settings change out-of-band. */
+export function bustSettingsCache(): void {
+  settingsCache.clear()
+}
+
 export async function getSetting<K extends SettingKey>(key: K): Promise<SettingValue<K> | null> {
+  const cached = settingsCache.get(key)
+  if (cached !== undefined) return cached as SettingValue<K> | null
+  const value = await loadSetting(key)
+  settingsCache.set(key, value)
+  return value
+}
+
+async function loadSetting<K extends SettingKey>(key: K): Promise<SettingValue<K> | null> {
   const row = await db.query.appConfig.findFirst({ where: eq(appConfig.key, key) })
   if (!row) return (defaults[key] ?? null) as SettingValue<K> | null
   let raw = row.value
@@ -208,10 +237,12 @@ export async function setSetting<K extends SettingKey>(
       target: appConfig.key,
       set: { value: stored, updatedAt: new Date() },
     })
+  settingsCache.delete(key)
 }
 
 export async function deleteSetting(key: SettingKey): Promise<void> {
   await db.delete(appConfig).where(eq(appConfig.key, key))
+  settingsCache.delete(key)
 }
 
 /** The configured app name (branding), falling back to "StudyHelper". */

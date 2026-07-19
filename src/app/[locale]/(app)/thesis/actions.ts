@@ -94,25 +94,43 @@ export async function retryThesis(thesisId: string) {
     }
   }
 
-  const [created] = await db
-    .insert(writingProject)
-    .values({
-      userId: session.user.id,
-      title: prev.title,
-      thesisType: prev.thesisType,
-      programId: prev.programId,
-      goalId: prev.goalId,
-      semesterId: prev.semesterId,
-      attempt: prev.attempt + 1,
-      phase: "topic",
-    })
-    .returning({ id: writingProject.id })
-  await db
-    .update(writingProject)
-    .set({ supersededById: created.id })
-    .where(eq(writingProject.id, thesisId))
+  // `thesis_active_per_program_uq` is a partial unique index over
+  // (userId, programId) where `supersededById is null and programId is not
+  // null`. Partial indexes aren't deferrable, so it's checked per-statement:
+  // inserting the new attempt with `programId` set while the old row is still
+  // live would momentarily leave TWO live rows for the program → violation.
+  // Order the writes inside a transaction so the predicate never matches two
+  // rows at once: (1) insert the new attempt WITHOUT programId (predicate
+  // false), (2) supersede the old row (it drops out of the predicate),
+  // (3) attach programId to the new row (now the only live row for the program).
+  const newId = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(writingProject)
+      .values({
+        userId: session.user.id,
+        title: prev.title,
+        thesisType: prev.thesisType,
+        programId: null,
+        goalId: prev.goalId,
+        semesterId: prev.semesterId,
+        attempt: prev.attempt + 1,
+        phase: "topic",
+      })
+      .returning({ id: writingProject.id })
+    await tx
+      .update(writingProject)
+      .set({ supersededById: created.id })
+      .where(eq(writingProject.id, thesisId))
+    if (prev.programId) {
+      await tx
+        .update(writingProject)
+        .set({ programId: prev.programId })
+        .where(eq(writingProject.id, created.id))
+    }
+    return created.id
+  })
   revalidatePath("/thesis")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: newId }
 }
 
 const thesisUpdateSchema = thesisSchema.partial().extend({

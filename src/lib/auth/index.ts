@@ -9,7 +9,7 @@ import { db } from "@/db"
 import * as schema from "@/db/schema"
 import { env } from "@/lib/env"
 import { sendEmail } from "@/lib/email"
-import { getSetting } from "@/lib/settings"
+import { bustSettingsCache, getSetting } from "@/lib/settings"
 
 type DynamicAuthConfig = {
   registrationMode: "open" | "closed" | "invite"
@@ -94,10 +94,30 @@ function buildAuth(config: DynamicAuthConfig) {
     databaseHooks: {
       user: {
         create: {
-          before: async (user) => {
-            // First user becomes admin automatically
-            const [{ value: userCount }] = await db.select({ value: count() }).from(schema.user)
-            return { data: { ...user, role: userCount === 0 ? "admin" : "user" } }
+          // Never decide admin here: counting users before the row is inserted
+          // is racy — two concurrent first sign-ups both read 0 and both become
+          // admin. Create everyone as a normal user; the `after` hook promotes
+          // the first one atomically.
+          before: async (user) => ({ data: { ...user, role: "user" } }),
+          // Exactly-one-first-admin, race-free. `after` runs once the create
+          // transaction has committed (queueAfterTransactionHook), so the new
+          // row is visible here. A transaction-scoped advisory lock serializes
+          // concurrent first sign-ups: the first to acquire it sees 0 admins and
+          // promotes itself; the rest see 1 and no-op.
+          after: async (user) => {
+            await db.transaction(async (tx) => {
+              await tx.execute(sql`select pg_advisory_xact_lock(hashtext('studyhelper:first-admin'))`)
+              const [{ value: adminCount }] = await tx
+                .select({ value: count() })
+                .from(schema.user)
+                .where(eq(schema.user.role, "admin"))
+              if (adminCount === 0) {
+                await tx
+                  .update(schema.user)
+                  .set({ role: "admin" })
+                  .where(eq(schema.user.id, user.id))
+              }
+            })
           },
         },
       },
@@ -156,6 +176,9 @@ export function getAuth(): Promise<Auth> {
 /** Call after changing auth-related settings so the next request picks them up. */
 export function bustAuthCache(): void {
   globalForAuth.authInstance = undefined
+  // The auth instance is built from cached settings; drop those too so the
+  // rebuild reads the just-written values instead of a stale 30s-TTL copy.
+  bustSettingsCache()
 }
 
 // For CLI schema generation see src/lib/auth/cli.ts. Runtime code must use
