@@ -3,7 +3,7 @@
 import * as React from "react"
 import { PartyPopper } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { Link } from "@/i18n/navigation"
 import { AnalyzeButton } from "@/components/learn/analyze-button"
 import { Markdown } from "@/components/ai/markdown"
@@ -52,6 +52,7 @@ export function StudySession({
 }) {
   const t = useTranslations("learn.decks")
   const tSession = useTranslations("learnSession")
+  const showError = useActionErrorToast()
   const [queue, setQueue] = React.useState(cards)
   const [revealed, setRevealed] = React.useState(false)
   // Rating buttons stay visible once the card was revealed, even after
@@ -181,7 +182,7 @@ export function StudySession({
         setRevealed(false)
         setEverRevealed(false)
       } else {
-        toast.error(error instanceof Error ? error.message : String(error))
+        showError(error)
       }
     } finally {
       setPending(false)

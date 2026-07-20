@@ -503,7 +503,9 @@
       "bonusMinAvg": "Min. avg result (%)",
       "bonusMinShare": "Min. share completed (0–1)",
       "bonusHint": "Bonus applies only when the conditions are met. Only graded assignments count.",
-      "isThesis": "Is thesis (final project)"
+      "isThesis": "Is thesis (final project)",
+      "chooseIcon": "Choose icon: {name}",
+      "chooseColor": "Choose color: {name}"
     },
     "contacts": {
       "title": "Contacts",
@@ -702,7 +704,9 @@
       "title": "Events",
       "allDay": "All day",
       "noEvents": "No events on this day.",
-      "openCalendar": "Open calendar"
+      "openCalendar": "Open calendar",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month"
     },
     "semesterOverview": "Semester overview",
     "programSettings": "Settings",
@@ -964,7 +968,8 @@
       "micDenied": "Microphone access was denied."
     },
     "errorNoKey": "No API key is set for this AI model.",
-    "errorNoKeyCta": "Set it up in Settings"
+    "errorNoKeyCta": "Set it up in Settings",
+    "send": "Send"
   },
   "learn": {
     "title": "Learn",
@@ -1286,7 +1291,8 @@
       "hours": "{hours} h",
       "add": "Add",
       "remove": "Remove"
-    }
+    },
+    "toggleSession": "Mark session done: {label}"
   },
   "plan": {
     "weekdaysShort": {
@@ -1356,7 +1362,8 @@
       "title": "Preview",
       "empty": "No plan computed yet.",
       "week": "Week {week}",
-      "taskCount": "{count} tasks"
+      "taskCount": "{count} tasks",
+      "toggleSession": "Mark session done: {label}"
     },
     "session": {
       "title": "Study session",
@@ -1454,6 +1461,18 @@
     "thesisPlanner": "Thesis planner",
     "moreTools": "More tools",
     "comingSoon": "Coming soon"
+  },
+  "errorPages": {
+    "boundary": {
+      "title": "Something went wrong",
+      "description": "This page could not be loaded. Trying again usually helps.",
+      "retry": "Try again"
+    },
+    "notFound": {
+      "title": "Page not found",
+      "description": "This page doesn't exist, or you don't have access to it.",
+      "backHome": "Back to overview"
+    }
   },
   "offline": {
     "synced": "{count, plural, one {# offline change synced.} other {# offline changes synced.}}",

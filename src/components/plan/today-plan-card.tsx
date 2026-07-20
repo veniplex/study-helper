@@ -8,6 +8,7 @@ import { Link, useRouter } from "@/i18n/navigation"
 import { toggleSession } from "@/app/[locale]/(app)/plan/schedule-actions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import { enqueue, isNetworkError } from "@/lib/offline/outbox"
 import { cn } from "@/lib/utils"
 
 export type TodayPlanSession = {
@@ -36,6 +37,15 @@ export function TodayPlanCard({ items }: { items: TodayPlanSession[] }) {
         await toggleSession(id, done)
         router.refresh()
       } catch (error) {
+        // Offline: queue it like card reviews do, instead of failing with a
+        // toast. The outbox already had a "toggle-session" handler wired up —
+        // nothing ever enqueued for it, so ticking off a session was the one
+        // study action that didn't work on the train.
+        if (isNetworkError(error)) {
+          await enqueue("toggle-session", { sessionId: id, done })
+          router.refresh()
+          return
+        }
         showError(error)
       }
     })
@@ -70,6 +80,10 @@ export function TodayPlanCard({ items }: { items: TodayPlanSession[] }) {
                   checked={item.done}
                   disabled={pending}
                   onCheckedChange={(on) => onToggle(item.id, Boolean(on))}
+                  aria-label={t("toggleSession", {
+                    // moduleName is null for module-independent sessions.
+                    label: [item.moduleName, item.startTime].filter(Boolean).join(" · "),
+                  })}
                 />
                 <span className={cn("font-medium", item.done && "line-through")}>
                   {item.moduleName ?? ""}

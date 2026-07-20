@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { and, eq, gte, sum } from "drizzle-orm"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
@@ -15,6 +16,11 @@ import { ProfileSettings } from "@/components/settings/profile-settings"
 import { SecuritySettings } from "@/components/settings/security-settings"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Link } from "@/i18n/navigation"
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("nav")
+  return { title: t("settings") }
+}
 
 export default async function SettingsPage() {
   const session = await requireSession()

@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { desc, eq } from "drizzle-orm"
 import { getLocale, getTranslations } from "next-intl/server"
 import { Sparkles } from "lucide-react"
@@ -11,6 +12,11 @@ import { Link, redirect } from "@/i18n/navigation"
 /** The AI hub page was replaced by the chat dock — /ai now opens the most
  * recent conversation in fullscreen (creating one if none exists). When no AI
  * model is configured it shows a setup hint instead of creating a dead chat. */
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("nav")
+  return { title: t("ai") }
+}
+
 export default async function AiPage() {
   const session = await requireSession()
   const locale = await getLocale()

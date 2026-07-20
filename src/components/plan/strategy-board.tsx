@@ -13,6 +13,7 @@ import { useRecompute } from "@/components/plan/use-recompute"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import { enqueue, isNetworkError } from "@/lib/offline/outbox"
 import { cn } from "@/lib/utils"
 
 export type StrategyModule = {
@@ -160,6 +161,12 @@ function SessionPreview({ sessions }: { sessions: PreviewSession[] }) {
       await toggleSession(id, done)
       router.refresh()
     } catch (error) {
+      // Offline: queue for replay instead of failing, same as the dashboard card.
+      if (isNetworkError(error)) {
+        await enqueue("toggle-session", { sessionId: id, done })
+        router.refresh()
+        return
+      }
       showError(error)
     }
   }
@@ -188,6 +195,9 @@ function SessionPreview({ sessions }: { sessions: PreviewSession[] }) {
                 <Checkbox
                   checked={s.done}
                   onCheckedChange={(on) => void onToggle(s.id, Boolean(on))}
+                  aria-label={t("preview.toggleSession", {
+                    label: [s.moduleName, s.startTime].filter(Boolean).join(" · "),
+                  })}
                 />
                 <span className={cn("font-medium", s.done && "line-through")}>
                   {s.moduleName ?? ""}

@@ -503,7 +503,9 @@
       "bonusMinAvg": "Mind. Ø-Ergebnis (%)",
       "bonusMinShare": "Mind. Anteil erledigt (0–1)",
       "bonusHint": "Bonus zählt nur, wenn die Bedingungen erfüllt sind. Nur bewertete Aufgaben zählen.",
-      "isThesis": "Ist Abschlussarbeit (Thesis)"
+      "isThesis": "Ist Abschlussarbeit (Thesis)",
+      "chooseIcon": "Symbol wählen: {name}",
+      "chooseColor": "Farbe wählen: {name}"
     },
     "contacts": {
       "title": "Ansprechpartner",
@@ -702,7 +704,9 @@
       "title": "Termine",
       "allDay": "Ganztägig",
       "noEvents": "Keine Termine an diesem Tag.",
-      "openCalendar": "Kalender öffnen"
+      "openCalendar": "Kalender öffnen",
+      "prevMonth": "Vorheriger Monat",
+      "nextMonth": "Nächster Monat"
     },
     "semesterOverview": "Semesterübersicht",
     "programSettings": "Einstellungen",
@@ -964,7 +968,8 @@
       "micDenied": "Mikrofonzugriff wurde verweigert."
     },
     "errorNoKey": "Für dieses KI-Modell ist kein API-Key hinterlegt.",
-    "errorNoKeyCta": "In den Einstellungen einrichten"
+    "errorNoKeyCta": "In den Einstellungen einrichten",
+    "send": "Senden"
   },
   "learn": {
     "title": "Lernen",
@@ -1286,7 +1291,8 @@
       "hours": "{hours} h",
       "add": "Hinzufügen",
       "remove": "Entfernen"
-    }
+    },
+    "toggleSession": "Lerneinheit erledigt: {label}"
   },
   "plan": {
     "weekdaysShort": {
@@ -1356,7 +1362,8 @@
       "title": "Vorschau",
       "empty": "Noch kein Plan berechnet.",
       "week": "Woche {week}",
-      "taskCount": "{count} Aufgaben"
+      "taskCount": "{count} Aufgaben",
+      "toggleSession": "Lerneinheit erledigt: {label}"
     },
     "session": {
       "title": "Lerneinheit",
@@ -1454,6 +1461,18 @@
     "thesisPlanner": "Thesis-Planer",
     "moreTools": "Weitere Werkzeuge",
     "comingSoon": "In Arbeit"
+  },
+  "errorPages": {
+    "boundary": {
+      "title": "Etwas ist schiefgelaufen",
+      "description": "Diese Seite konnte nicht geladen werden. Meist hilft ein erneuter Versuch.",
+      "retry": "Erneut versuchen"
+    },
+    "notFound": {
+      "title": "Seite nicht gefunden",
+      "description": "Diese Seite existiert nicht oder du hast keinen Zugriff darauf.",
+      "backHome": "Zur Übersicht"
+    }
   },
   "offline": {
     "synced": "{count, plural, one {# Offline-Änderung synchronisiert.} other {# Offline-Änderungen synchronisiert.}}",

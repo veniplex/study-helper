@@ -499,7 +499,12 @@ export function Chat({
               <Square className="size-4" />
             </Button>
           ) : (
-            <Button size="icon" onClick={submit} disabled={!input.trim() || !model}>
+            <Button
+              size="icon"
+              onClick={submit}
+              disabled={!input.trim() || !model}
+              aria-label={t("send")}
+            >
               <ArrowUp className="size-4" />
             </Button>
           )}

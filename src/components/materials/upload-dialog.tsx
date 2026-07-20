@@ -4,6 +4,7 @@ import * as React from "react"
 import { FolderUp, Link2, Loader2, Upload } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { useRouter } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import {
@@ -108,6 +109,7 @@ export function LinkDialog({ moduleId, folderId }: { moduleId: string; folderId:
   const t = useTranslations("materials")
   const tCommon = useTranslations("common")
   const router = useRouter()
+  const showError = useActionErrorToast()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
 
@@ -126,7 +128,7 @@ export function LinkDialog({ moduleId, folderId }: { moduleId: string; folderId:
       setOpen(false)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
     } finally {
       setPending(false)
     }

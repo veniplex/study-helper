@@ -3,6 +3,7 @@
 import * as React from "react"
 import {
   DndContext,
+  KeyboardSensor,
   PointerSensor,
   useDraggable,
   useDroppable,
@@ -10,6 +11,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core"
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable"
 import {
   Archive,
   Check,
@@ -473,7 +475,10 @@ export function MaterialsBrowser({
   const t = useTranslations("materials")
   const showError = useActionErrorToast()
   const router = useRouter()
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null)
   const [view, setView] = React.useState<"list" | "grid">("list")

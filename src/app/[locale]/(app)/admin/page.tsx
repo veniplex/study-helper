@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { desc } from "drizzle-orm"
 import { AlertTriangle } from "lucide-react"
 import { getTranslations, getFormatter } from "next-intl/server"
@@ -24,6 +25,11 @@ async function storageWritable(): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("nav")
+  return { title: t("admin") }
 }
 
 export default async function AdminUsersPage() {

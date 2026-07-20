@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { asc, eq } from "drizzle-orm"
 import { GraduationCap } from "lucide-react"
 import { getTranslations } from "next-intl/server"
@@ -8,6 +9,11 @@ import { earnedEcts, formatGrade, programAverage } from "@/lib/grades"
 import { Link } from "@/i18n/navigation"
 import { ProgramDialog } from "@/components/studies/program-dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("nav")
+  return { title: t("studies") }
+}
 
 export default async function StudiesPage() {
   const session = await requireSession()

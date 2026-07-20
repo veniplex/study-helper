@@ -3,6 +3,7 @@
 import * as React from "react"
 import {
   DndContext,
+  KeyboardSensor,
   PointerSensor,
   closestCenter,
   useSensor,
@@ -12,6 +13,7 @@ import {
 import {
   SortableContext,
   arrayMove,
+  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
@@ -187,7 +189,12 @@ function TaskList({
   const showError = useActionErrorToast()
   const [list, setList] = React.useState(tasks)
   const [prev, setPrev] = React.useState(tasks)
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  // Without the keyboard sensor the focusable drag handle below (which announces
+  // itself as "reorder") does nothing when activated by keyboard.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   // Sync with server data during render (React "derived state" pattern).
   if (prev !== tasks) {
