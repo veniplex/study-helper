@@ -73,6 +73,19 @@ Everything else is configured in **Admin → Settings**:
 | Email         | SMTP for password resets and reminders, test email                                                                                                                                                                                  |
 | Branding      | app name, max upload size                                                                                                                                                                                                           |
 
+### AI spending limits
+
+Each user gets **5,000,000 tokens per month** by default. That is far more than
+a semester of normal study uses, and it exists so that one account cannot run up
+unbounded cost on the provider key you configured for everyone. User-initiated
+AI actions are additionally rate limited per user.
+
+Raise the limit under **Admin → AI**, or set it to `0` for no limit — only do
+that when every user brings their own API key (Settings → AI), or you are the
+only user. If you upgraded from an earlier version and never opened the AI
+settings, the new default now applies to you; an explicitly saved `0` is left
+alone.
+
 A small dot next to the version number in the sidebar (visible to admins)
 shows when a newer release is available on GitHub — checked once a day —
 and links to the release. Installing it is a manual

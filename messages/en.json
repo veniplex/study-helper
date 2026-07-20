@@ -179,6 +179,7 @@
       "defaultEmbeddingModel": "Default embedding model (RAG)",
       "noModels": "No models configured yet",
       "monthlyLimit": "Monthly token limit per user (0 = unlimited)",
+      "monthlyLimitHint": "Defaults to 5,000,000 tokens per user per month. At 0, a single user can run up unbounded cost on your shared API key.",
       "useBatchApi": "Use the Batch API for complete generation",
       "useBatchApiHint": "Runs \"complete\" generation through Anthropic/OpenAI's Batch API (~50% cheaper). Results arrive asynchronously; only for Anthropic/OpenAI providers, otherwise it stays live.",
       "saved": "AI settings saved.",
@@ -1455,7 +1456,8 @@
     "comingSoon": "Coming soon"
   },
   "offline": {
-    "synced": "{count} offline changes synced."
+    "synced": "{count, plural, one {# offline change synced.} other {# offline changes synced.}}",
+    "syncFailed": "{count, plural, one {# offline change could not be saved.} other {# offline changes could not be saved.}}"
   },
   "goals": {
     "cardTitle": "Learning goals",
@@ -1563,6 +1565,7 @@
     "THESIS_MAX_ATTEMPTS": "Maximum number of thesis attempts reached.",
     "AI_NO_MODEL": "No AI model is configured. An admin can set this up under Admin → AI.",
     "LIMIT_EXCEEDED": "You've used up your monthly AI quota.",
+    "RATE_LIMITED": "Too many AI requests in a short time. Please wait a moment.",
     "MATERIAL_NAME_REQUIRED": "Please enter a name.",
     "FOLDER_DUPLICATE": "A folder with this name already exists here.",
     "GENERIC": "Something went wrong. Please try again.",

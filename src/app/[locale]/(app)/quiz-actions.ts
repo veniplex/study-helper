@@ -12,7 +12,7 @@ import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { searchChunks, getModuleMaterialSample } from "@/lib/ai/rag"
-import { assertWithinLimit } from "@/lib/ai/usage"
+import { assertAiAllowed, assertWithinLimit } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 import { logAudit } from "@/lib/audit"
 import { ownModule } from "@/lib/studies/access"
@@ -226,7 +226,7 @@ const generatedQuizSchema = z.object({
 
 export async function generateQuiz(input: unknown) {
   const session = await requireSession()
-  await assertWithinLimit(session.user.id)
+  await assertAiAllowed(session.user.id)
   const data = generateQuizInput.parse(input)
   const moduleRow = data.moduleId ? await ownModule(data.moduleId, session.user.id) : null
 

@@ -16,7 +16,7 @@ import {
 } from "@/lib/ai/registry"
 import { GEN_PARAMS, maxTokensForItems } from "@/lib/ai/params"
 import { searchChunks, getModuleMaterialSample } from "@/lib/ai/rag"
-import { assertWithinLimit } from "@/lib/ai/usage"
+import { assertAiAllowed } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 import { scheduleReview, type ReviewRating } from "@/lib/learning/fsrs"
 import { logAudit } from "@/lib/audit"
@@ -307,7 +307,7 @@ const generatedCardsSchema = z.object({
 
 export async function generateCards(input: unknown) {
   const session = await requireSession()
-  await assertWithinLimit(session.user.id)
+  await assertAiAllowed(session.user.id)
   const data = generateCardsInput.parse(input)
   const deckRow = await ownDeck(data.deckId, session.user.id)
 

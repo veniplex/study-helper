@@ -14,11 +14,12 @@ export function OfflineSync() {
 
   React.useEffect(() => {
     async function sync() {
-      const replayed = await flush({
+      const { replayed, dropped } = await flush({
         "review-card": (p) => reviewCard(String(p.cardId), Number(p.rating) as ReviewRating),
         "toggle-session": (p) => toggleSession(String(p.sessionId), Boolean(p.done)),
       })
       if (replayed > 0) toast.success(t("synced", { count: replayed }))
+      if (dropped > 0) toast.error(t("syncFailed", { count: dropped }))
     }
     void sync()
     window.addEventListener("online", sync)

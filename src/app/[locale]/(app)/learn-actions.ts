@@ -8,7 +8,7 @@ import { db } from "@/db"
 import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
-import { assertWithinLimit } from "@/lib/ai/usage"
+import { assertAiAllowed } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 import { ownModule } from "@/lib/studies/access"
 import { getModuleGoalContext } from "@/lib/studies/goal-context"
@@ -50,7 +50,7 @@ export async function logStudySession(input: unknown) {
  */
 export async function analyzeProgress(moduleId: string) {
   const session = await requireSession()
-  await assertWithinLimit(session.user.id)
+  await assertAiAllowed(session.user.id)
   await ownModule(moduleId, session.user.id)
 
   const { generateText } = await import("ai")

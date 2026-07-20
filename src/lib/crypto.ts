@@ -19,6 +19,10 @@ export function encrypt(plaintext: string): string {
 export function decrypt(payload: string): string {
   const [version, iv, tag, data] = payload.split(":")
   if (version !== "v1") throw new Error("Unknown ciphertext version")
+  // A truncated payload would otherwise reach Buffer.from(undefined) and throw
+  // an opaque TypeError from deep inside node:crypto. `data` may legitimately be
+  // empty (an encrypted empty string), so only its absence is a defect.
+  if (!iv || !tag || data === undefined) throw new Error("Malformed ciphertext")
   const decipher = createDecipheriv("aes-256-gcm", key(), Buffer.from(iv, "base64"))
   decipher.setAuthTag(Buffer.from(tag, "base64"))
   return Buffer.concat([decipher.update(Buffer.from(data, "base64")), decipher.final()]).toString(

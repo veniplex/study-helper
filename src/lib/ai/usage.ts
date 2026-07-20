@@ -4,6 +4,16 @@ import { db } from "@/db"
 import { aiUsageLog } from "@/db/schema"
 import { getSetting } from "@/lib/settings"
 import { actionError } from "@/lib/action-errors"
+import { checkRateLimit } from "@/lib/rate-limit"
+
+/**
+ * Burst budget for user-initiated AI actions (generation, analysis, explain,
+ * transcription). Sized so no realistic session hits it — generating a deck and
+ * a quiz for a few modules in a row stays well under — while a scripted loop is
+ * stopped within seconds.
+ */
+const AI_ACTION_MAX = 30
+const AI_ACTION_WINDOW_MS = 5 * 60_000
 
 export async function logUsage(
   userId: string,
@@ -56,6 +66,30 @@ export async function assertWithinLimit(userId: string): Promise<void> {
   if (limit > 0 && used >= limit) {
     actionError("LIMIT_EXCEEDED")
   }
+}
+
+/**
+ * Gate for user-initiated AI actions: a per-user request rate limit on top of
+ * the monthly token cap.
+ *
+ * The cap alone does not bound the burst: it is a soft limit checked against
+ * already-recorded usage, admins may set it to 0 (unlimited), and a month's
+ * budget can still be burned through in minutes by a loop hammering the shared
+ * admin provider key — exhausting the operator's budget or the key's upstream
+ * rate limit, which denies service to every other user. The rate limit bounds
+ * the burst; the cap bounds the month.
+ *
+ * Background/job paths (the coverage generation loop) deliberately keep calling
+ * {@link assertWithinLimit} directly: they are already bounded by their job and
+ * must not be throttled as if they were user requests. Quiz grading on submit
+ * does the same — it follows work the user already did, and failing it would
+ * discard the whole attempt.
+ */
+export async function assertAiAllowed(userId: string): Promise<void> {
+  if (!checkRateLimit(`ai-action:${userId}`, AI_ACTION_MAX, AI_ACTION_WINDOW_MS)) {
+    actionError("RATE_LIMITED")
+  }
+  await assertWithinLimit(userId)
 }
 
 /**

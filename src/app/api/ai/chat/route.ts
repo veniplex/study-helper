@@ -10,6 +10,7 @@ import {
   userHasUsableKeyForModel,
 } from "@/lib/ai/registry"
 import { assertWithinLimit, isOverLimit } from "@/lib/ai/usage"
+import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit"
 import { normalizeUsage, recordAiAudit, recordAiUsage } from "@/lib/ai/run"
 import { searchChunks, searchChunksInMaterials } from "@/lib/ai/rag"
 import { MODE_PROMPTS, type ChatMode } from "@/lib/ai/modes"
@@ -73,6 +74,14 @@ function buildSystemPrompt(
 export async function POST(request: Request) {
   const session = await getSession()
   if (!session) return new Response("Unauthorized", { status: 401 })
+
+  // The monthly token cap is unlimited by default and only checked against
+  // already-recorded usage, so it cannot bound a scripted loop of turns against
+  // the shared provider key. Cap the burst per user; generous enough that no
+  // real conversation reaches it.
+  if (!checkRateLimit(`ai-chat:${session.user.id}`, 60, 5 * 60_000)) {
+    return tooManyRequests()
+  }
 
   try {
     await assertWithinLimit(session.user.id)

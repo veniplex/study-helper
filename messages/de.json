@@ -179,6 +179,7 @@
       "defaultEmbeddingModel": "Standard-Embedding-Modell (RAG)",
       "noModels": "Noch keine Modelle konfiguriert",
       "monthlyLimit": "Monatliches Token-Limit pro User (0 = unbegrenzt)",
+      "monthlyLimitHint": "Standard sind 5.000.000 Tokens pro User und Monat. Bei 0 kann ein einzelner User unbegrenzt Kosten auf deinem geteilten API-Schlüssel verursachen.",
       "useBatchApi": "Batch-API für vollständige Generierung nutzen",
       "useBatchApiHint": "Führt die „Complete\"-Generierung über die Batch-API von Anthropic/OpenAI aus (~50 % günstiger). Ergebnisse treffen asynchron ein; nur für Anthropic-/OpenAI-Provider, sonst weiter live.",
       "saved": "KI-Einstellungen gespeichert.",
@@ -1455,7 +1456,8 @@
     "comingSoon": "In Arbeit"
   },
   "offline": {
-    "synced": "{count} Offline-Änderungen synchronisiert."
+    "synced": "{count, plural, one {# Offline-Änderung synchronisiert.} other {# Offline-Änderungen synchronisiert.}}",
+    "syncFailed": "{count, plural, one {# Offline-Änderung konnte nicht gespeichert werden.} other {# Offline-Änderungen konnten nicht gespeichert werden.}}"
   },
   "goals": {
     "cardTitle": "Lernziele",
@@ -1563,6 +1565,7 @@
     "THESIS_MAX_ATTEMPTS": "Maximale Versuchszahl für die Abschlussarbeit erreicht.",
     "AI_NO_MODEL": "Es ist kein KI-Modell konfiguriert. Ein Admin kann das unter Admin → KI einrichten.",
     "LIMIT_EXCEEDED": "Dein monatliches KI-Kontingent ist aufgebraucht.",
+    "RATE_LIMITED": "Zu viele KI-Anfragen in kurzer Zeit. Bitte warte einen Moment.",
     "MATERIAL_NAME_REQUIRED": "Bitte gib einen Namen ein.",
     "FOLDER_DUPLICATE": "Ein Ordner mit diesem Namen existiert hier bereits.",
     "GENERIC": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",

@@ -307,13 +307,15 @@ export function AiSettingsForm({ initial }: { initial: AiSettings }) {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>{t("monthlyLimit")}</Label>
+            <Label htmlFor="monthlyLimit">{t("monthlyLimit")}</Label>
             <Input
+              id="monthlyLimit"
               type="number"
               min={0}
               value={monthlyLimit}
               onChange={(e) => setMonthlyLimit(Number(e.target.value))}
             />
+            <p className="text-muted-foreground text-xs">{t("monthlyLimitHint")}</p>
           </div>
           <div className="col-span-full space-y-1.5">
             <div className="flex items-center gap-2">

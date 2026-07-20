@@ -15,7 +15,7 @@ import {
   userHasUsableKeyForModel,
 } from "@/lib/ai/registry"
 import { GEN_PARAMS, maxTokensForItems } from "@/lib/ai/params"
-import { assertWithinLimit } from "@/lib/ai/usage"
+import { assertAiAllowed } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 import { brainstormSchema, buildBrainstormPrompt } from "@/lib/writing/ai"
 
@@ -169,7 +169,7 @@ export async function deleteThesis(thesisId: string) {
 
 export async function brainstormTopics(interests: string) {
   const session = await requireSession()
-  await assertWithinLimit(session.user.id)
+  await assertAiAllowed(session.user.id)
   const { ref, model } = await getModel(session.user.id)
   const { object } = await runAi(
     { userId: session.user.id, model: ref, feature: "thesis-topics", entityType: "thesis" },

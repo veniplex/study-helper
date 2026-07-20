@@ -62,22 +62,22 @@ async function setStatus(
  * Extraction always runs (feeds search); embedding only when a default embedding
  * model is configured.
  */
-export async function processMaterial(materialId: string): Promise<void> {
+export async function processMaterial(materialId: string): Promise<"ready" | "skipped"> {
   const row = await db.query.material.findFirst({ where: eq(material.id, materialId) })
-  if (!row || row.kind !== "file" || !row.storagePath) return
+  if (!row || row.kind !== "file" || !row.storagePath) return "skipped"
 
   try {
     const { text, skipReason } = await ensureExtractedText(row)
     if (text == null) {
       await setStatus(materialId, "skipped", { extractionError: skipReason ?? null })
-      return
+      return "skipped"
     }
 
     const ai = await getSetting("ai")
     const embeddingRef = ai?.defaultEmbeddingModel
     if (!embeddingRef) {
       await setStatus(materialId, "ready")
-      return
+      return "ready"
     }
 
     // Gate the (paid) embedding pass on the user's monthly AI cap. Ingest is
@@ -89,7 +89,7 @@ export async function processMaterial(materialId: string): Promise<void> {
         extractionError:
           "Monthly AI usage limit reached — embedding skipped. Retry when under the limit.",
       })
-      return
+      return "skipped"
     }
 
     // Contextual retrieval: situate each chunk in its document (title + summary
@@ -97,6 +97,7 @@ export async function processMaterial(materialId: string): Promise<void> {
     const contextHeader = [row.name, row.summary].filter(Boolean).join(" — ").slice(0, 500)
     await embedMaterialText(row.userId, materialId, text, embeddingRef, contextHeader)
     await setStatus(materialId, "ready")
+    return "ready"
   } catch (error) {
     console.error("[rag] processMaterial failed", materialId, error)
     await setStatus(materialId, "failed", {

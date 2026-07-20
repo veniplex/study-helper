@@ -6,7 +6,7 @@ import { z } from "zod"
 import { db } from "@/db"
 import { deck } from "@/db/schema"
 import { requireSession } from "@/lib/auth/session"
-import { assertWithinLimit } from "@/lib/ai/usage"
+import { assertAiAllowed } from "@/lib/ai/usage"
 import { languageNameForLocale } from "@/lib/ai/language"
 import {
   getGenerationStatus,
@@ -24,7 +24,7 @@ const deckInput = z.object({
 /** Starts a coverage-driven "complete" fill of an existing deck. */
 export async function startCompleteDeck(input: unknown) {
   const session = await requireSession()
-  await assertWithinLimit(session.user.id)
+  await assertAiAllowed(session.user.id)
   const data = deckInput.parse(input)
   const row = await db.query.deck.findFirst({
     where: and(eq(deck.id, data.deckId), eq(deck.userId, session.user.id)),
@@ -53,7 +53,7 @@ const quizInput = z.object({
 /** Creates a quiz and starts a coverage-driven "complete" fill of it. */
 export async function startCompleteQuiz(input: unknown) {
   const session = await requireSession()
-  await assertWithinLimit(session.user.id)
+  await assertAiAllowed(session.user.id)
   const data = quizInput.parse(input)
   await ownModule(data.moduleId, session.user.id)
 

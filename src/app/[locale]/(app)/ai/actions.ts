@@ -71,8 +71,8 @@ export async function transcribeVoiceInput(formData: FormData) {
   const file = formData.get("audio")
   if (!(file instanceof Blob)) throw new Error("No audio")
   if (file.size > 10 * 1024 * 1024) throw new Error("Recording too large")
-  const { assertWithinLimit } = await import("@/lib/ai/usage")
-  await assertWithinLimit(session.user.id)
+  const { assertAiAllowed } = await import("@/lib/ai/usage")
+  await assertAiAllowed(session.user.id)
   const { transcribeAudioBuffer } = await import("@/lib/ai/media")
   const text = await transcribeAudioBuffer(
     new Uint8Array(await file.arrayBuffer()),
@@ -92,8 +92,8 @@ export async function explainSnippet(materialId: string, snippet: string, contex
     columns: { id: true, name: true },
   })
   if (!row) throw new Error("Not found")
-  const { assertWithinLimit } = await import("@/lib/ai/usage")
-  await assertWithinLimit(session.user.id)
+  const { assertAiAllowed } = await import("@/lib/ai/usage")
+  await assertAiAllowed(session.user.id)
   const { resolveModelForUser, getLanguageModel } = await import("@/lib/ai/registry")
   const modelRef = await resolveModelForUser(session.user.id)
   if (!modelRef) actionError("AI_NO_MODEL")

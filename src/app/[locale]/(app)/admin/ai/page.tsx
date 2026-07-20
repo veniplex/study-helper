@@ -4,7 +4,7 @@ import { db } from "@/db"
 import { aiUsageLog, user } from "@/db/schema"
 import { requireAdmin } from "@/lib/auth/session"
 import { countStaleMaterials } from "@/lib/ai/reembed"
-import { getSetting } from "@/lib/settings"
+import { DEFAULT_MONTHLY_TOKEN_LIMIT, getSetting } from "@/lib/settings"
 import { daysAgo } from "@/lib/utils"
 import { AiSettingsForm } from "@/components/admin/ai-settings-form"
 import { AnnIndexCard } from "@/components/admin/ann-index-card"
@@ -51,7 +51,14 @@ export default async function AdminAiPage() {
   return (
     <div className="space-y-6">
       <AiSettingsForm
-        initial={ai ?? { providers: [], monthlyTokenLimitPerUser: 0, useBatchApi: false, rerank: false }}
+        initial={
+          ai ?? {
+            providers: [],
+            monthlyTokenLimitPerUser: DEFAULT_MONTHLY_TOKEN_LIMIT,
+            useBatchApi: false,
+            rerank: false,
+          }
+        }
       />
       <ReembedCard
         initialState={reembed ?? { status: "idle" }}

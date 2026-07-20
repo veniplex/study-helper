@@ -8,6 +8,7 @@ import { getSetting } from "@/lib/settings"
 import { readStoredText } from "@/lib/storage"
 import { getEmbeddingModel, getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { recordAiAudit, runAi, type AiUsage } from "@/lib/ai/run"
+import { isOverLimit } from "@/lib/ai/usage"
 import { chunkText } from "@/lib/ai/rag"
 import { populateAnn } from "@/lib/ai/ann"
 
@@ -118,6 +119,13 @@ export async function summarizeMaterial(materialId: string): Promise<void> {
   const row = await db.query.material.findFirst({ where: eq(material.id, materialId) })
   if (!row || row.kind !== "file") return
   if (row.summary) return // already summarized for this (immutable) content
+
+  // Summarization is the most expensive background pass (one model call per
+  // section plus the reduce rounds), so it has to respect the monthly cap like
+  // embedding/OCR/transcription do. Leave the status untouched: processMaterial
+  // has already recorded why this material stopped short, and the material stays
+  // retryable once the user is back under the limit.
+  if (await isOverLimit(row.userId)) return
 
   const modelRef = await resolveModelForUser(row.userId)
   if (!modelRef) return
