@@ -1,0 +1,37 @@
+version: 2
+
+# Actions are pinned to commit SHAs (a mutable tag can be repointed at
+# attacker-controlled code, which is how several supply-chain incidents reached
+# CI). Dependabot is what keeps those pins current — without it, pinning just
+# freezes the pipeline on old, eventually vulnerable versions.
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(ci)"
+
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # One PR per ecosystem cluster instead of a dozen — these move together
+      # and are only meaningful when reviewed together.
+      ai-sdk:
+        patterns: ["ai", "@ai-sdk/*", "@anthropic-ai/*", "openai"]
+      drizzle:
+        patterns: ["drizzle-orm", "drizzle-kit"]
+      dev-tooling:
+        dependency-type: development
+
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(docker)"
