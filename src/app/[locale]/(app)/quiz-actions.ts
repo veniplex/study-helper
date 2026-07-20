@@ -274,32 +274,37 @@ Each question gets a short explanation of the correct answer. Write all question
       })
   )
 
-  const [created] = await db
-    .insert(quiz)
-    .values({
-      userId: session.user.id,
-      title: object.title,
-      description: object.description || null,
-      moduleId: data.moduleId || null,
-      aiGenerated: true,
-    })
-    .returning({ id: quiz.id })
-
   const questions = object.questions.slice(0, data.count)
-  if (questions.length > 0) {
-    await db.insert(question).values(
-      questions.map((q, i) => ({
-        quizId: created.id,
-        kind: q.kind,
-        prompt: q.prompt,
-        options: q.kind === "multiple_choice" ? q.options : null,
-        correctIndex: q.kind === "multiple_choice" && q.correctIndex >= 0 ? q.correctIndex : null,
-        referenceAnswer: q.kind === "free_text" ? q.referenceAnswer : null,
-        explanation: q.explanation || null,
-        sortOrder: i,
-      }))
-    )
-  }
+  // Quiz and questions in one transaction — a failure in between would leave an
+  // empty quiz that cost a full generation call to produce.
+  const created = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(quiz)
+      .values({
+        userId: session.user.id,
+        title: object.title,
+        description: object.description || null,
+        moduleId: data.moduleId || null,
+        aiGenerated: true,
+      })
+      .returning({ id: quiz.id })
+
+    if (questions.length > 0) {
+      await tx.insert(question).values(
+        questions.map((q, i) => ({
+          quizId: row.id,
+          kind: q.kind,
+          prompt: q.prompt,
+          options: q.kind === "multiple_choice" ? q.options : null,
+          correctIndex: q.kind === "multiple_choice" && q.correctIndex >= 0 ? q.correctIndex : null,
+          referenceAnswer: q.kind === "free_text" ? q.referenceAnswer : null,
+          explanation: q.explanation || null,
+          sortOrder: i,
+        }))
+      )
+    }
+    return row
+  })
 
   revalidatePath("/")
   return { ok: true as const, id: created.id }
@@ -412,9 +417,18 @@ Reply with correct=true/false and one sentence of feedback in the language of th
       if (q.kind === "multiple_choice") {
         correct = q.correctIndex != null && Number(answer) === q.correctIndex
       } else if (gradeFreeText && q.referenceAnswer) {
-        const result = await gradeFreeText(q.prompt, q.referenceAnswer, answer)
-        correct = result.correct
-        feedback = result.feedback
+        try {
+          const result = await gradeFreeText(q.prompt, q.referenceAnswer, answer)
+          correct = result.correct
+          feedback = result.feedback
+        } catch (error) {
+          // One provider hiccup (429, timeout) must not throw away the whole
+          // attempt: fall back to the same "not graded" path used when no model
+          // is configured, so the answer is still recorded and the rest of the
+          // quiz still scores.
+          console.error("[quiz] free-text grading failed", q.id, error)
+          graded = false
+        }
       } else {
         // No AI available: don't pretend to grade free text — the runner shows
         // the reference answer and excludes the question from the score.

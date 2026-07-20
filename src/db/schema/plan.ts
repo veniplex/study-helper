@@ -134,6 +134,8 @@ export const planTask = pgTable(
   (t) => [
     index("plan_task_module_idx").on(t.moduleId),
     index("plan_task_session_idx").on(t.sessionId),
+    // Cascade target (ON DELETE SET NULL) when a learning goal is deleted.
+    index("plan_task_goal_idx").on(t.goalId),
   ]
 )
 

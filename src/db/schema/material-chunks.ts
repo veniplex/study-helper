@@ -60,6 +60,11 @@ export const materialChunk = pgTable(
     index("material_chunk_materialId_idx").on(t.materialId),
     index("material_chunk_material_level_idx").on(t.materialId, t.level),
     index("material_chunk_tsv_idx").using("gin", t.contentTsv),
+    // Required by the self-referencing FK: ON DELETE SET NULL makes Postgres run
+    // "UPDATE … WHERE parent_chunk_id = $1" once per deleted row, which without
+    // this index is a sequential scan of the whole (largest) table each time —
+    // quadratic on every material delete and every re-chunk.
+    index("material_chunk_parent_idx").on(t.parentChunkId),
   ]
 )
 

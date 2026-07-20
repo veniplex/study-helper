@@ -165,7 +165,12 @@ export const answerLog = pgTable(
     correct: boolean("correct"),
     feedback: text("feedback"),
   },
-  (t) => [index("answer_log_attemptId_idx").on(t.attemptId)]
+  (t) => [
+    index("answer_log_attemptId_idx").on(t.attemptId),
+    // Cascade target when a quiz or a single question is deleted; answer_log
+    // grows with every attempt and is never pruned.
+    index("answer_log_questionId_idx").on(t.questionId),
+  ]
 )
 
 // ---- Relations -----------------------------------------------------------------

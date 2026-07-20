@@ -35,16 +35,12 @@ export async function finalizeUpload(payload: FinalizeUploadPayload): Promise<vo
   const uploads = await getSetting("uploads")
   const maxBytes = (uploads?.maxUploadMb ?? 200) * 1024 * 1024
 
-  let saved: { storagePath: string; size: number; hash: string }
-  try {
-    const nodeStream = store.read(tusId)
-    const webStream = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>
-    saved = await saveStream(userId, fileName, webStream, { maxBytes })
-  } catch (error) {
-    console.error("[tus-finalize] failed to move staged upload into storage", tusId, error)
-    await store.remove(tusId).catch(() => {})
-    return
-  }
+  const nodeStream = store.read(tusId)
+  const webStream = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>
+  // Deliberately not caught: a failure here (storage unreachable, stream error)
+  // is usually transient, and the staging file must survive for pg-boss to
+  // retry the job. Swallowing it would lose the upload with no trace.
+  const saved = await saveStream(userId, fileName, webStream, { maxBytes })
 
   try {
     await registerUploadedFile({
@@ -57,11 +53,40 @@ export async function finalizeUpload(payload: FinalizeUploadPayload): Promise<vo
       saved,
     })
   } catch (error) {
-    // registerUploadedFile already removed the stored object on quota failure.
-    if (!(error instanceof QuotaExceededError)) {
-      console.error("[tus-finalize] register failed", tusId, error)
+    if (error instanceof QuotaExceededError) {
+      // Permanent for this upload — retrying would hit the same quota, and
+      // registerUploadedFile already removed the stored object. Record it as a
+      // failed material so the user sees why their upload disappeared.
+      await recordFailedUpload(payload, "Upload exceeds your storage quota.")
+      await store.remove(tusId).catch(() => {})
+      return
     }
-  } finally {
-    await store.remove(tusId).catch(() => {})
+    // Transient (DB blip, storage hiccup): keep the staging file and rethrow so
+    // pg-boss actually uses its configured retries. Swallowing this made
+    // retryLimit dead code and left the blob orphaned with no material row.
+    console.error("[tus-finalize] register failed, will retry", tusId, error)
+    throw error
+  }
+
+  await store.remove(tusId).catch(() => {})
+}
+
+/** Surfaces a permanently failed upload in the materials list instead of dropping it silently. */
+async function recordFailedUpload(payload: FinalizeUploadPayload, reason: string): Promise<void> {
+  try {
+    const { db } = await import("@/db")
+    const { material } = await import("@/db/schema")
+    await db.insert(material).values({
+      userId: payload.userId,
+      moduleId: payload.moduleId,
+      kind: "file",
+      name: payload.fileName,
+      mimeType: payload.mimeType,
+      folderId: payload.folderId,
+      extractionStatus: "failed",
+      extractionError: reason,
+    })
+  } catch (error) {
+    console.error("[tus-finalize] could not record failed upload", payload.tusId, error)
   }
 }

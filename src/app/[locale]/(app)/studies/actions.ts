@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { and, eq, inArray } from "drizzle-orm"
+import { and, eq, inArray, sql } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
 import {
@@ -282,16 +282,25 @@ export async function reorderModulesAcrossSemesters(input: unknown) {
     }
   }
 
-  await Promise.all(
-    moves.flatMap((m) =>
-      m.ids.map((id, i) =>
-        db
-          .update(studyModule)
-          .set({ sortOrder: i, semesterId: m.semesterId })
-          .where(eq(studyModule.id, id))
+  // One transaction, one statement per target semester. The previous version
+  // fired up to 50×200 independent updates concurrently: they competed for the
+  // small connection pool, and a failure part-way through left modules stranded
+  // in the wrong semester with no way back.
+  await db.transaction(async (tx) => {
+    for (const move of moves) {
+      if (move.ids.length === 0) continue
+      const order = sql.join(
+        move.ids.map((id, i) => sql`(${id}::text, ${i}::integer)`),
+        sql`, `
       )
-    )
-  )
+      await tx.execute(sql`
+        UPDATE "module" AS m
+        SET sort_order = v.ord, semester_id = ${move.semesterId}
+        FROM (VALUES ${order}) AS v(id, ord)
+        WHERE m.id = v.id
+      `)
+    }
+  })
 
   const programIds = new Set(semesterIds.map((id) => semesterById.get(id)!.programId))
   for (const programId of programIds) revalidatePath(`/studies/${programId}`)
