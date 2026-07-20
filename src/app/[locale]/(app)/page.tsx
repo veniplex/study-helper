@@ -24,7 +24,8 @@ export default async function DashboardPage() {
   const programInfo = context.programs.find((p) => p.id === activeProgram?.id) ?? null
 
   const activeModuleIdsEarly = context.tree.flatMap((s) => s.modules.map((m) => m.id))
-  const firstName = session.user.name.split(" ")[0]
+  // split() always yields at least one element, but an empty name would make it "".
+  const firstName = session.user.name.split(" ")[0] || session.user.name
 
   // Brand-new users (no module yet) get a focused onboarding flow instead of a
   // dashboard full of empty widgets.

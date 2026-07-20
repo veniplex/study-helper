@@ -55,17 +55,17 @@ describe.skipIf(!RUN)("unpackZip (DB + disk)", () => {
     const allFolders = await db.query.materialFolder.findMany({ where: eq(schema.materialFolder.moduleId, mid) })
     const byName = Object.fromEntries(allFolders.map((f) => [f.name, f]))
     expect(byName["myproject"]).toBeTruthy()
-    expect(byName["src"]?.parentId).toBe(byName["myproject"].id)
-    expect(byName["util"]?.parentId).toBe(byName["src"].id)
+    expect(byName["src"]?.parentId).toBe(byName["myproject"]!.id)
+    expect(byName["util"]?.parentId).toBe(byName["src"]!.id)
 
     // Materials placed in the right folders; zip-slip + __MACOSX skipped.
     const mats = await db.query.material.findMany({ where: and(eq(schema.material.moduleId, mid), eq(schema.material.userId, uid)) })
     const names = mats.map((m) => m.name).sort()
     expect(names).toEqual(["helpers.py", "main.py", "notes.txt"]) // evil.txt + __MACOSX skipped
     const helpers = mats.find((m) => m.name === "helpers.py")!
-    expect(helpers.folderId).toBe(byName["util"].id)
+    expect(helpers.folderId).toBe(byName["util"]!.id)
     const rootNote = mats.find((m) => m.name === "notes.txt")!
-    expect(rootNote.folderId).toBe(byName["myproject"].id)
+    expect(rootNote.folderId).toBe(byName["myproject"]!.id)
 
     // Each extracted file was queued for embedding.
     expect(enqueueEmbedMaterial).toHaveBeenCalledTimes(3)

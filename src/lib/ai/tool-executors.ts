@@ -68,8 +68,8 @@ async function runTool(
           .returning({ id: deck.id })
         await tx
           .insert(flashcard)
-          .values(input.cards.map((c) => ({ deckId: row.id, front: c.front, back: c.back })))
-        return row
+          .values(input.cards.map((c) => ({ deckId: row!.id, front: c.front, back: c.back })))
+        return row! // INSERT ... returning() yields exactly one row unless it throws
       })
       return {
         ok: true,
@@ -89,7 +89,7 @@ async function runTool(
           .returning({ id: quiz.id })
         await tx.insert(question).values(
           input.questions.map((q, i) => ({
-            quizId: row.id,
+            quizId: row!.id,
             kind: q.kind,
             prompt: q.prompt,
             options: q.kind === "multiple_choice" ? (q.options ?? []) : null,
@@ -99,7 +99,7 @@ async function runTool(
             sortOrder: i,
           }))
         )
-        return row
+        return row! // INSERT ... returning() yields exactly one row unless it throws
       })
       return {
         ok: true,
@@ -138,7 +138,8 @@ async function runTool(
         label: input.title,
         href: "/calendar",
         entityType: "event",
-        entityId: created.id,
+        // INSERT ... returning() yields exactly one row unless it throws.
+        entityId: created!.id,
       }
     }
     case "createAssignment": {
@@ -173,7 +174,8 @@ async function runTool(
         label: input.title,
         href: `/studies/${mod.semester.programId}/${mod.id}/assignments`,
         entityType: "assignment",
-        entityId: created.id,
+        // INSERT ... returning() yields exactly one row unless it throws.
+        entityId: created!.id,
       }
     }
   }

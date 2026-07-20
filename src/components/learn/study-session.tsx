@@ -142,11 +142,15 @@ export function StudySession({
 
   function onTouchStart(e: React.TouchEvent) {
     if (!everRevealed) return
-    touchStartX.current = e.touches[0].clientX
+    const touch = e.touches[0]
+    if (!touch) return
+    touchStartX.current = touch.clientX
   }
   function onTouchMove(e: React.TouchEvent) {
     if (touchStartX.current == null) return
-    setDragX(e.touches[0].clientX - touchStartX.current)
+    const touch = e.touches[0]
+    if (!touch) return
+    setDragX(touch.clientX - touchStartX.current)
   }
   function onTouchEnd() {
     const delta = dragX

@@ -181,7 +181,7 @@ function SessionPreview({ sessions }: { sessions: PreviewSession[] }) {
       {[...weeks.entries()].map(([week, weekSessions]) => (
         <div key={week} className="space-y-1.5">
           <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            {t("preview.week", { week: week.split("-W")[1] })}
+            {t("preview.week", { week: week.split("-W")[1] ?? week })}
           </h3>
           <ul className="space-y-1.5">
             {weekSessions.map((s) => (

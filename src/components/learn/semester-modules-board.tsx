@@ -141,6 +141,8 @@ export function SemesterModulesBoard({
     setColumns((cols) => {
       const activeItems = cols[activeContainer]
       const overItems = cols[overContainer]
+      // findContainer can name a column that is not in state (stale drag target)
+      if (!activeItems || !overItems) return cols
       const overIndex = overItems.indexOf(overId)
       const newIndex = overIndex >= 0 ? overIndex : overItems.length
       return {
@@ -171,9 +173,9 @@ export function SemesterModulesBoard({
     let finalColumns = columns
     if (activeContainer === overContainer) {
       const items = columns[activeContainer]
-      const oldIndex = items.indexOf(activeDragId)
-      const newIndex = items.indexOf(overId)
-      if (oldIndex >= 0 && newIndex >= 0 && oldIndex !== newIndex) {
+      const oldIndex = items?.indexOf(activeDragId) ?? -1
+      const newIndex = items?.indexOf(overId) ?? -1
+      if (items && oldIndex >= 0 && newIndex >= 0 && oldIndex !== newIndex) {
         finalColumns = { ...columns, [activeContainer]: arrayMove(items, oldIndex, newIndex) }
         setColumns(finalColumns)
       }

@@ -227,7 +227,7 @@ async function embedMaterialText(
     for (let i = start; i < Math.min(start + EMBED_BATCH, chunks.length); i++) {
       if (done.has(i)) continue
       idxs.push(i)
-      values.push(chunks[i])
+      values.push(chunks[i]!) // i is bounded by chunks.length
     }
     if (values.length === 0) continue
 
@@ -252,8 +252,9 @@ async function embedMaterialText(
       idxs.map((idx, k) => ({
         materialId,
         chunkIndex: idx,
-        content: chunks[idx],
-        embedding: embeddings[k],
+        // idxs holds in-range chunk indices; embedMany returns one vector per input.
+        content: chunks[idx]!,
+        embedding: embeddings[k]!,
         embeddingModel: embeddingRef,
         level: 0,
         contextualHeader: contextHeader || null,
@@ -486,13 +487,13 @@ async function rerankHits(
     for (const i of object.ranking) {
       if (Number.isInteger(i) && i >= 0 && i < candidates.length && !seen.has(i)) {
         seen.add(i)
-        ranked.push(candidates[i])
+        ranked.push(candidates[i]!) // range-checked in the condition above
         if (ranked.length === limit) break
       }
     }
     // Fill up from the RRF order if the model returned too few valid indices.
     for (let i = 0; ranked.length < limit && i < candidates.length; i++) {
-      if (!seen.has(i)) ranked.push(candidates[i])
+      if (!seen.has(i)) ranked.push(candidates[i]!) // i < candidates.length
     }
     return ranked
   } catch (error) {

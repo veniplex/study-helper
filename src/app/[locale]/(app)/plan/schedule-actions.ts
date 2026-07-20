@@ -235,6 +235,7 @@ export async function recomputeSchedule(semesterId: string) {
         )
       )
     for (const s of result.sessions) {
+      // insert().returning() yields exactly one row unless it throws.
       const [created] = await tx
         .insert(planSession)
         .values({
@@ -249,7 +250,7 @@ export async function recomputeSchedule(semesterId: string) {
       if (s.taskIds.length > 0) {
         await tx
           .update(planTask)
-          .set({ sessionId: created.id })
+          .set({ sessionId: created!.id })
           .where(inArray(planTask.id, s.taskIds))
       }
     }

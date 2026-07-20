@@ -39,6 +39,7 @@ export async function createQuiz(input: unknown) {
   const session = await requireSession()
   const data = quizSchema.parse(input)
   if (data.moduleId) await ownModule(data.moduleId, session.user.id)
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(quiz)
     .values({
@@ -52,12 +53,12 @@ export async function createQuiz(input: unknown) {
     userId: session.user.id,
     operation: "create",
     entityType: "quiz",
-    entityId: created.id,
+    entityId: created!.id,
     entityLabel: data.title,
     after: created,
   })
   revalidatePath("/")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 export async function updateQuiz(quizId: string, input: unknown) {
@@ -120,6 +121,7 @@ export async function addQuestion(quizId: string, input: unknown) {
   const session = await requireSession()
   await ownQuiz(quizId, session.user.id)
   const data = questionSchema.parse(input)
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(question)
     .values({
@@ -136,7 +138,7 @@ export async function addQuestion(quizId: string, input: unknown) {
     userId: session.user.id,
     operation: "create",
     entityType: "question",
-    entityId: created.id,
+    entityId: created!.id,
     entityLabel: data.prompt.slice(0, 80),
     after: created,
   })
@@ -278,6 +280,7 @@ Each question gets a short explanation of the correct answer. Write all question
   // Quiz and questions in one transaction — a failure in between would leave an
   // empty quiz that cost a full generation call to produce.
   const created = await db.transaction(async (tx) => {
+    // insert().returning() yields exactly one row unless it throws.
     const [row] = await tx
       .insert(quiz)
       .values({
@@ -292,7 +295,7 @@ Each question gets a short explanation of the correct answer. Write all question
     if (questions.length > 0) {
       await tx.insert(question).values(
         questions.map((q, i) => ({
-          quizId: row.id,
+          quizId: row!.id,
           kind: q.kind,
           prompt: q.prompt,
           options: q.kind === "multiple_choice" ? q.options : null,
@@ -307,7 +310,7 @@ Each question gets a short explanation of the correct answer. Write all question
   })
 
   revalidatePath("/")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 // ---- Attempts & grading --------------------------------------------------------
@@ -464,6 +467,7 @@ Reply with correct=true/false and one sentence of feedback in the language of th
       ? null
       : Math.round((gradedResults.filter((r) => r.correct).length / gradedResults.length) * 100)
 
+  // insert().returning() yields exactly one row unless it throws.
   const [attempt] = await db
     .insert(quizAttempt)
     .values({
@@ -477,7 +481,7 @@ Reply with correct=true/false and one sentence of feedback in the language of th
   if (results.length > 0) {
     await db.insert(answerLog).values(
       results.map((r) => ({
-        attemptId: attempt.id,
+        attemptId: attempt!.id,
         questionId: r.questionId,
         answer: r.answer,
         correct: r.correct,
@@ -538,10 +542,12 @@ async function addToMistakesDeck(
     // The deck's identity is `kind === "mistakes"`, so the UI renders a
     // localized label + badge regardless of this stored name (see deck-card).
     const t = await getTranslations("learn.decks")
-    ;[mistakes] = await db
+    const inserted = await db
       .insert(deck)
       .values({ userId, moduleId, name: t("mistakesName"), kind: "mistakes" })
       .returning()
+    // insert().returning() yields exactly one row unless it throws.
+    mistakes = inserted[0]!
   }
   const existing = await db.query.flashcard.findMany({
     where: eq(flashcard.deckId, mistakes.id),

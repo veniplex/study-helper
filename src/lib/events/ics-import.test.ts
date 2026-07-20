@@ -25,7 +25,7 @@ describe("parseIcs", () => {
   it("parses timed events with weekly RRULE", () => {
     const events = parseIcs(SAMPLE)
     expect(events).toHaveLength(2)
-    const [lecture] = events
+    const lecture = events[0]! // toHaveLength(2) asserted above
     expect(lecture.title).toBe("Vorlesung Analysis, Teil 2")
     expect(lecture.startsAt.getHours()).toBe(10)
     expect(lecture.endsAt?.getMinutes()).toBe(30)
@@ -35,7 +35,7 @@ describe("parseIcs", () => {
   })
 
   it("parses all-day events and unescapes text", () => {
-    const [, exam] = parseIcs(SAMPLE)
+    const exam = parseIcs(SAMPLE)[1]! // SAMPLE holds two VEVENTs
     expect(exam.allDay).toBe(true)
     expect(exam.notes).toBe("Raum wird noch\nbekannt gegeben")
     expect(exam.recurrence).toBe("none")
@@ -49,7 +49,7 @@ describe("parseIcs", () => {
       "DTSTART:20260101T090000Z",
       "END:VEVENT",
     ].join("\r\n")
-    const [ev] = parseIcs(folded)
+    const ev = parseIcs(folded)[0]! // the fixture holds one valid VEVENT
     expect(ev.title).toBe("Sehr langer Titel mit Fortsetzung")
   })
 

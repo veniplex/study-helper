@@ -14,7 +14,9 @@ export function toDayKey(d: Date): string {
 }
 
 function addDays(day: string, delta: number): string {
-  const [y, m, d] = day.split("-").map(Number)
+  // "YYYY-MM-DD" is the day-key format; a malformed key still yields an Invalid
+  // Date via NaN parts, exactly as before.
+  const [y = NaN, m = NaN, d = NaN] = day.split("-").map(Number)
   const date = new Date(y, m - 1, d + delta)
   return toDayKey(date)
 }

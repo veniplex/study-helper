@@ -117,7 +117,8 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
   }
   let topModule: TopModule | null = null
   if (byModule.size > 0) {
-    const [topId, minutes] = [...byModule.entries()].sort((a, b) => b[1] - a[1])[0]
+    // byModule.size > 0 checked above, so the sorted list has a first entry.
+    const [topId, minutes] = [...byModule.entries()].sort((a, b) => b[1]! - a[1]!)[0]!
     const mod = await db.query.studyModule.findFirst({
       where: eq(studyModule.id, topId),
       columns: { id: true, name: true, icon: true, color: true },
@@ -174,7 +175,7 @@ export async function getPreparednessByModule(
   for (const moduleId of moduleIds) {
     const scores = quizzes
       .filter((q) => q.moduleId === moduleId && q.attempts.length > 0)
-      .map((q) => Number(q.attempts[0].score ?? 0))
+      .map((q) => Number(q.attempts[0]!.score ?? 0)) // filtered on attempts.length > 0
     const cards = decks.filter((d) => d.moduleId === moduleId).flatMap((d) => d.cards)
     const quizFactor = scores.length
       ? scores.reduce((a, b) => a + b, 0) / scores.length / 100

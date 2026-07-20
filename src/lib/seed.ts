@@ -36,6 +36,9 @@ const addDays = (base: Date, days: number) => {
 async function seedStudyContent(userId: string) {
   const now = new Date()
 
+  // Every `!` below is on an insert(...).returning() result: the row count
+  // always matches the number of literal values inserted, or the insert throws.
+  // This seed only ever runs behind SEED_TEST_DATA.
   const [program] = await db
     .insert(degreeProgram)
     .values({
@@ -51,14 +54,14 @@ async function seedStudyContent(userId: string) {
     .insert(semester)
     .values([
       {
-        programId: program.id,
+        programId: program!.id,
         name: "1. Semester",
         startDate: iso(addDays(now, -210)),
         endDate: iso(addDays(now, -30)),
         sortOrder: 0,
       },
       {
-        programId: program.id,
+        programId: program!.id,
         name: "2. Semester",
         startDate: iso(addDays(now, -29)),
         endDate: iso(addDays(now, 150)),
@@ -71,7 +74,7 @@ async function seedStudyContent(userId: string) {
     .insert(studyModule)
     .values([
       {
-        semesterId: pastSemester.id,
+        semesterId: pastSemester!.id,
         name: "Mathematik 1",
         code: "MA101",
         ects: 8,
@@ -82,7 +85,7 @@ async function seedStudyContent(userId: string) {
         sortOrder: 0,
       },
       {
-        semesterId: pastSemester.id,
+        semesterId: pastSemester!.id,
         name: "Programmierung 1",
         code: "IN101",
         ects: 10,
@@ -93,7 +96,7 @@ async function seedStudyContent(userId: string) {
         sortOrder: 1,
       },
       {
-        semesterId: currentSemester.id,
+        semesterId: currentSemester!.id,
         name: "Mathematik 2",
         code: "MA201",
         ects: 8,
@@ -103,7 +106,7 @@ async function seedStudyContent(userId: string) {
         sortOrder: 0,
       },
       {
-        semesterId: currentSemester.id,
+        semesterId: currentSemester!.id,
         name: "Algorithmen & Datenstrukturen",
         code: "IN201",
         ects: 10,
@@ -120,16 +123,16 @@ async function seedStudyContent(userId: string) {
   const goals = await db
     .insert(moduleGoal)
     .values([
-      { moduleId: math1.id, type: "exam", title: "Klausur", gradingRole: "grade" },
-      { moduleId: prog1.id, type: "exam", title: "Klausur", gradingRole: "grade" },
-      { moduleId: math2.id, type: "exam", title: "Klausur", gradingRole: "grade" },
+      { moduleId: math1!.id, type: "exam", title: "Klausur", gradingRole: "grade" },
+      { moduleId: prog1!.id, type: "exam", title: "Klausur", gradingRole: "grade" },
+      { moduleId: math2!.id, type: "exam", title: "Klausur", gradingRole: "grade" },
       {
-        moduleId: math2.id,
+        moduleId: math2!.id,
         type: "assignments",
         gradingRole: "bonus",
         config: { bonus: { type: "percent_points", value: 5, minCompletedShare: 0.5 } },
       },
-      { moduleId: algo.id, type: "exam", title: "Klausur", gradingRole: "grade" },
+      { moduleId: algo!.id, type: "exam", title: "Klausur", gradingRole: "grade" },
     ])
     .returning()
 
@@ -139,14 +142,14 @@ async function seedStudyContent(userId: string) {
   )
   await db.insert(goalAttempt).values([
     {
-      goalId: gradeGoalByModule.get(math1.id)!,
+      goalId: gradeGoalByModule.get(math1!.id)!,
       attempt: 1,
       resultPercent: "78",
       passed: true,
       date: iso(addDays(now, -45)),
     },
     {
-      goalId: gradeGoalByModule.get(prog1.id)!,
+      goalId: gradeGoalByModule.get(prog1!.id)!,
       attempt: 1,
       resultPercent: "91",
       passed: true,
@@ -156,18 +159,18 @@ async function seedStudyContent(userId: string) {
 
   await db.insert(moduleContact).values([
     {
-      moduleId: math2.id,
+      moduleId: math2!.id,
       name: "Prof. Dr. Noether",
       email: "noether@example-uni.de",
       role: "Dozentin",
     },
-    { moduleId: math2.id, name: "Max Tutor", email: "tutor@example-uni.de", role: "Tutor" },
+    { moduleId: math2!.id, name: "Max Tutor", email: "tutor@example-uni.de", role: "Tutor" },
   ])
 
   await db.insert(assignment).values([
     {
       userId,
-      moduleId: math2.id,
+      moduleId: math2!.id,
       title: "Übungsblatt 1",
       kind: "graded",
       status: "graded",
@@ -177,7 +180,7 @@ async function seedStudyContent(userId: string) {
     },
     {
       userId,
-      moduleId: math2.id,
+      moduleId: math2!.id,
       title: "Übungsblatt 2",
       kind: "graded",
       status: "open",
@@ -186,7 +189,7 @@ async function seedStudyContent(userId: string) {
     },
     {
       userId,
-      moduleId: algo.id,
+      moduleId: algo!.id,
       title: "Sortieralgorithmen implementieren",
       kind: "practice",
       status: "open",
@@ -201,7 +204,7 @@ async function seedStudyContent(userId: string) {
   await db.insert(studyEvent).values([
     {
       userId,
-      moduleId: math2.id,
+      moduleId: math2!.id,
       type: "lecture",
       title: "Vorlesung Mathematik 2",
       startsAt: addDays(lectureStart, 1),
@@ -210,7 +213,7 @@ async function seedStudyContent(userId: string) {
     },
     {
       userId,
-      moduleId: math2.id,
+      moduleId: math2!.id,
       type: "exam",
       title: "Klausur Mathematik 2",
       startsAt: examStart,
@@ -219,7 +222,7 @@ async function seedStudyContent(userId: string) {
     },
     {
       userId,
-      moduleId: math2.id,
+      moduleId: math2!.id,
       type: "deadline",
       title: "Abgabe Übungsblatt 2",
       startsAt: addDays(now, 7),
@@ -229,27 +232,27 @@ async function seedStudyContent(userId: string) {
 
   const [mathDeck] = await db
     .insert(deck)
-    .values({ userId, moduleId: math2.id, name: "Analysis Grundbegriffe" })
+    .values({ userId, moduleId: math2!.id, name: "Analysis Grundbegriffe" })
     .returning()
   await db.insert(flashcard).values([
-    { deckId: mathDeck.id, front: "Was ist eine Cauchy-Folge?", back: "Eine Folge, bei der die Glieder ab einem Index beliebig nah beieinander liegen: ∀ε>0 ∃N: |aₙ−aₘ|<ε für n,m≥N." },
-    { deckId: mathDeck.id, front: "Definition Stetigkeit (ε-δ)", back: "f ist stetig in x₀, wenn ∀ε>0 ∃δ>0: |x−x₀|<δ ⇒ |f(x)−f(x₀)|<ε." },
-    { deckId: mathDeck.id, front: "Was besagt der Zwischenwertsatz?", back: "Eine auf [a,b] stetige Funktion nimmt jeden Wert zwischen f(a) und f(b) an." },
-    { deckId: mathDeck.id, front: "Ableitung von sin(x)", back: "cos(x)" },
+    { deckId: mathDeck!.id, front: "Was ist eine Cauchy-Folge?", back: "Eine Folge, bei der die Glieder ab einem Index beliebig nah beieinander liegen: ∀ε>0 ∃N: |aₙ−aₘ|<ε für n,m≥N." },
+    { deckId: mathDeck!.id, front: "Definition Stetigkeit (ε-δ)", back: "f ist stetig in x₀, wenn ∀ε>0 ∃δ>0: |x−x₀|<δ ⇒ |f(x)−f(x₀)|<ε." },
+    { deckId: mathDeck!.id, front: "Was besagt der Zwischenwertsatz?", back: "Eine auf [a,b] stetige Funktion nimmt jeden Wert zwischen f(a) und f(b) an." },
+    { deckId: mathDeck!.id, front: "Ableitung von sin(x)", back: "cos(x)" },
   ])
 
   const [algoQuiz] = await db
     .insert(quiz)
     .values({
       userId,
-      moduleId: algo.id,
+      moduleId: algo!.id,
       title: "Sortierverfahren Basics",
       description: "Laufzeiten und Eigenschaften der wichtigsten Sortieralgorithmen.",
     })
     .returning()
   await db.insert(question).values([
     {
-      quizId: algoQuiz.id,
+      quizId: algoQuiz!.id,
       kind: "multiple_choice",
       prompt: "Welche Worst-Case-Laufzeit hat Quicksort?",
       options: ["O(n log n)", "O(n²)", "O(n)", "O(log n)"],
@@ -258,7 +261,7 @@ async function seedStudyContent(userId: string) {
       sortOrder: 0,
     },
     {
-      quizId: algoQuiz.id,
+      quizId: algoQuiz!.id,
       kind: "multiple_choice",
       prompt: "Welches Verfahren ist stabil?",
       options: ["Heapsort", "Quicksort", "Mergesort", "Selectionsort"],
@@ -267,7 +270,7 @@ async function seedStudyContent(userId: string) {
       sortOrder: 1,
     },
     {
-      quizId: algoQuiz.id,
+      quizId: algoQuiz!.id,
       kind: "free_text",
       prompt: "Erkläre kurz das Prinzip von Divide and Conquer.",
       referenceAnswer:
@@ -278,8 +281,8 @@ async function seedStudyContent(userId: string) {
 
   await db
     .insert(userPrefs)
-    .values({ userId, activeProgramId: program.id })
-    .onConflictDoUpdate({ target: userPrefs.userId, set: { activeProgramId: program.id } })
+    .values({ userId, activeProgramId: program!.id })
+    .onConflictDoUpdate({ target: userPrefs.userId, set: { activeProgramId: program!.id } })
 }
 
 /**

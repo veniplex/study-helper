@@ -23,9 +23,10 @@ describe("crypto", () => {
   })
 
   it("rejects a tampered ciphertext via the GCM auth tag", () => {
+    // encrypt() always emits the four-part "v1:iv:tag:data" form.
     const [version, iv, tag, data] = encrypt("secret").split(":")
-    const flipped = Buffer.from(data, "base64")
-    flipped[0] ^= 0xff
+    const flipped = Buffer.from(data!, "base64")
+    flipped[0] = flipped[0]! ^ 0xff
     expect(() => decrypt(`${version}:${iv}:${tag}:${flipped.toString("base64")}`)).toThrow()
   })
 

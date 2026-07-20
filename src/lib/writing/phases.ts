@@ -29,7 +29,8 @@ export function phasesFor(variant: WritingVariant): readonly WritingPhase[] {
 
 /** The default (first) phase a fresh project of this variant starts in. */
 export function initialPhase(variant: WritingVariant): WritingPhase {
-  return phasesFor(variant)[0]
+  // Both phase lists are non-empty literals, so there is always a first phase.
+  return phasesFor(variant)[0]!
 }
 
 /** True if `phase` is a valid phase for the given variant. */

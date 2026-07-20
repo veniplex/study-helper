@@ -46,7 +46,8 @@ export function actionError(code: ActionErrorCode, fallbackMessage?: string): ne
 export function extractActionErrorCode(error: unknown): ActionErrorCode | null {
   const message = error instanceof Error ? error.message : String(error)
   if (!message.startsWith("ERR:")) return null
-  const code = message.slice(4).split(/\s/, 1)[0]
+  // split always yields at least one element; "" simply matches no known code.
+  const code = message.slice(4).split(/\s/, 1)[0] ?? ""
   return (ACTION_ERROR_CODES as readonly string[]).includes(code)
     ? (code as ActionErrorCode)
     : null

@@ -66,8 +66,8 @@ describe("S3StorageDriver", () => {
     expect(relPath).toMatch(/^user-1\/[0-9a-f-]+-notes\.pdf$/)
     const calls = s3Mock.commandCalls(PutObjectCommand)
     expect(calls).toHaveLength(1)
-    expect(calls[0].args[0].input.Bucket).toBe("test-bucket")
-    expect(calls[0].args[0].input.Key).toBe(relPath)
+    expect(calls[0]!.args[0].input.Bucket).toBe("test-bucket")
+    expect(calls[0]!.args[0].input.Key).toBe(relPath)
   })
 
   it("prepends S3_KEY_PREFIX to the object key but keeps the rel path prefix-free", async () => {
@@ -76,7 +76,7 @@ describe("S3StorageDriver", () => {
     const relPath = await driver.saveBuffer("user-1", "a.txt", Buffer.from("x"))
 
     expect(relPath.startsWith("user-1/")).toBe(true)
-    expect(s3Mock.commandCalls(PutObjectCommand)[0].args[0].input.Key).toBe(`media/${relPath}`)
+    expect(s3Mock.commandCalls(PutObjectCommand)[0]!.args[0].input.Key).toBe(`media/${relPath}`)
   })
 
   it("readBuffer returns the object bytes", async () => {
@@ -100,14 +100,14 @@ describe("S3StorageDriver", () => {
     const stream = await driver.fileStream("user-1/x-a.txt", 0, 4)
 
     expect(await readWebStream(stream)).toEqual(Buffer.from("hello"))
-    expect(s3Mock.commandCalls(GetObjectCommand)[0].args[0].input.Range).toBe("bytes=0-4")
+    expect(s3Mock.commandCalls(GetObjectCommand)[0]!.args[0].input.Range).toBe("bytes=0-4")
   })
 
   it("fileStream omits the Range header when no range is given", async () => {
     s3Mock.on(GetObjectCommand).resolves(getOutput(Readable.from([Buffer.from("full")])))
     const driver = await makeDriver()
     await driver.fileStream("user-1/x-a.txt")
-    expect(s3Mock.commandCalls(GetObjectCommand)[0].args[0].input.Range).toBeUndefined()
+    expect(s3Mock.commandCalls(GetObjectCommand)[0]!.args[0].input.Range).toBeUndefined()
   })
 
   it("deleteFile issues a DELETE and swallows errors (idempotent)", async () => {

@@ -182,7 +182,7 @@ describe("registerUploadedFile", () => {
     expect(updateSetMock).toHaveBeenCalledWith(
       expect.objectContaining({ extractionStatus: "failed" })
     )
-    expect(updateSetMock.mock.calls[0][0]).toHaveProperty("extractionError")
+    expect(updateSetMock.mock.calls[0]![0]).toHaveProperty("extractionError")
     expect(deleteFileMock).not.toHaveBeenCalled()
   })
 })

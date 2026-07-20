@@ -37,6 +37,7 @@ export async function createInvite(input: unknown) {
   const session = await requireAdmin()
   const data = createInviteSchema.parse(input)
   const token = randomBytes(24).toString("base64url")
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(invite)
     .values({
@@ -49,7 +50,7 @@ export async function createInvite(input: unknown) {
     })
     .returning({ id: invite.id, token: invite.token })
   revalidatePath("/admin/auth")
-  return { ok: true as const, id: created.id, token: created.token }
+  return { ok: true as const, id: created!.id, token: created!.token }
 }
 
 export async function deleteInvite(inviteId: string) {

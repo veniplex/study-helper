@@ -45,10 +45,12 @@ export function AvailabilityEditor({
 
   function payload(): PlanAvailability {
     return {
-      weekly: WEEKDAYS.filter((d) => weekly[d].enabled).map((d) => ({
+      // weekly is seeded with an entry for every WEEKDAYS value in useState, so
+      // indexing by a WEEKDAYS member always hits.
+      weekly: WEEKDAYS.filter((d) => weekly[d]!.enabled).map((d) => ({
         weekday: d,
-        from: weekly[d].from,
-        to: weekly[d].to,
+        from: weekly[d]!.from,
+        to: weekly[d]!.to,
       })),
       blackouts: blackouts.filter((b) => b.from && b.to),
       recurring: recurring.filter((r) => r.from && r.to),
@@ -79,30 +81,31 @@ export function AvailabilityEditor({
             <div key={d} className="flex flex-wrap items-center gap-2 text-sm">
               <Switch
                 id={`wd-${d}`}
-                checked={weekly[d].enabled}
+                checked={weekly[d]!.enabled}
                 onCheckedChange={(on) =>
-                  setWeekly((w) => ({ ...w, [d]: { ...w[d], enabled: on } }))
+                  // every WEEKDAYS key exists in state (seeded in useState)
+                  setWeekly((w) => ({ ...w, [d]: { ...w[d]!, enabled: on } }))
                 }
               />
               <Label htmlFor={`wd-${d}`} className="w-24 font-normal">
                 {t(`weekdays.${d}`)}
               </Label>
-              {weekly[d].enabled && (
+              {weekly[d]!.enabled && (
                 <>
                   <Input
                     type="time"
-                    value={weekly[d].from}
+                    value={weekly[d]!.from}
                     onChange={(e) =>
-                      setWeekly((w) => ({ ...w, [d]: { ...w[d], from: e.target.value } }))
+                      setWeekly((w) => ({ ...w, [d]: { ...w[d]!, from: e.target.value } }))
                     }
                     className="h-8 w-28"
                   />
                   <span className="text-muted-foreground">–</span>
                   <Input
                     type="time"
-                    value={weekly[d].to}
+                    value={weekly[d]!.to}
                     onChange={(e) =>
-                      setWeekly((w) => ({ ...w, [d]: { ...w[d], to: e.target.value } }))
+                      setWeekly((w) => ({ ...w, [d]: { ...w[d]!, to: e.target.value } }))
                     }
                     className="h-8 w-28"
                   />
@@ -253,7 +256,9 @@ export function AvailabilityEditor({
                               : [...current, d]
                             // keep at least one day selected
                             const days = next.length > 0 ? next : current
-                            return { ...x, weekday: days[0], weekdays: days }
+                            // days is either `next` (length checked) or the
+                            // non-empty `current`, so index 0 always exists
+                            return { ...x, weekday: days[0]!, weekdays: days }
                           })
                         )
                       }

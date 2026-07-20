@@ -47,7 +47,9 @@ export async function findOrCreateFolderPath(
         .insert(materialFolder)
         .values({ userId, moduleId, parentId: current, name })
         .returning({ id: materialFolder.id })
-      current = created.id
+      // insert().returning() yields exactly one row unless it throws — and a
+      // throw is exactly what the catch below handles (lost creation race).
+      current = created!.id
     } catch {
       // Lost a race to a concurrent create — read back the winning row.
       const raced = await db.query.materialFolder.findFirst({

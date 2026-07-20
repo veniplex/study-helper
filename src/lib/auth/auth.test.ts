@@ -91,7 +91,7 @@ describe("buildAuth registration gating", () => {
     expect(options.socialProviders.github?.disableImplicitSignUp).toBe(true)
     expect(options.socialProviders.google?.disableImplicitSignUp).toBe(true)
     expect(oidcConfigs(options)).toHaveLength(1)
-    expect(oidcConfigs(options)[0].disableImplicitSignUp).toBe(true)
+    expect(oidcConfigs(options)[0]?.disableImplicitSignUp).toBe(true)
   })
 
   it("invite mode disables implicit social/OIDC sign-up so the invite gate cannot be bypassed", () => {
@@ -102,7 +102,7 @@ describe("buildAuth registration gating", () => {
     expect(options.emailAndPassword.disableSignUp).toBe(false)
     expect(options.socialProviders.github?.disableImplicitSignUp).toBe(true)
     expect(options.socialProviders.google?.disableImplicitSignUp).toBe(true)
-    expect(oidcConfigs(options)[0].disableImplicitSignUp).toBe(true)
+    expect(oidcConfigs(options)[0]?.disableImplicitSignUp).toBe(true)
   })
 
   it("open mode leaves sign-up unrestricted", () => {
@@ -112,7 +112,7 @@ describe("buildAuth registration gating", () => {
     expect(options.emailAndPassword.disableSignUp).toBe(false)
     expect(options.socialProviders.github?.disableImplicitSignUp).toBeUndefined()
     expect(options.socialProviders.google?.disableImplicitSignUp).toBeUndefined()
-    expect(oidcConfigs(options)[0].disableImplicitSignUp).toBeUndefined()
+    expect(oidcConfigs(options)[0]?.disableImplicitSignUp).toBeUndefined()
   })
 
   it("only configures the social providers that are actually set up", () => {

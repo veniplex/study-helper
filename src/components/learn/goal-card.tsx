@@ -137,6 +137,9 @@ function daysUntil(dueDate: string): number {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const [y, m, d] = dueDate.split("-").map(Number)
+  // Malformed input kept its previous NaN result rather than silently becoming
+  // some default date that would render as "overdue".
+  if (y == null || m == null || d == null) return NaN
   const due = new Date(y, m - 1, d)
   return Math.round((due.getTime() - today.getTime()) / 86_400_000)
 }

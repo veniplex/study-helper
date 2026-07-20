@@ -206,11 +206,13 @@ export async function POST(request: Request) {
     if (totalChars > MAX_USER_MESSAGE_CHARS) {
       return new Response("Message too long", { status: 413 })
     }
+    // insert().returning() yields exactly one row unless it throws.
     const [inserted] = await db
       .insert(aiMessage)
       .values({ conversationId: conversation.id, role: "user", parts: textParts })
       .returning({ id: aiMessage.id })
-    history.push({ id: inserted.id, role: "user", parts: textParts })
+    // insert().returning() yields exactly one row unless it throws.
+    history.push({ id: inserted!.id, role: "user", parts: textParts })
 
     // Derive a placeholder title from the first user message; upgraded to an
     // AI-written title after the first exchange completes (see onFinish).

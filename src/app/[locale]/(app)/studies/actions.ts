@@ -64,12 +64,13 @@ export async function updateGradeGoal(programId: string, input: unknown) {
 export async function createProgram(input: unknown) {
   const session = await requireSession()
   const data = programSchema.parse(input)
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(degreeProgram)
     .values({ ...data, userId: session.user.id })
     .returning({ id: degreeProgram.id })
   revalidatePath("/studies")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 export async function updateProgram(programId: string, input: unknown) {
@@ -179,6 +180,7 @@ export async function createModule(semesterId: string, input: unknown) {
   // grade/tab derivation, so a failed goal insert must roll back the module too.
   const types = data.goalTypes?.length ? [...new Set(data.goalTypes)] : ["exam" as const]
   await db.transaction(async (tx) => {
+    // insert().returning() yields exactly one row unless it throws.
     const [created] = await tx
       .insert(studyModule)
       .values({ ...moduleValues(data), semesterId })
@@ -187,7 +189,7 @@ export async function createModule(semesterId: string, input: unknown) {
     // selection keep a single default exam goal so they are immediately gradable.
     await tx.insert(moduleGoal).values(
       types.map((type, i) => ({
-        moduleId: created.id,
+        moduleId: created!.id,
         type,
         gradingRole: "grade" as const,
         sortOrder: i,

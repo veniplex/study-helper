@@ -164,15 +164,16 @@ export async function StatsCard({ stats }: { stats: DashboardStats }) {
           {/* Month labels: shown at the week where a new month starts */}
           <div className="flex gap-[3px]">
             {weeks.map((week, i) => {
-              const month = new Date(week[0].date).getMonth()
-              const prevMonth = i > 0 ? new Date(weeks[i - 1][0].date).getMonth() : -1
+              // every week is a non-empty slice of heatmap, so index 0 exists
+              const month = new Date(week[0]!.date).getMonth()
+              const prevMonth = i > 0 ? new Date(weeks[i - 1]![0]!.date).getMonth() : -1
               return (
                 <span
                   key={i}
                   className="text-muted-foreground min-w-0 flex-1 overflow-visible text-[9px] leading-3 whitespace-nowrap"
                 >
                   {month !== prevMonth
-                    ? format.dateTime(new Date(week[0].date), { month: "short" })
+                    ? format.dateTime(new Date(week[0]!.date), { month: "short" })
                     : ""}
                 </span>
               )

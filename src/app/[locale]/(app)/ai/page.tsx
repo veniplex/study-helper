@@ -49,9 +49,10 @@ export default async function AiPage() {
 
   if (latest) redirect({ href: `/ai/${latest.id}`, locale })
 
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(aiConversation)
     .values({ userId: session.user.id })
     .returning({ id: aiConversation.id })
-  redirect({ href: `/ai/${created.id}`, locale })
+  redirect({ href: `/ai/${created!.id}`, locale })
 }

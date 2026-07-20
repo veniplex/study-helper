@@ -35,7 +35,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const match = /bytes=(\d*)-(\d*)/.exec(range)
     if (match && (match[1] || match[2])) {
       // "bytes=-N" is a suffix range: the last N bytes of the file
-      const start = match[1] ? parseInt(match[1], 10) : Math.max(size - parseInt(match[2], 10), 0)
+      // match[2] is non-empty here: the guard above requires match[1] || match[2].
+      const start = match[1] ? parseInt(match[1], 10) : Math.max(size - parseInt(match[2]!, 10), 0)
       const end = match[1] && match[2] ? Math.min(parseInt(match[2], 10), size - 1) : size - 1
       if (start <= end && start < size) {
         return new Response(await fileStream(row.storagePath, start, end), {

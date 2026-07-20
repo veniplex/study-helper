@@ -218,14 +218,15 @@ async function runSummarization(
   }
 
   // REDUCE: roll section summaries up into a single document summary.
-  let docSummary = sectionSummaries[0]
+  // sectionSummaries is non-empty (guarded above).
+  let docSummary = sectionSummaries[0]!
   let parts = sectionSummaries
   while (parts.length > 1) {
     const next: string[] = []
     for (let i = 0; i < parts.length; i += REDUCE_FANOUT) {
       const group = parts.slice(i, i + REDUCE_FANOUT)
       if (group.length === 1) {
-        next.push(group[0])
+        next.push(group[0]!) // length checked
         continue
       }
       const { text, aiUsage } = await runAi(
@@ -245,7 +246,8 @@ async function runSummarization(
       next.push(text.trim())
     }
     parts = next
-    docSummary = next[0]
+    // parts.length > 1 means the loop above produced at least one group.
+    docSummary = next[0]!
   }
 
   await db

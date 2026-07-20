@@ -30,6 +30,7 @@ export async function createConversation(
   const safeMode = CHAT_MODES.includes(mode as (typeof CHAT_MODES)[number])
     ? (mode as (typeof CHAT_MODES)[number])
     : "general"
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(aiConversation)
     .values({
@@ -40,7 +41,7 @@ export async function createConversation(
     })
     .returning({ id: aiConversation.id })
   revalidatePath("/ai")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 /** Changes the tutor mode of an existing conversation. */

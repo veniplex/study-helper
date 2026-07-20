@@ -17,7 +17,8 @@ function toDayKey(d: Date): string {
 
 function addMinutes(hhmm: string, minutes: number): string {
   const [h, m] = hhmm.split(":").map(Number)
-  const total = h * 60 + m + minutes
+  // "HH:mm" is the stored format; a malformed value still yields NaN as before.
+  const total = (h ?? NaN) * 60 + (m ?? NaN) + minutes
   const pad = (n: number) => String(n).padStart(2, "0")
   return `${pad(Math.floor(total / 60) % 24)}:${pad(total % 60)}`
 }

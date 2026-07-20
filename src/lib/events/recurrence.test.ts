@@ -15,7 +15,7 @@ describe("expandOccurrences", () => {
       new Date("2026-04-30")
     )
     expect(occ).toHaveLength(1)
-    expect(occ[0].isRecurrenceInstance).toBe(false)
+    expect(occ[0]!.isRecurrenceInstance).toBe(false)
   })
 
   it("omits non-recurring events outside the window", () => {
@@ -39,8 +39,8 @@ describe("expandOccurrences", () => {
       "2026-04-27",
       "2026-05-04",
     ])
-    expect(occ[0].isRecurrenceInstance).toBe(false)
-    expect(occ[1].isRecurrenceInstance).toBe(true)
+    expect(occ[0]!.isRecurrenceInstance).toBe(false)
+    expect(occ[1]!.isRecurrenceInstance).toBe(true)
   })
 
   it("respects recurrenceUntil inclusively", () => {
@@ -69,7 +69,7 @@ describe("expandOccurrences", () => {
       new Date("2026-04-21")
     )
     expect(occ).toHaveLength(1)
-    expect(occ[0].endsAt!.getTime() - occ[0].startsAt.getTime()).toBe(90 * 60 * 1000)
+    expect(occ[0]!.endsAt!.getTime() - occ[0]!.startsAt.getTime()).toBe(90 * 60 * 1000)
   })
 
   it("skips individually-deleted occurrences via skipDates (E18)", () => {
@@ -115,7 +115,7 @@ describe("custom recurrence", () => {
       "2026-04-23",
     ])
     expect(occ.every((o, i) => i === 0 || o.isRecurrenceInstance)).toBe(true)
-    expect(occ[1].startsAt.getHours()).toBe(10)
+    expect(occ[1]!.startsAt.getHours()).toBe(10)
   })
 
   it("honors the week interval anchored at the start week", () => {

@@ -118,8 +118,9 @@ async function createJob(
     .values({ userId, moduleId, kind, targetId, status: "pending", params })
     .returning({ id: generationJob.id })
   const { enqueueGeneration } = await import("@/lib/jobs")
-  await enqueueGeneration(job.id)
-  return job.id
+  // INSERT ... returning() yields exactly one row unless it throws.
+  await enqueueGeneration(job!.id)
+  return job!.id
 }
 
 /** Starts a coverage-driven fill of an existing deck. */
@@ -142,8 +143,9 @@ export async function startQuizGeneration(
     .insert(quiz)
     .values({ userId, moduleId, title: opts.title, aiGenerated: true })
     .returning({ id: quiz.id })
-  const jobId = await createJob(userId, moduleId, "quiz", created.id, opts.params)
-  return { jobId, quizId: created.id }
+  // INSERT ... returning() yields exactly one row unless it throws.
+  const jobId = await createJob(userId, moduleId, "quiz", created!.id, opts.params)
+  return { jobId, quizId: created!.id }
 }
 
 // ---- Grounding + per-topic generation -------------------------------------------

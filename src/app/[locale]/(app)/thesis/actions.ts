@@ -74,6 +74,7 @@ export async function createThesis(input: unknown) {
     }
   }
 
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(writingProject)
     .values({
@@ -86,7 +87,7 @@ export async function createThesis(input: unknown) {
     })
     .returning({ id: writingProject.id })
   revalidatePath("/thesis")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 /** Marks a failed thesis as superseded and starts a fresh attempt (new topic). */
@@ -111,6 +112,7 @@ export async function retryThesis(thesisId: string) {
   // false), (2) supersede the old row (it drops out of the predicate),
   // (3) attach programId to the new row (now the only live row for the program).
   const newId = await db.transaction(async (tx) => {
+    // insert().returning() yields exactly one row unless it throws.
     const [created] = await tx
       .insert(writingProject)
       .values({
@@ -126,15 +128,15 @@ export async function retryThesis(thesisId: string) {
       .returning({ id: writingProject.id })
     await tx
       .update(writingProject)
-      .set({ supersededById: created.id })
+      .set({ supersededById: created!.id })
       .where(eq(writingProject.id, thesisId))
     if (prev.programId) {
       await tx
         .update(writingProject)
         .set({ programId: prev.programId })
-        .where(eq(writingProject.id, created.id))
+        .where(eq(writingProject.id, created!.id))
     }
-    return created.id
+    return created!.id
   })
   revalidatePath("/thesis")
   return { ok: true as const, id: newId }

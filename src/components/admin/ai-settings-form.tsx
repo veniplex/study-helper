@@ -89,6 +89,7 @@ export function AiSettingsForm({ initial }: { initial: AiSettings }) {
   /** One-token live request against the (possibly unsaved) provider config. */
   async function testProvider(index: number) {
     const p = providers[index]
+    if (!p) return
     setTesting(p.id)
     try {
       const result = await testAiProvider({

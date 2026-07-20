@@ -58,8 +58,9 @@ export function TodayPlanCard({ items }: { items: TodayPlanSession[] }) {
           <CalendarClock className="size-4" />
           {t("today")}
         </CardTitle>
+        {/* the empty-list early return above guarantees a first item */}
         <Link
-          href={`/plan/${items[0].semesterId}`}
+          href={`/plan/${items[0]!.semesterId}`}
           className="text-muted-foreground hover:text-foreground text-xs"
         >
           {t("title")} →

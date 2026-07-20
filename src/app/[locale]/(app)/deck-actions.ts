@@ -34,6 +34,7 @@ export async function createDeck(input: unknown) {
   const session = await requireSession()
   const data = deckSchema.parse(input)
   if (data.moduleId) await ownModule(data.moduleId, session.user.id)
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(deck)
     .values({
@@ -47,12 +48,12 @@ export async function createDeck(input: unknown) {
     userId: session.user.id,
     operation: "create",
     entityType: "deck",
-    entityId: created.id,
+    entityId: created!.id,
     entityLabel: data.name,
     after: created,
   })
   revalidatePath("/")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 export async function updateDeck(deckId: string, input: unknown) {
@@ -112,6 +113,7 @@ export async function addCard(deckId: string, input: unknown) {
   const session = await requireSession()
   await ownDeck(deckId, session.user.id)
   const data = cardSchema.parse(input)
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(flashcard)
     .values({ deckId, front: data.front, back: data.back })
@@ -120,7 +122,7 @@ export async function addCard(deckId: string, input: unknown) {
     userId: session.user.id,
     operation: "create",
     entityType: "flashcard",
-    entityId: created.id,
+    entityId: created!.id,
     entityLabel: data.front.slice(0, 80),
     after: created,
   })

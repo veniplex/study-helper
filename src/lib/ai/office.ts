@@ -23,7 +23,7 @@ function collectTagText(xml: string, tag: string): string[] {
   const out: string[] = []
   let m: RegExpExecArray | null
   while ((m = re.exec(xml)) !== null) {
-    const text = decodeXml(m[1].replace(/<[^>]+>/g, ""))
+    const text = decodeXml((m[1] ?? "").replace(/<[^>]+>/g, ""))
     if (text.trim()) out.push(text)
   }
   return out

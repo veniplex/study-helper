@@ -85,7 +85,8 @@ export async function unpackZip(payload: UnpackZipPayload): Promise<void> {
         })
         .returning({ id: material.id })
       try {
-        await enqueueEmbedMaterial(created.id)
+        // INSERT ... returning() yields exactly one row unless it throws.
+        await enqueueEmbedMaterial(created!.id)
       } catch (error) {
         console.error("[unpack-zip] failed to enqueue embedding", error)
       }
