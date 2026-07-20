@@ -369,6 +369,10 @@ async function fail(jobId: string, message: string): Promise<void> {
     .where(eq(generationJob.id, jobId))
 }
 
+/** Marks a batch submit that was started but not yet confirmed — see
+ *  trySubmitBatchGeneration. Never a real vendor batch id. */
+export const SUBMIT_MARKER_PREFIX = "submitting:"
+
 /** Batch-request token budget per topic (Anthropic requires max_tokens). */
 function batchMaxTokens(count: number): number {
   return maxTokensForItems(count)
@@ -435,11 +439,25 @@ async function trySubmitBatchGeneration(
     await upsertCoverage(job.targetId, topic.id, job.id, "generating")
   }
 
+  // submitBatch spends money before its id can be stored. Persist a marker
+  // first: if the worker dies in that window, the retried run sees the marker
+  // and stops (see runCoverageGeneration) instead of paying for a second batch
+  // while the first one keeps running at the vendor, uningested.
+  const attemptRef = `${SUBMIT_MARKER_PREFIX}${crypto.randomUUID()}`
+  await db
+    .update(generationJob)
+    .set({ batchRef: attemptRef, batchModel: modelRef })
+    .where(eq(generationJob.id, job.id))
+
   let batchRef: string
   try {
     batchRef = await submitBatch(provider, items)
   } catch (error) {
     console.error("[generation] batch submit failed, falling back to live path", error)
+    await db
+      .update(generationJob)
+      .set({ batchRef: null, batchModel: null })
+      .where(eq(generationJob.id, job.id))
     return false
   }
 
@@ -472,6 +490,22 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
     job.status === "canceled" ||
     job.status === "applying"
   ) {
+    return
+  }
+
+  // A submit marker means the previous run died between paying for a batch and
+  // storing its id — we can't tell whether the vendor accepted it, so stop here
+  // rather than risk a second charge. Restarting is the user's call.
+  if (job.batchRef?.startsWith(SUBMIT_MARKER_PREFIX)) {
+    await db
+      .update(generationJob)
+      .set({
+        status: "failed",
+        error: "Batch submit was interrupted — start the generation again.",
+        batchRef: null,
+        batchModel: null,
+      })
+      .where(eq(generationJob.id, jobId))
     return
   }
 
@@ -543,6 +577,7 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
 
   let topicsDone = 0
   let producedTotal = 0
+  let cappedOut = false
 
   for (const topic of topics) {
     // Token-budget guard: stop cleanly at the monthly limit. Uncovered topics
@@ -550,6 +585,7 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
     try {
       await assertWithinLimit(job.userId)
     } catch {
+      cappedOut = true
       break
     }
 
@@ -616,9 +652,18 @@ export async function runCoverageGeneration(jobId: string): Promise<void> {
       .where(eq(generationJob.id, jobId))
   }
 
+  // The run stays "completed" (unlike the batch path, which aborts before
+  // producing anything) because the topics it did finish are real items — but
+  // it carries the reason, so a deck cut short by the cap isn't mistaken for
+  // the finished result.
   await db
     .update(generationJob)
-    .set({ status: "completed", topicsDone, producedCount: producedTotal })
+    .set({
+      status: "completed",
+      topicsDone,
+      producedCount: producedTotal,
+      error: cappedOut ? "Monthly token limit reached — not all topics were generated." : null,
+    })
     .where(eq(generationJob.id, jobId))
 }
 

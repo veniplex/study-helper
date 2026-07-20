@@ -207,13 +207,16 @@ export async function getModuleStats(userId: string, moduleId: string): Promise<
   })
   const deckIds = decks.map((d) => d.id)
 
-  const [dueCards, quizzes, sessions] = await Promise.all([
+  const now = new Date()
+  const [dueRows, quizzes, sessions] = await Promise.all([
+    // Counted in SQL: imported Anki decks can hold tens of thousands of cards,
+    // and only the number of due ones is used.
     deckIds.length === 0
       ? Promise.resolve([])
-      : db.query.flashcard.findMany({
-          where: inArray(flashcard.deckId, deckIds),
-          columns: { id: true, due: true },
-        }),
+      : db
+          .select({ value: count() })
+          .from(flashcard)
+          .where(and(inArray(flashcard.deckId, deckIds), lte(flashcard.due, now))),
     db.query.quiz.findMany({
       where: and(eq(quiz.userId, userId), eq(quiz.moduleId, moduleId)),
       columns: { id: true },
@@ -241,9 +244,8 @@ export async function getModuleStats(userId: string, moduleId: string): Promise<
     lastQuizScore = lastAttempt?.score != null ? Number(lastAttempt.score) : null
   }
 
-  const now = new Date()
   return {
-    dueCards: dueCards.filter((c) => c.due <= now).length,
+    dueCards: dueRows[0]?.value ?? 0,
     lastQuizScore,
     totalMinutes: sessions.reduce((sum, s) => sum + s.durationMinutes, 0),
   }

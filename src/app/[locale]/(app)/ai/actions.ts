@@ -125,6 +125,14 @@ ${context ? `\nSurrounding page text (context only):\n${context.slice(0, 4000)}`
   return { explanation: text }
 }
 
+/**
+ * How many messages the chat UI hydrates. Mirrors the history window the chat
+ * route sends to the model (MAX_HISTORY_MESSAGES), so loading more would only
+ * ship `parts` jsonb (tool outputs, RAG citations — megabytes on long threads)
+ * that never reaches the model anyway.
+ */
+const MAX_LOADED_MESSAGES = 40
+
 /** Load a conversation's messages (used by the floating quick chat). Returns null if not found. */
 export async function getConversationMessages(conversationId: string) {
   const session = await requireSession()
@@ -133,10 +141,17 @@ export async function getConversationMessages(conversationId: string) {
       eq(aiConversation.id, conversationId),
       eq(aiConversation.userId, session.user.id)
     ),
-    with: { messages: { orderBy: (m, { asc }) => [asc(m.createdAt)] } },
+    // Newest-first + LIMIT so the DB drops the older rows; reversed below to
+    // restore the oldest-first order the UI renders in.
+    with: {
+      messages: {
+        orderBy: (m, { desc }) => [desc(m.createdAt)],
+        limit: MAX_LOADED_MESSAGES,
+      },
+    },
   })
   if (!conversation) return null
-  return conversation.messages.map((m) => ({
+  return conversation.messages.reverse().map((m) => ({
     id: m.id,
     role: m.role as "user" | "assistant",
     parts: m.parts,

@@ -142,7 +142,14 @@ export async function POST(request: Request) {
   try {
     model = await getLanguageModel(body.model, session.user.id)
   } catch (error) {
-    return new Response(error instanceof Error ? error.message : "Invalid model", {
+    // Raw messages here leak internals (a rotated ENCRYPTION_KEY surfaces as
+    // Node's "Unsupported state or unable to authenticate data"), so map onto
+    // the same stable AI_ERROR codes the client already translates. An
+    // undecryptable BYOK key is its own case — only re-entering it helps.
+    console.error("[chat] model init failed", error)
+    const message = error instanceof Error ? error.message : String(error)
+    const undecryptable = /unable to authenticate data|unsupported state|decrypt/i.test(message)
+    return new Response(undecryptable ? "AI_ERROR:key-decrypt" : "AI_ERROR:model", {
       status: 400,
     })
   }

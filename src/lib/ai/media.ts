@@ -1,9 +1,49 @@
 import "server-only"
 import path from "node:path"
 import { experimental_transcribe as transcribe, generateText, type TranscriptionModel } from "ai"
-import { readFileBuffer } from "@/lib/storage"
+import { fileSize, readFileBuffer } from "@/lib/storage"
 import { getLanguageModel, getTranscriptionModel, resolveModelForUser } from "./registry"
 import { runAi } from "./run"
+
+/**
+ * Whisper-class speech-to-text endpoints (OpenAI, Groq) reject uploads beyond
+ * ~25 MB, but uploads are allowed up to maxUploadMb (200 MB by default).
+ * Configurable via MAX_TRANSCRIBE_MB.
+ */
+const MAX_TRANSCRIBE_BYTES = (Number(process.env.MAX_TRANSCRIBE_MB) || 25) * 1024 * 1024
+
+/**
+ * Images travel base64-encoded inside the chat request body, so the provider's
+ * request-size limit bites well below the upload cap. Configurable via
+ * MAX_IMAGE_OCR_MB.
+ */
+const MAX_IMAGE_BYTES = (Number(process.env.MAX_IMAGE_OCR_MB) || 20) * 1024 * 1024
+
+export class MediaTooLargeError extends Error {
+  constructor(what: string, sizeBytes: number, maxBytes: number) {
+    super(
+      `${what} too large (${Math.round(sizeBytes / 1024 / 1024)} MB, ` +
+        `max ${Math.round(maxBytes / 1024 / 1024)} MB)`
+    )
+    this.name = "MediaTooLargeError"
+  }
+}
+
+/**
+ * Rejects oversized media before it is read into memory. Deliberately called
+ * OUTSIDE the best-effort try/catch of its callers: a provider reject on an
+ * over-limit file would otherwise surface as the misleading "returned no text",
+ * hiding the one thing the user can act on. A missing/unreadable file is left
+ * to the read below, which already degrades gracefully.
+ */
+async function assertMediaSize(
+  storagePath: string,
+  maxBytes: number,
+  what: string
+): Promise<void> {
+  const size = await fileSize(storagePath).catch(() => 0)
+  if (size > maxBytes) throw new MediaTooLargeError(what, size, maxBytes)
+}
 
 const IMAGE_PROMPT =
   "Extract all readable text from this image verbatim (OCR). Then add a short " +
@@ -13,13 +53,15 @@ const IMAGE_PROMPT =
 /**
  * Uses a configured vision-capable model to OCR + describe an image, so image
  * uploads become searchable/RAG-able. Best-effort: returns null when no model
- * is configured or the model can't process the image.
+ * is configured or the model can't process the image. Throws MediaTooLargeError
+ * for images beyond the provider's request-size headroom.
  */
 export async function extractImageText(
   storagePath: string,
   mimeType: string | null,
   userId: string
 ): Promise<string | null> {
+  await assertMediaSize(storagePath, MAX_IMAGE_BYTES, "Image")
   try {
     const ref = await resolveModelForUser(userId)
     if (!ref) return null
@@ -83,9 +125,11 @@ export async function transcribeAudioBuffer(buffer: Uint8Array, userId: string):
 
 /**
  * Transcribes audio/video via a configured speech-to-text model (OpenAI/Groq
- * Whisper). Best-effort: returns null when unavailable or on failure.
+ * Whisper). Best-effort: returns null when unavailable or on failure. Throws
+ * MediaTooLargeError for files beyond what the STT endpoints accept.
  */
 export async function transcribeMedia(storagePath: string, userId: string): Promise<string | null> {
+  await assertMediaSize(storagePath, MAX_TRANSCRIBE_BYTES, "Audio/video")
   try {
     const transcription = await getTranscriptionModel(userId)
     if (!transcription) return null

@@ -957,6 +957,8 @@
     "errorGeneric": "The request failed. Please try again.",
     "errorLimit": "Your monthly AI quota is used up.",
     "errorAuth": "The AI provider rejected the request (API key invalid or expired). Please check the AI settings.",
+    "errorKeyDecrypt": "Your stored API key can no longer be decrypted. Please enter it again.",
+    "errorModel": "The selected AI model could not be loaded. Please choose a different model.",
     "sources": "Sources",
     "regenerate": "Regenerate answer",
     "stop": "Stop",

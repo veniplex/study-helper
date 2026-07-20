@@ -957,6 +957,8 @@
     "errorGeneric": "Die Anfrage ist fehlgeschlagen. Bitte versuche es erneut.",
     "errorLimit": "Dein monatliches AI-Kontingent ist aufgebraucht.",
     "errorAuth": "Der AI-Anbieter hat die Anfrage abgelehnt (API-Key ungültig oder abgelaufen). Bitte prüfe die AI-Einstellungen.",
+    "errorKeyDecrypt": "Dein gespeicherter API-Key kann nicht mehr entschlüsselt werden. Bitte hinterlege ihn erneut.",
+    "errorModel": "Das gewählte KI-Modell konnte nicht geladen werden. Bitte wähle ein anderes Modell.",
     "sources": "Quellen",
     "regenerate": "Antwort neu generieren",
     "stop": "Stoppen",

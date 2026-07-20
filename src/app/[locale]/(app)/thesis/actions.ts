@@ -140,7 +140,11 @@ export async function retryThesis(thesisId: string) {
   return { ok: true as const, id: newId }
 }
 
-const thesisUpdateSchema = thesisSchema.partial().extend({
+// `programId` is deliberately NOT updatable: a thesis belongs to the program it
+// was created under, and moving it would bypass both the ownership check in
+// createThesis and the one-active-thesis-per-program invariant. Program changes
+// go through createThesis / retryThesis.
+const thesisUpdateSchema = thesisSchema.omit({ programId: true }).partial().extend({
   phase: z.enum(["topic", "exposé", "research", "writing", "revision", "submitted"]).optional(),
   researchQuestion: z.string().max(2000).optional().nullable(),
   outline: z.string().max(20000).optional().nullable(),

@@ -27,8 +27,12 @@ Database migrations run automatically on startup.
 
 ### Image versions
 
-`docker-compose.yml` uses `:latest` by default. For reproducible deploys, pin a
-version in `.env`:
+`docker-compose.yml` tracks the current **major** version (`1`) by default, so
+`docker compose pull` picks up fixes and features but never a major upgrade —
+those can apply irreversible database migrations on first start and should be a
+deliberate step (read the release notes, back up, then raise the number).
+
+For fully reproducible deploys, pin a full version in `.env`:
 
 ```bash
 STUDYHELPER_VERSION=1.0.0
@@ -100,7 +104,7 @@ and links to the release. Installing it is a manual
 | `APP_URL`             | yes      | Public base URL (auth callbacks, emails, push)                                                                                                                                      |
 | `BETTER_AUTH_SECRET`  | yes      | Session signing secret (32+ random bytes)                                                                                                                                           |
 | `ENCRYPTION_KEY`      | yes      | Encrypts stored secrets (API keys, SMTP, notes)                                                                                                                                     |
-| `STUDYHELPER_VERSION` | no       | Image tag to run (default `latest`); pin e.g. `1.0.0` for reproducible deploys                                                                                                      |
+| `STUDYHELPER_VERSION` | no       | Image tag to run (default `1`, the current major line); pin e.g. `1.0.0` for reproducible deploys                                                                                   |
 | `DATA_DIR`            | no       | Host directory for the database + uploads volumes (default `./data`, next to `docker-compose.yml`) — see [Where data is stored](#where-data-is-stored)                              |
 | `UPLOAD_DIR`          | no       | Upload path **inside the container** (default `/data/uploads`) — only relevant for non-Docker deployments; Docker users should set `DATA_DIR` instead                               |
 | `TUS_DIR`             | no       | Staging dir for resumable (tus) uploads of very large files (default `<cwd>/data/tus-incoming`); use a persistent volume so interrupted uploads resume after a restart              |
@@ -193,6 +197,18 @@ study.example.com {
 ```
 
 Set `APP_URL=https://study.example.com` accordingly.
+
+The compose file publishes port 3000 on `127.0.0.1` only, so the proxy (running
+on the same host) can reach it while the outside world cannot talk to the app
+directly — otherwise the same instance would also be served unencrypted on
+port 3000, past the proxy and past your firewall, since Docker's port publishing
+writes its own iptables rules and is not filtered by UFW.
+
+If the proxy runs in another container, put it on the same compose network and
+let it target `app:3000` instead of publishing a host port at all. If you
+deliberately want direct LAN access without a reverse proxy, change the mapping
+to `"3000:3000"` — and restrict the port at your network firewall, not with UFW
+on the host.
 
 ## OIDC quick notes
 
