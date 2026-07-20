@@ -28,9 +28,6 @@ else
   RUN_AS=""
 fi
 
-echo "Running database migrations..."
-$RUN_AS node node_modules/drizzle-kit/bin.cjs migrate
-
 if [ "$#" -gt 0 ]; then
   # A custom command was given (e.g. docker-compose `command: ["npm", "run",
   # "worker"]`). This standalone, prebuilt image is web-server-only — the
@@ -39,9 +36,17 @@ if [ "$#" -gt 0 ]; then
   # let it fail loudly (missing package.json / tsx) instead of silently
   # falling through to starting the web server on what the operator intended
   # to be a separate worker container.
+  #
+  # Deliberately checked before the migration step below: only the web container
+  # migrates, so a worker starting alongside it cannot race it over the same DDL.
   echo "Starting: $*"
   exec $RUN_AS "$@"
 fi
+
+# Serialized through a Postgres advisory lock, so scaled replicas starting
+# together don't apply the same migrations at once (see scripts/migrate.mjs).
+echo "Running database migrations..."
+$RUN_AS node scripts/migrate.mjs
 
 echo "Starting StudyHelper..."
 exec $RUN_AS node server.js

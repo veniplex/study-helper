@@ -96,6 +96,7 @@ and links to the release. Installing it is a manual
 | Variable              | Required | Description                                                                                                                                                                         |
 | --------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`        | yes      | Postgres connection string (pgvector image)                                                                                                                                         |
+| `POSTGRES_PASSWORD`   | yes      | Password for the bundled database container. Only applied when the database is **first created** — see the note below                                                                |
 | `APP_URL`             | yes      | Public base URL (auth callbacks, emails, push)                                                                                                                                      |
 | `BETTER_AUTH_SECRET`  | yes      | Session signing secret (32+ random bytes)                                                                                                                                           |
 | `ENCRYPTION_KEY`      | yes      | Encrypts stored secrets (API keys, SMTP, notes)                                                                                                                                     |
@@ -108,6 +109,22 @@ and links to the release. Installing it is a manual
 | `SEED_TEST_DATA`      | no       | `true` seeds demo accounts (admin@example.com / admin-test-1234, user@example.com / user-test-1234) with sample study content on startup — for evaluation only, never in production |
 
 **Do not lose `ENCRYPTION_KEY`** — encrypted settings (AI keys, SMTP, OIDC secrets) become unreadable without it.
+
+`BETTER_AUTH_SECRET` and `ENCRYPTION_KEY` must not keep the `change-me`
+placeholder from `.env.example`: the app refuses to start with it, since that
+value is public. Both should be 32+ random characters
+(`openssl rand -base64 32`).
+
+**Changing `POSTGRES_PASSWORD` later has no effect on its own.** PostgreSQL only
+reads it when it initializes an empty data directory; afterwards the password
+lives in the database. If you started with the old default and want to rotate it,
+change it in both places:
+
+```bash
+docker compose exec db psql -U study -d study -c "ALTER USER study WITH PASSWORD 'new-password';"
+# then set POSTGRES_PASSWORD=new-password in .env
+docker compose up -d
+```
 
 ## Troubleshooting
 
@@ -187,8 +204,35 @@ Admin → Sign-in & SSO.
 
 ## Backup
 
-Back up the data directory (`DATA_DIR`, or `./data` if unset — database +
-uploads) and your `.env`. To move data to a new `DATA_DIR`:
+Back up three things: the **database**, the **uploaded files**, and your
+**`.env`** (it holds `ENCRYPTION_KEY`, without which every stored secret is
+unreadable).
+
+Do **not** simply copy `./data/db` while the stack is running. That directory is
+PostgreSQL's live data directory; copying it mid-write produces an inconsistent
+snapshot that may refuse to start when you need it (`invalid checkpoint
+record`). Dump the database instead:
+
+```bash
+# Database — consistent, works while the app is running
+docker compose exec -T db pg_dump -U study -Fc study > studyhelper-$(date +%F).dump
+
+# Uploaded files (skip if you use S3 — back up the bucket instead)
+tar czf studyhelper-uploads-$(date +%F).tar.gz -C ./data uploads
+```
+
+Restore into an empty database:
+
+```bash
+docker compose up -d db
+docker compose exec -T db pg_restore -U study -d study --clean --if-exists < studyhelper-2026-01-31.dump
+docker compose up -d
+```
+
+A plain file copy of `./data` is fine too, but only with the stack stopped
+(`docker compose down` first) — that is what the `DATA_DIR` move below does.
+
+To move data to a new `DATA_DIR`:
 
 ```bash
 docker compose down

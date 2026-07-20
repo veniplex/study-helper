@@ -11,7 +11,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgres://study:${POSTGRES_PASSWORD:-study}@db:5432/study
+      DATABASE_URL: postgres://study:${POSTGRES_PASSWORD:?set in .env}@db:5432/study
       APP_URL: ${APP_URL:-http://localhost:3000}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set in .env}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set in .env}
@@ -58,7 +58,7 @@ services:
   #   image: ghcr.io/veniplex/study-helper:${STUDYHELPER_VERSION:-latest}
   #   command: ["npm", "run", "worker"]
   #   environment:
-  #     DATABASE_URL: postgres://study:${POSTGRES_PASSWORD:-study}@db:5432/study
+  #     DATABASE_URL: postgres://study:${POSTGRES_PASSWORD:?set in .env}@db:5432/study
   #     UPLOAD_DIR: /data/uploads
   #     # The worker finalizes resumable (tus) uploads, so it needs the staging dir.
   #     TUS_DIR: /data/tus-incoming
@@ -75,7 +75,7 @@ services:
     image: pgvector/pgvector:pg17
     environment:
       POSTGRES_USER: study
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-study}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
       POSTGRES_DB: study
     volumes:
       - ${DATA_DIR:-./data}/db:/var/lib/postgresql/data
