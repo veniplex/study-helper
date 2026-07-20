@@ -459,8 +459,17 @@ export function Chat({
                   {t("errorNoKeyCta")}
                 </Link>
               </>
+            ) : error.message === "AI_ERROR:key-decrypt" ? (
+              <>
+                {t("errorKeyDecrypt")}{" "}
+                <Link href="/settings" className="underline underline-offset-2">
+                  {t("errorNoKeyCta")}
+                </Link>
+              </>
             ) : error.message === "AI_ERROR:auth" ? (
               t("errorAuth")
+            ) : error.message === "AI_ERROR:model" ? (
+              t("errorModel")
             ) : error.message === "AI_ERROR:rate-limit" ||
               error.message.toLowerCase().includes("limit") ? (
               t("errorLimit")
@@ -499,7 +508,12 @@ export function Chat({
               <Square className="size-4" />
             </Button>
           ) : (
-            <Button size="icon" onClick={submit} disabled={!input.trim() || !model}>
+            <Button
+              size="icon"
+              onClick={submit}
+              disabled={!input.trim() || !model}
+              aria-label={t("send")}
+            >
               <ArrowUp className="size-4" />
             </Button>
           )}

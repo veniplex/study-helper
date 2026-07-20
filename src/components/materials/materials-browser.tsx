@@ -3,6 +3,7 @@
 import * as React from "react"
 import {
   DndContext,
+  KeyboardSensor,
   PointerSensor,
   useDraggable,
   useDroppable,
@@ -10,6 +11,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core"
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable"
 import {
   Archive,
   Check,
@@ -473,7 +475,10 @@ export function MaterialsBrowser({
   const t = useTranslations("materials")
   const showError = useActionErrorToast()
   const router = useRouter()
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null)
   const [view, setView] = React.useState<"list" | "grid">("list")
@@ -619,10 +624,15 @@ export function MaterialsBrowser({
   function onFileRowClick(e: React.MouseEvent, index: number, id: string) {
     if (e.shiftKey && lastIndexRef.current != null) {
       e.preventDefault()
-      const [a, b] = [lastIndexRef.current, index].sort((x, y) => x - y)
+      // two-element literal, so both destructured entries exist
+      const [a, b] = [lastIndexRef.current, index].sort((x, y) => x - y) as [number, number]
       setSelection((prev) => {
         const next = new Set(prev)
-        for (let i = a; i <= b; i++) next.add(currentFiles[i].id)
+        // the remembered index can be stale if the list shrank — skip gaps
+        for (let i = a; i <= b; i++) {
+          const file = currentFiles[i]
+          if (file) next.add(file.id)
+        }
         return next
       })
     } else if (e.ctrlKey || e.metaKey) {
@@ -652,7 +662,8 @@ export function MaterialsBrowser({
       await run(() => moveFolder(folderId, targetFolderId))
     } else {
       const ids = selection.has(activeId) && selection.size > 1 ? [...selection] : [activeId]
-      if (ids.length === 1) await run(() => moveMaterialToFolder(ids[0], targetFolderId))
+      // length checked, so index 0 is present
+      if (ids.length === 1) await run(() => moveMaterialToFolder(ids[0]!, targetFolderId))
       else await run(() => moveMaterialsToFolder({ ids, folderId: targetFolderId }))
     }
   }

@@ -72,9 +72,11 @@ export async function registerWorkers(boss: PgBoss): Promise<void> {
   await boss.work<{ materialId: string }>(QUEUE_EMBED_MATERIAL, async (jobs) => {
     const { processMaterial } = await import("@/lib/ai/rag")
     for (const job of jobs) {
-      await processMaterial(job.data.materialId)
-      // Summaries feed the module outline; run them after embedding.
-      await enqueueSummarizeMaterial(job.data.materialId)
+      const status = await processMaterial(job.data.materialId)
+      // Summaries feed the module outline; run them after embedding. A skipped
+      // material has no usable text (or its owner is over the monthly AI cap),
+      // so queueing a summary job would only be a guaranteed no-op.
+      if (status === "ready") await enqueueSummarizeMaterial(job.data.materialId)
     }
   })
 

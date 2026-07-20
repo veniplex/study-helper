@@ -40,8 +40,8 @@ describe("buildHeatmap", () => {
     const cells = buildHeatmap(new Map([["2026-07-10", 3]]), "2026-07-10", 2)
     expect(cells).toHaveLength(14)
     expect(cells.at(-1)).toEqual({ date: "2026-07-10", count: 3 })
-    expect(cells[0].date).toBe("2026-06-27")
-    expect(cells[0].count).toBe(0)
+    expect(cells[0]!.date).toBe("2026-06-27")
+    expect(cells[0]!.count).toBe(0)
   })
 })
 

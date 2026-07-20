@@ -10,7 +10,7 @@ import {
 
 const toMin = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number)
-  return h * 60 + m
+  return (h ?? NaN) * 60 + (m ?? NaN)
 }
 const endMin = (s: { startTime: string; durationMinutes: number }) =>
   toMin(s.startTime) + s.durationMinutes
@@ -91,7 +91,7 @@ describe("computeSchedule — blockers", () => {
     })
     const { sessions } = computeSchedule(input)
     expect(sessions.length).toBeGreaterThan(0)
-    const blockers = [
+    const blockers: [number, number][] = [
       [toMin("10:00"), toMin("11:00")],
       [toMin("13:00"), toMin("14:00")],
       [toMin("15:00"), toMin("15:30")],
@@ -464,7 +464,7 @@ describe("computeSchedule — consolidation window", () => {
     })
     const s1 = computeSchedule(reviewHeavy).sessions
     expect(s1).toHaveLength(1)
-    expect(s1[0].kind).toBe("review")
+    expect(s1[0]!.kind).toBe("review") // toHaveLength(1) asserted above
 
     const learnHeavy = baseInput({
       today: "2026-08-03",
@@ -473,7 +473,7 @@ describe("computeSchedule — consolidation window", () => {
       config: { maxSessionsPerDay: 1, sessionMinutes: { min: 45, max: 180 } },
       modules: [mod({ moduleId: "m", tasks: [ctask("l0", "learn", 30), ctask("l1", "learn", 30)] })],
     })
-    expect(computeSchedule(learnHeavy).sessions[0].kind).toBe("study")
+    expect(computeSchedule(learnHeavy).sessions[0]!.kind).toBe("study")
   })
 })
 

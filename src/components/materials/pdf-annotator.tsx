@@ -163,8 +163,9 @@ export function PdfAnnotator({
       all.push(item.str)
       // transform[4]/[5] are the item's origin in PDF units (bottom-left based);
       // annotation rects are normalized with y from the top.
-      const cx = (item.transform[4] + (item.width ?? 0) / 2) / viewport.width
-      const cy = 1 - item.transform[5] / viewport.height
+      // pdf.js always emits a 6-element transform matrix for text items
+      const cx = (item.transform[4]! + (item.width ?? 0) / 2) / viewport.width
+      const cy = 1 - item.transform[5]! / viewport.height
       const pad = 0.01
       if (
         cx >= r.x - pad &&
@@ -346,7 +347,7 @@ function PdfPage({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (!entries[0].isIntersecting || renderedRef.current) return
+        if (!entries[0]?.isIntersecting || renderedRef.current) return
         renderedRef.current = true
         void renderPage()
         observer.disconnect()

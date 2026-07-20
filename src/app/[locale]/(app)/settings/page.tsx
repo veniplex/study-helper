@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { and, eq, gte, sum } from "drizzle-orm"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
@@ -6,7 +7,7 @@ import { requireSession } from "@/lib/auth/session"
 import { getSetting } from "@/lib/settings"
 import { listAvailableModels } from "@/lib/ai/registry"
 import { getUserStorage } from "@/lib/materials/usage"
-import { daysAgo, formatBytes } from "@/lib/utils"
+import { formatBytes } from "@/lib/utils"
 import { AiKeySettings } from "@/components/settings/ai-key-settings"
 import { AiModelCard } from "@/components/settings/ai-model-card"
 import { LearningSettings } from "@/components/settings/learning-settings"
@@ -15,6 +16,11 @@ import { ProfileSettings } from "@/components/settings/profile-settings"
 import { SecuritySettings } from "@/components/settings/security-settings"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Link } from "@/i18n/navigation"
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("nav")
+  return { title: t("settings") }
+}
 
 export default async function SettingsPage() {
   const session = await requireSession()
@@ -25,7 +31,6 @@ export default async function SettingsPage() {
   const monthStart = new Date()
   monthStart.setDate(1)
   monthStart.setHours(0, 0, 0, 0)
-  void daysAgo
 
   const [passkeys, ai, userKeys, usage, usageByFeature, nPrefs, prefs, availableModels, uploads, storage] =
     await Promise.all([

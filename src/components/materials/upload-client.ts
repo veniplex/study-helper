@@ -53,7 +53,8 @@ function tusUpload(
     upload
       .findPreviousUploads()
       .then((previous) => {
-        if (previous.length > 0) upload.resumeFromPreviousUpload(previous[0])
+        // length checked, so index 0 is present
+        if (previous.length > 0) upload.resumeFromPreviousUpload(previous[0]!)
         upload.start()
       })
       .catch(() => upload.start())
@@ -130,8 +131,8 @@ export async function uploadFiles(
   opts: { moduleId: string; folderId: string | null; onProgress?: (p: UploadProgress) => void }
 ): Promise<{ queued: number }> {
   let queued = 0
-  for (let i = 0; i < items.length; i++) {
-    const { file, relativePath } = items[i]
+  for (const [i, item] of items.entries()) {
+    const { file, relativePath } = item
     const params = { moduleId: opts.moduleId, folderId: opts.folderId, relativePath }
     const onPercent = (percent: number) =>
       opts.onProgress?.({ done: i, total: items.length, percent })

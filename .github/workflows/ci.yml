@@ -5,17 +5,61 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege by default: nothing here needs to write to the repo, and the
+# job runs untrusted PR code.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
+
+    # The .db.test.ts suites are gated on RUN_DB_TESTS and were therefore never
+    # executed anywhere — a migration could break the folder/unpack semantics and
+    # CI would stay green. pgvector's image matches what docker-compose ships.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: study
+          POSTGRES_PASSWORD: study
+          POSTGRES_DB: study
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U study -d study"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://study:study@localhost:5432/study
+      RUN_DB_TESTS: "1"
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm test
+      # Applies the migrations the DB-backed tests expect, and doubles as a check
+      # that every migration in drizzle/ still applies to an empty database.
+      - run: npm run db:migrate
+      # Coverage rather than a plain run, so the configured thresholds act as a
+      # ratchet — coverage can no longer slide unnoticed.
+      - run: npm run test:coverage
       - run: npm run build
+
+  # Flags dependencies added by a PR that carry known vulnerabilities, before
+  # they reach the published image.
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high

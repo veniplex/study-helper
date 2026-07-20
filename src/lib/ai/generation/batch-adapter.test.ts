@@ -49,26 +49,26 @@ describe("buildAnthropicRequests", () => {
   it("forces a single tool call carrying the JSON schema", () => {
     const reqs = buildAnthropicRequests(items, "claude-x")
     expect(reqs).toHaveLength(1)
-    expect(reqs[0].custom_id).toBe("topic-1")
-    expect(reqs[0].params.model).toBe("claude-x")
-    expect(reqs[0].params.max_tokens).toBe(2000)
-    expect(reqs[0].params.tool_choice).toEqual({ type: "tool", name: "emit_result" })
-    expect(reqs[0].params.tools[0].input_schema).toEqual({ type: "object" })
-    expect(reqs[0].params.messages).toEqual([{ role: "user", content: "PROMPT" }])
+    expect(reqs[0]!.custom_id).toBe("topic-1")
+    expect(reqs[0]!.params.model).toBe("claude-x")
+    expect(reqs[0]!.params.max_tokens).toBe(2000)
+    expect(reqs[0]!.params.tool_choice).toEqual({ type: "tool", name: "emit_result" })
+    expect(reqs[0]!.params.tools[0]!.input_schema).toEqual({ type: "object" })
+    expect(reqs[0]!.params.messages).toEqual([{ role: "user", content: "PROMPT" }])
   })
 })
 
 describe("buildOpenAiTasks", () => {
   it("builds strict json_schema chat-completion tasks", () => {
     const tasks = buildOpenAiTasks(items, "gpt-x")
-    expect(tasks[0].custom_id).toBe("topic-1")
-    expect(tasks[0].method).toBe("POST")
-    expect(tasks[0].url).toBe("/v1/chat/completions")
-    expect(tasks[0].body.model).toBe("gpt-x")
+    expect(tasks[0]!.custom_id).toBe("topic-1")
+    expect(tasks[0]!.method).toBe("POST")
+    expect(tasks[0]!.url).toBe("/v1/chat/completions")
+    expect(tasks[0]!.body.model).toBe("gpt-x")
     // Newer OpenAI models reject max_tokens.
-    expect(tasks[0].body.max_completion_tokens).toBe(2000)
-    expect(tasks[0].body.response_format.json_schema.strict).toBe(true)
-    expect(tasks[0].body.messages).toEqual([{ role: "user", content: "PROMPT" }])
+    expect(tasks[0]!.body.max_completion_tokens).toBe(2000)
+    expect(tasks[0]!.body.response_format.json_schema.strict).toBe(true)
+    expect(tasks[0]!.body.messages).toEqual([{ role: "user", content: "PROMPT" }])
   })
 })
 
@@ -86,11 +86,13 @@ describe("toStrictJsonSchema", () => {
     expect(strict.required).toEqual(["cards"])
     expect(strict.additionalProperties).toBe(false)
     const cards = (strict.properties as Record<string, Record<string, unknown>>).cards
-    expect(cards.maxItems).toBeUndefined()
-    const item = cards.items as Record<string, unknown>
+    expect(cards!.maxItems).toBeUndefined()
+    const item = cards!.items as Record<string, unknown>
     expect(item.required).toEqual(["front", "back"])
     expect(item.additionalProperties).toBe(false)
-    expect((item.properties as Record<string, Record<string, unknown>>).back.default).toBeUndefined()
+    expect(
+      (item.properties as Record<string, Record<string, unknown>>).back!.default
+    ).toBeUndefined()
   })
 })
 
@@ -118,9 +120,9 @@ describe("parseAnthropicResults", () => {
       usage: { inputTokens: 10, outputTokens: 20 },
       error: undefined,
     })
-    expect(parsed[1].object).toBeNull()
-    expect(parsed[1].error).toBe("bad request")
-    expect(parsed[1].usage).toEqual({ inputTokens: 0, outputTokens: 0 })
+    expect(parsed[1]!.object).toBeNull()
+    expect(parsed[1]!.error).toBe("bad request")
+    expect(parsed[1]!.usage).toEqual({ inputTokens: 0, outputTokens: 0 })
   })
 })
 
@@ -148,8 +150,8 @@ describe("parseOpenAiResults", () => {
       object: { cards: [{ front: "a", back: "b" }] },
       usage: { inputTokens: 5, outputTokens: 7 },
     })
-    expect(parsed[1].object).toBeNull()
-    expect(parsed[1].error).toBe("batch item error")
+    expect(parsed[1]!.object).toBeNull()
+    expect(parsed[1]!.error).toBe("batch item error")
   })
 })
 

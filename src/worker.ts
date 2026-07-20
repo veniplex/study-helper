@@ -24,11 +24,24 @@ async function main(): Promise<void> {
     if (shuttingDown) return
     shuttingDown = true
     console.log(`[worker] received ${signal}, draining…`)
+    // A graceful stop waits for in-flight jobs; if one hangs (stuck HTTP call,
+    // lost DB connection) boss.stop() never resolves and the process survives
+    // until an external SIGKILL. Bound the drain so the container/unit restart
+    // stays predictable. unref() keeps this timer from holding the loop open.
+    const forceExit = setTimeout(() => {
+      console.error("[worker] shutdown timed out after 30s, exiting")
+      process.exit(1)
+    }, 30_000)
+    forceExit.unref()
     try {
       await boss.stop({ graceful: true })
     } catch (error) {
       console.error("[worker] error during shutdown", error)
+      // A failed drain is not a clean exit — report it so supervisors and
+      // deploy scripts can tell the difference.
+      process.exit(1)
     }
+    clearTimeout(forceExit)
     process.exit(0)
   }
   process.on("SIGTERM", () => void shutdown("SIGTERM"))

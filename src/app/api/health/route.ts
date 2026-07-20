@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto"
 import { NextResponse } from "next/server"
 import { sql } from "drizzle-orm"
 import { db } from "@/db"
@@ -24,6 +25,15 @@ async function checkStorage(): Promise<boolean> {
   }
 }
 
+/** Constant-time token compare; timingSafeEqual throws on differing lengths. */
+function tokenMatches(expected: string, provided: string | null): boolean {
+  if (!provided) return false
+  const a = Buffer.from(expected)
+  const b = Buffer.from(provided)
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
+}
+
 let storageCache: { at: number; ok: boolean } | null = null
 
 async function cachedStorageCheck(): Promise<boolean> {
@@ -47,7 +57,9 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const token = process.env.HEALTH_TOKEN
   const wantsFull =
-    url.searchParams.get("full") === "1" && !!token && url.searchParams.get("token") === token
+    url.searchParams.get("full") === "1" &&
+    !!token &&
+    tokenMatches(token, url.searchParams.get("token"))
 
   let storage: "up" | "down" | undefined
   if (wantsFull) {

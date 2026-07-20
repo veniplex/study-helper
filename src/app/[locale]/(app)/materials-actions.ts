@@ -34,6 +34,7 @@ export async function createLinkMaterial(input: unknown) {
   await ownModule(data.moduleId, session.user.id)
   const folderId = data.folderId ?? null
   await assertFolderInModule(folderId, data.moduleId, session.user.id)
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(material)
     .values({
@@ -49,7 +50,7 @@ export async function createLinkMaterial(input: unknown) {
     userId: session.user.id,
     operation: "create",
     entityType: "material",
-    entityId: created.id,
+    entityId: created!.id,
     entityLabel: data.name,
     after: created,
   })
@@ -180,12 +181,12 @@ export async function createFolder(input: unknown) {
     userId: session.user.id,
     operation: "create",
     entityType: "materialFolder",
-    entityId: created.id,
+    entityId: created!.id,
     entityLabel: name,
     after: created,
   })
   revalidatePath("/", "layout")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 export async function renameFolder(folderId: string, newName: string) {
@@ -298,6 +299,7 @@ export async function createAnnotation(materialId: string, input: unknown) {
   const session = await requireSession()
   await ownMaterial(materialId, session.user.id)
   const data = annotationSchema.parse(input)
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(materialAnnotation)
     .values({
@@ -309,7 +311,7 @@ export async function createAnnotation(materialId: string, input: unknown) {
       note: data.note ?? null,
     })
     .returning()
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 export async function updateAnnotationNote(annotationId: string, note: string) {

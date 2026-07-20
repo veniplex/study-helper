@@ -19,9 +19,12 @@ function cosine(a: number[], b: number[]): number {
   let nb = 0
   const n = Math.min(a.length, b.length)
   for (let i = 0; i < n; i++) {
-    dot += a[i] * b[i]
-    na += a[i] * a[i]
-    nb += b[i] * b[i]
+    // i < n = min(a.length, b.length), so both entries exist.
+    const ai = a[i]!
+    const bi = b[i]!
+    dot += ai * bi
+    na += ai * ai
+    nb += bi * bi
   }
   if (na === 0 || nb === 0) return 0
   return dot / (Math.sqrt(na) * Math.sqrt(nb))

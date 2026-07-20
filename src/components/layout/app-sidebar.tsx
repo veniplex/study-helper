@@ -170,6 +170,7 @@ function SidebarModule({
                 <Link
                   key={tab.key}
                   href={tabHref}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
                     active
@@ -468,7 +469,12 @@ export function AppSidebar({
           {topItems.map((item) => {
             const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
             return (
-              <Link key={item.key} href={item.href} className={itemClass(active)}>
+              <Link
+                key={item.key}
+                href={item.href}
+                className={itemClass(active)}
+                aria-current={active ? "page" : undefined}
+              >
                 <item.icon className="size-4.5 shrink-0" />
                 {t(item.key)}
               </Link>

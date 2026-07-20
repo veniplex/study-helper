@@ -109,14 +109,17 @@ export async function registerUploadedFile(input: RegisterInput): Promise<Regist
     })
     .returning()
 
+  // INSERT ... returning() yields exactly one row unless it throws.
+  const createdRow = created!
+
   const { logAudit } = await import("@/lib/audit")
   await logAudit({
     userId,
     operation: "create",
     entityType: "material",
-    entityId: created.id,
+    entityId: createdRow.id,
     entityLabel: fileName,
-    after: created,
+    after: createdRow,
   })
 
   // Kick off text extraction + embedding in the background. A failed enqueue
@@ -124,7 +127,7 @@ export async function registerUploadedFile(input: RegisterInput): Promise<Regist
   // not stay invisible — mark the material failed so the UI offers a retry.
   try {
     const { enqueueEmbedMaterial } = await import("@/lib/jobs")
-    await enqueueEmbedMaterial(created.id)
+    await enqueueEmbedMaterial(createdRow.id)
   } catch (error) {
     console.error("[ingest] failed to enqueue embedding job", error)
     await db
@@ -133,8 +136,8 @@ export async function registerUploadedFile(input: RegisterInput): Promise<Regist
         extractionStatus: "failed",
         extractionError: "Processing could not be scheduled — retry via the material menu.",
       })
-      .where(eq(material.id, created.id))
+      .where(eq(material.id, createdRow.id))
   }
 
-  return { kind: "created", id: created.id }
+  return { kind: "created", id: createdRow.id }
 }

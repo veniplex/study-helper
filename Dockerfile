@@ -29,6 +29,7 @@ COPY --from=builder /app/node_modules/drizzle-kit ./node_modules/drizzle-kit
 COPY --from=builder /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
 COPY --from=builder /app/node_modules/postgres ./node_modules/postgres
 COPY --from=builder /app/src/db/schema ./src/db/schema
+COPY scripts/migrate.mjs ./scripts/migrate.mjs
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN mkdir -p /data/uploads && chown -R app:app /data /app

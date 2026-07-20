@@ -17,7 +17,7 @@ import {
   userHasUsableKeyForModel,
 } from "@/lib/ai/registry"
 import { GEN_PARAMS, maxTokensForItems, maxTokensForText } from "@/lib/ai/params"
-import { assertWithinLimit } from "@/lib/ai/usage"
+import { assertAiAllowed } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 import { searchChunks } from "@/lib/ai/rag"
 import { isValidPhase, phasesFor } from "@/lib/writing/phases"
@@ -302,7 +302,7 @@ export async function deleteWritingMilestone(milestoneId: string) {
 
 export async function generateWritingOutline(projectId: string) {
   const session = await requireSession()
-  await assertWithinLimit(session.user.id)
+  await assertAiAllowed(session.user.id)
   const row = await ownWriting(projectId, session.user.id)
   const { ref, model } = await getModel(session.user.id)
 
@@ -346,7 +346,7 @@ export async function generateWritingOutline(projectId: string) {
 
 export async function generateWritingMilestones(projectId: string, addToCalendar: boolean) {
   const session = await requireSession()
-  await assertWithinLimit(session.user.id)
+  await assertAiAllowed(session.user.id)
   const row = await ownWriting(projectId, session.user.id)
   if (!row.dueDate) actionError("WRITING_NO_DUE_DATE")
   const { ref, model } = await getModel(session.user.id)
@@ -400,7 +400,7 @@ export async function generateWritingMilestones(projectId: string, addToCalendar
 
 export async function suggestWritingSources(projectId: string) {
   const session = await requireSession()
-  await assertWithinLimit(session.user.id)
+  await assertAiAllowed(session.user.id)
   const row = await ownWriting(projectId, session.user.id)
   const { ref, model } = await getModel(session.user.id)
   const { object } = await runAi(

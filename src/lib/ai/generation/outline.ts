@@ -2,7 +2,7 @@ import "server-only"
 import { GEN_PARAMS } from "@/lib/ai/params"
 import { createHash } from "node:crypto"
 import { generateObject } from "ai"
-import { and, asc, eq } from "drizzle-orm"
+import { and, asc, eq, isNotNull, or, sql } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
 import { material, moduleOutline, outlineTopic } from "@/db/schema"
@@ -47,25 +47,36 @@ const topicSchema = z.object({
 })
 
 async function loadMaterials(userId: string, moduleId: string): Promise<MaterialMap[]> {
-  const rows = await db.query.material.findMany({
-    where: and(eq(material.userId, userId), eq(material.moduleId, moduleId)),
-    columns: {
-      id: true,
-      name: true,
-      summary: true,
-      textContent: true,
-      contentHash: true,
-      kind: true,
-    },
-  })
+  // Filter and truncate in SQL. textContent holds up to 200k characters per
+  // material, so selecting it in full for every row of a large module pulled
+  // tens of megabytes into the heap just to slice MAP_CHARS off each one — and
+  // the kind/limit filters used to run in JS, after the transfer.
+  const rows = await db
+    .select({
+      id: material.id,
+      name: material.name,
+      contentHash: material.contentHash,
+      summaryPreview: sql<string | null>`left(${material.summary}, ${MAP_CHARS})`,
+      textPreview: sql<string | null>`left(${material.textContent}, ${MAP_CHARS})`,
+    })
+    .from(material)
+    .where(
+      and(
+        eq(material.userId, userId),
+        eq(material.moduleId, moduleId),
+        eq(material.kind, "file"),
+        or(isNotNull(material.summary), isNotNull(material.textContent))
+      )
+    )
+    .limit(MAX_MATERIALS)
+
   return rows
-    .filter((r) => r.kind === "file" && (r.summary || r.textContent))
-    .slice(0, MAX_MATERIALS)
+    .filter((r) => r.summaryPreview || r.textPreview)
     .map((r) => ({
       id: r.id,
       name: r.name,
       contentHash: r.contentHash,
-      map: (r.summary ?? r.textContent ?? "").slice(0, MAP_CHARS),
+      map: r.summaryPreview ?? r.textPreview ?? "",
     }))
 }
 

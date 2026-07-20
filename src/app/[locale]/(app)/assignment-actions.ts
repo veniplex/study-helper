@@ -63,6 +63,7 @@ export async function createAssignment(moduleId: string, input: unknown) {
   const session = await requireSession()
   await ownModule(moduleId, session.user.id)
   const data = assignmentSchema.parse(input)
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(assignment)
     .values({
@@ -78,17 +79,17 @@ export async function createAssignment(moduleId: string, input: unknown) {
       subtasks: data.subtasks?.length ? data.subtasks : null,
     })
     .returning()
-  await setMaterials(created.id, moduleId, session.user.id, data.materialIds)
+  await setMaterials(created!.id, moduleId, session.user.id, data.materialIds)
   await logAudit({
     userId: session.user.id,
     operation: "create",
     entityType: "assignment",
-    entityId: created.id,
+    entityId: created!.id,
     entityLabel: data.title,
     after: created,
   })
   revalidatePath("/", "layout")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 export async function updateAssignment(assignmentId: string, input: unknown) {

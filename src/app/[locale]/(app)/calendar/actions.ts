@@ -66,6 +66,7 @@ export async function createEvent(input: unknown) {
   const session = await requireSession()
   const data = eventSchema.parse(input)
   if (data.moduleId) await ownModule(data.moduleId, session.user.id)
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(studyEvent)
     .values({
@@ -86,7 +87,7 @@ export async function createEvent(input: unknown) {
     userId: session.user.id,
     operation: "create",
     entityType: "event",
-    entityId: created.id,
+    entityId: created!.id,
     entityLabel: data.title,
     after: created,
   })

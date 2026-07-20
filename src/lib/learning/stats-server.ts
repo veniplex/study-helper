@@ -117,7 +117,8 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
   }
   let topModule: TopModule | null = null
   if (byModule.size > 0) {
-    const [topId, minutes] = [...byModule.entries()].sort((a, b) => b[1] - a[1])[0]
+    // byModule.size > 0 checked above, so the sorted list has a first entry.
+    const [topId, minutes] = [...byModule.entries()].sort((a, b) => b[1]! - a[1]!)[0]!
     const mod = await db.query.studyModule.findFirst({
       where: eq(studyModule.id, topId),
       columns: { id: true, name: true, icon: true, color: true },
@@ -174,7 +175,7 @@ export async function getPreparednessByModule(
   for (const moduleId of moduleIds) {
     const scores = quizzes
       .filter((q) => q.moduleId === moduleId && q.attempts.length > 0)
-      .map((q) => Number(q.attempts[0].score ?? 0))
+      .map((q) => Number(q.attempts[0]!.score ?? 0)) // filtered on attempts.length > 0
     const cards = decks.filter((d) => d.moduleId === moduleId).flatMap((d) => d.cards)
     const quizFactor = scores.length
       ? scores.reduce((a, b) => a + b, 0) / scores.length / 100
@@ -207,13 +208,16 @@ export async function getModuleStats(userId: string, moduleId: string): Promise<
   })
   const deckIds = decks.map((d) => d.id)
 
-  const [dueCards, quizzes, sessions] = await Promise.all([
+  const now = new Date()
+  const [dueRows, quizzes, sessions] = await Promise.all([
+    // Counted in SQL: imported Anki decks can hold tens of thousands of cards,
+    // and only the number of due ones is used.
     deckIds.length === 0
       ? Promise.resolve([])
-      : db.query.flashcard.findMany({
-          where: inArray(flashcard.deckId, deckIds),
-          columns: { id: true, due: true },
-        }),
+      : db
+          .select({ value: count() })
+          .from(flashcard)
+          .where(and(inArray(flashcard.deckId, deckIds), lte(flashcard.due, now))),
     db.query.quiz.findMany({
       where: and(eq(quiz.userId, userId), eq(quiz.moduleId, moduleId)),
       columns: { id: true },
@@ -241,9 +245,8 @@ export async function getModuleStats(userId: string, moduleId: string): Promise<
     lastQuizScore = lastAttempt?.score != null ? Number(lastAttempt.score) : null
   }
 
-  const now = new Date()
   return {
-    dueCards: dueCards.filter((c) => c.due <= now).length,
+    dueCards: dueRows[0]?.value ?? 0,
     lastQuizScore,
     totalMinutes: sessions.reduce((sum, s) => sum + s.durationMinutes, 0),
   }

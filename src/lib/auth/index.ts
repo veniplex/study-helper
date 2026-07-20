@@ -107,10 +107,13 @@ function buildAuth(config: DynamicAuthConfig) {
           after: async (user) => {
             await db.transaction(async (tx) => {
               await tx.execute(sql`select pg_advisory_xact_lock(hashtext('studyhelper:first-admin'))`)
-              const [{ value: adminCount }] = await tx
+              // A COUNT aggregate always returns exactly one row; treating a
+                // missing one as 0 keeps the fresh-install path working.
+              const adminRows = await tx
                 .select({ value: count() })
                 .from(schema.user)
                 .where(eq(schema.user.role, "admin"))
+              const adminCount = adminRows[0]?.value ?? 0
               if (adminCount === 0) {
                 await tx
                   .update(schema.user)

@@ -146,7 +146,7 @@ export function MiniCalendar({
               type="button"
               onClick={prev}
               className="hover:bg-accent text-muted-foreground rounded p-1"
-              aria-label="prev"
+              aria-label={t("prevMonth")}
             >
               <ChevronLeft className="size-4" />
             </button>
@@ -154,7 +154,7 @@ export function MiniCalendar({
               type="button"
               onClick={next}
               className="hover:bg-accent text-muted-foreground rounded p-1"
-              aria-label="next"
+              aria-label={t("nextMonth")}
             >
               <ChevronRight className="size-4" />
             </button>

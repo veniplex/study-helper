@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   closestCenter,
   useDroppable,
@@ -16,13 +17,14 @@ import {
 import {
   SortableContext,
   arrayMove,
+  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { ArrowRight, GripVertical, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
-import { toast } from "sonner"
 import { useTranslations } from "next-intl"
+import { useActionErrorToast } from "@/components/action-error-toast"
 import { useRouter } from "@/i18n/navigation"
 import {
   deleteModule,
@@ -90,6 +92,7 @@ export function SemesterModulesBoard({
   labels: BoardLabels
 }) {
   const router = useRouter()
+  const showError = useActionErrorToast()
   const [columns, setColumns] = React.useState<Record<string, string[]>>(() =>
     initColumns(semesters)
   )
@@ -98,7 +101,13 @@ export function SemesterModulesBoard({
   // drag ends up back where it started (no DB round-trip for a plain click).
   const dragStartColumns = React.useRef<Record<string, string[]> | null>(null)
   const [prevSemesters, setPrevSemesters] = React.useState(semesters)
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  // KeyboardSensor alongside the pointer one: moving a module to another
+  // semester exists only as a drag, so without it that action is unreachable
+  // without a mouse.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   // Sync with server data after a revalidate (React "derived state" pattern).
   // Skipped mid-drag/pending-refresh so the just-set optimistic order isn't
@@ -132,6 +141,8 @@ export function SemesterModulesBoard({
     setColumns((cols) => {
       const activeItems = cols[activeContainer]
       const overItems = cols[overContainer]
+      // findContainer can name a column that is not in state (stale drag target)
+      if (!activeItems || !overItems) return cols
       const overIndex = overItems.indexOf(overId)
       const newIndex = overIndex >= 0 ? overIndex : overItems.length
       return {
@@ -162,9 +173,9 @@ export function SemesterModulesBoard({
     let finalColumns = columns
     if (activeContainer === overContainer) {
       const items = columns[activeContainer]
-      const oldIndex = items.indexOf(activeDragId)
-      const newIndex = items.indexOf(overId)
-      if (oldIndex >= 0 && newIndex >= 0 && oldIndex !== newIndex) {
+      const oldIndex = items?.indexOf(activeDragId) ?? -1
+      const newIndex = items?.indexOf(overId) ?? -1
+      if (items && oldIndex >= 0 && newIndex >= 0 && oldIndex !== newIndex) {
         finalColumns = { ...columns, [activeContainer]: arrayMove(items, oldIndex, newIndex) }
         setColumns(finalColumns)
       }
@@ -189,7 +200,7 @@ export function SemesterModulesBoard({
         router.refresh()
       })
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error))
+      showError(error)
       setColumns(initColumns(semesters))
     }
   }

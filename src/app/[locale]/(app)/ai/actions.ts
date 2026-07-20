@@ -30,6 +30,7 @@ export async function createConversation(
   const safeMode = CHAT_MODES.includes(mode as (typeof CHAT_MODES)[number])
     ? (mode as (typeof CHAT_MODES)[number])
     : "general"
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(aiConversation)
     .values({
@@ -40,7 +41,7 @@ export async function createConversation(
     })
     .returning({ id: aiConversation.id })
   revalidatePath("/ai")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 /** Changes the tutor mode of an existing conversation. */
@@ -71,8 +72,8 @@ export async function transcribeVoiceInput(formData: FormData) {
   const file = formData.get("audio")
   if (!(file instanceof Blob)) throw new Error("No audio")
   if (file.size > 10 * 1024 * 1024) throw new Error("Recording too large")
-  const { assertWithinLimit } = await import("@/lib/ai/usage")
-  await assertWithinLimit(session.user.id)
+  const { assertAiAllowed } = await import("@/lib/ai/usage")
+  await assertAiAllowed(session.user.id)
   const { transcribeAudioBuffer } = await import("@/lib/ai/media")
   const text = await transcribeAudioBuffer(
     new Uint8Array(await file.arrayBuffer()),
@@ -92,8 +93,8 @@ export async function explainSnippet(materialId: string, snippet: string, contex
     columns: { id: true, name: true },
   })
   if (!row) throw new Error("Not found")
-  const { assertWithinLimit } = await import("@/lib/ai/usage")
-  await assertWithinLimit(session.user.id)
+  const { assertAiAllowed } = await import("@/lib/ai/usage")
+  await assertAiAllowed(session.user.id)
   const { resolveModelForUser, getLanguageModel } = await import("@/lib/ai/registry")
   const modelRef = await resolveModelForUser(session.user.id)
   if (!modelRef) actionError("AI_NO_MODEL")
@@ -125,6 +126,14 @@ ${context ? `\nSurrounding page text (context only):\n${context.slice(0, 4000)}`
   return { explanation: text }
 }
 
+/**
+ * How many messages the chat UI hydrates. Mirrors the history window the chat
+ * route sends to the model (MAX_HISTORY_MESSAGES), so loading more would only
+ * ship `parts` jsonb (tool outputs, RAG citations — megabytes on long threads)
+ * that never reaches the model anyway.
+ */
+const MAX_LOADED_MESSAGES = 40
+
 /** Load a conversation's messages (used by the floating quick chat). Returns null if not found. */
 export async function getConversationMessages(conversationId: string) {
   const session = await requireSession()
@@ -133,10 +142,17 @@ export async function getConversationMessages(conversationId: string) {
       eq(aiConversation.id, conversationId),
       eq(aiConversation.userId, session.user.id)
     ),
-    with: { messages: { orderBy: (m, { asc }) => [asc(m.createdAt)] } },
+    // Newest-first + LIMIT so the DB drops the older rows; reversed below to
+    // restore the oldest-first order the UI renders in.
+    with: {
+      messages: {
+        orderBy: (m, { desc }) => [desc(m.createdAt)],
+        limit: MAX_LOADED_MESSAGES,
+      },
+    },
   })
   if (!conversation) return null
-  return conversation.messages.map((m) => ({
+  return conversation.messages.reverse().map((m) => ({
     id: m.id,
     role: m.role as "user" | "assistant",
     parts: m.parts,

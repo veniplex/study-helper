@@ -88,6 +88,18 @@ export const aiProviderSchema = z.object({
   embeddingModel: z.string().optional(),
 })
 
+/**
+ * Default monthly token budget per user (input+output combined).
+ *
+ * Shipping this unlimited meant an operator's shared provider key had no ceiling
+ * at all: any signed-up user could spend without bound (audit SEC-1). The value
+ * is deliberately generous — ingesting a semester of materials plus daily chat
+ * and generation stays well underneath — so it bites runaway loops and abuse,
+ * not normal study. Admins can raise it, or set 0 for the old unlimited
+ * behaviour, under Admin → AI.
+ */
+export const DEFAULT_MONTHLY_TOKEN_LIMIT = 5_000_000
+
 export const aiSettingsSchema = z.object({
   providers: z.array(aiProviderSchema).default([]),
   /** "providerId:modelId" */
@@ -95,7 +107,7 @@ export const aiSettingsSchema = z.object({
   /** "providerId:embeddingModelId" used for RAG */
   defaultEmbeddingModel: z.string().optional(),
   /** Monthly token limit per user (input+output). 0 = unlimited */
-  monthlyTokenLimitPerUser: z.number().int().min(0).default(0),
+  monthlyTokenLimitPerUser: z.number().int().min(0).default(DEFAULT_MONTHLY_TOKEN_LIMIT),
   /**
    * Run the coverage-generation MAP step through the provider's async Batch API
    * (Anthropic Message Batches / OpenAI Batch) — ~50% cheaper, but results
@@ -176,7 +188,12 @@ const defaults: { [K in SettingKey]: SettingValue<K> } = {
   smtp: undefined as never, // no default — unset means email disabled
   branding: { appName: "StudyHelper" },
   uploads: { maxUploadMb: 200, storageQuotaMbPerUser: 0 },
-  ai: { providers: [], monthlyTokenLimitPerUser: 0, useBatchApi: false, rerank: false },
+  ai: {
+    providers: [],
+    monthlyTokenLimitPerUser: DEFAULT_MONTHLY_TOKEN_LIMIT,
+    useBatchApi: false,
+    rerank: false,
+  },
   "ai.ann": { status: "idle" },
   "ai.reembed": { status: "idle" },
   "push.vapid": undefined as never, // generated on first use

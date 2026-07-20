@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { and, eq, inArray } from "drizzle-orm"
+import { and, eq, inArray, sql } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
 import {
@@ -64,12 +64,13 @@ export async function updateGradeGoal(programId: string, input: unknown) {
 export async function createProgram(input: unknown) {
   const session = await requireSession()
   const data = programSchema.parse(input)
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(degreeProgram)
     .values({ ...data, userId: session.user.id })
     .returning({ id: degreeProgram.id })
   revalidatePath("/studies")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 export async function updateProgram(programId: string, input: unknown) {
@@ -179,6 +180,7 @@ export async function createModule(semesterId: string, input: unknown) {
   // grade/tab derivation, so a failed goal insert must roll back the module too.
   const types = data.goalTypes?.length ? [...new Set(data.goalTypes)] : ["exam" as const]
   await db.transaction(async (tx) => {
+    // insert().returning() yields exactly one row unless it throws.
     const [created] = await tx
       .insert(studyModule)
       .values({ ...moduleValues(data), semesterId })
@@ -187,7 +189,7 @@ export async function createModule(semesterId: string, input: unknown) {
     // selection keep a single default exam goal so they are immediately gradable.
     await tx.insert(moduleGoal).values(
       types.map((type, i) => ({
-        moduleId: created.id,
+        moduleId: created!.id,
         type,
         gradingRole: "grade" as const,
         sortOrder: i,
@@ -282,16 +284,25 @@ export async function reorderModulesAcrossSemesters(input: unknown) {
     }
   }
 
-  await Promise.all(
-    moves.flatMap((m) =>
-      m.ids.map((id, i) =>
-        db
-          .update(studyModule)
-          .set({ sortOrder: i, semesterId: m.semesterId })
-          .where(eq(studyModule.id, id))
+  // One transaction, one statement per target semester. The previous version
+  // fired up to 50×200 independent updates concurrently: they competed for the
+  // small connection pool, and a failure part-way through left modules stranded
+  // in the wrong semester with no way back.
+  await db.transaction(async (tx) => {
+    for (const move of moves) {
+      if (move.ids.length === 0) continue
+      const order = sql.join(
+        move.ids.map((id, i) => sql`(${id}::text, ${i}::integer)`),
+        sql`, `
       )
-    )
-  )
+      await tx.execute(sql`
+        UPDATE "module" AS m
+        SET sort_order = v.ord, semester_id = ${move.semesterId}
+        FROM (VALUES ${order}) AS v(id, ord)
+        WHERE m.id = v.id
+      `)
+    }
+  })
 
   const programIds = new Set(semesterIds.map((id) => semesterById.get(id)!.programId))
   for (const programId of programIds) revalidatePath(`/studies/${programId}`)

@@ -15,7 +15,7 @@ import {
   userHasUsableKeyForModel,
 } from "@/lib/ai/registry"
 import { GEN_PARAMS, maxTokensForItems } from "@/lib/ai/params"
-import { assertWithinLimit } from "@/lib/ai/usage"
+import { assertAiAllowed } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 import { brainstormSchema, buildBrainstormPrompt } from "@/lib/writing/ai"
 
@@ -74,6 +74,7 @@ export async function createThesis(input: unknown) {
     }
   }
 
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(writingProject)
     .values({
@@ -86,7 +87,7 @@ export async function createThesis(input: unknown) {
     })
     .returning({ id: writingProject.id })
   revalidatePath("/thesis")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 /** Marks a failed thesis as superseded and starts a fresh attempt (new topic). */
@@ -111,6 +112,7 @@ export async function retryThesis(thesisId: string) {
   // false), (2) supersede the old row (it drops out of the predicate),
   // (3) attach programId to the new row (now the only live row for the program).
   const newId = await db.transaction(async (tx) => {
+    // insert().returning() yields exactly one row unless it throws.
     const [created] = await tx
       .insert(writingProject)
       .values({
@@ -126,21 +128,25 @@ export async function retryThesis(thesisId: string) {
       .returning({ id: writingProject.id })
     await tx
       .update(writingProject)
-      .set({ supersededById: created.id })
+      .set({ supersededById: created!.id })
       .where(eq(writingProject.id, thesisId))
     if (prev.programId) {
       await tx
         .update(writingProject)
         .set({ programId: prev.programId })
-        .where(eq(writingProject.id, created.id))
+        .where(eq(writingProject.id, created!.id))
     }
-    return created.id
+    return created!.id
   })
   revalidatePath("/thesis")
   return { ok: true as const, id: newId }
 }
 
-const thesisUpdateSchema = thesisSchema.partial().extend({
+// `programId` is deliberately NOT updatable: a thesis belongs to the program it
+// was created under, and moving it would bypass both the ownership check in
+// createThesis and the one-active-thesis-per-program invariant. Program changes
+// go through createThesis / retryThesis.
+const thesisUpdateSchema = thesisSchema.omit({ programId: true }).partial().extend({
   phase: z.enum(["topic", "exposé", "research", "writing", "revision", "submitted"]).optional(),
   researchQuestion: z.string().max(2000).optional().nullable(),
   outline: z.string().max(20000).optional().nullable(),
@@ -169,7 +175,7 @@ export async function deleteThesis(thesisId: string) {
 
 export async function brainstormTopics(interests: string) {
   const session = await requireSession()
-  await assertWithinLimit(session.user.id)
+  await assertAiAllowed(session.user.id)
   const { ref, model } = await getModel(session.user.id)
   const { object } = await runAi(
     { userId: session.user.id, model: ref, feature: "thesis-topics", entityType: "thesis" },

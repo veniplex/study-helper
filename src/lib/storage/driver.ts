@@ -24,7 +24,7 @@ const ACTIVE_CONTENT_MIMES = new Set([
  * file can never run scripts in the app's origin.
  */
 export function safeInlineMime(mime: string | null | undefined): string {
-  const normalized = (mime ?? "").split(";")[0].trim().toLowerCase()
+  const normalized = ((mime ?? "").split(";")[0] ?? "").trim().toLowerCase()
   if (!normalized || ACTIVE_CONTENT_MIMES.has(normalized)) return "application/octet-stream"
   return normalized
 }

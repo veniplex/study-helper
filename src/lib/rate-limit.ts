@@ -39,8 +39,10 @@ function prune(now: number, windowMs: number): void {
 
 /** Best-effort client IP for keying unauthenticated routes. */
 export function clientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for")
-  if (forwarded) return forwarded.split(",")[0].trim()
+  // A header of "," or " " would previously key every such request under the
+  // empty string, lumping unrelated clients into one bucket.
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+  if (forwarded) return forwarded
   return request.headers.get("x-real-ip") ?? "unknown"
 }
 

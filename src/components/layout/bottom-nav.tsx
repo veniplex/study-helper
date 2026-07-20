@@ -47,7 +47,12 @@ export function BottomNav({
                 {t(item.key)}
               </button>
             ) : (
-              <Link key={item.key} href={item.href} className={linkClass(active)}>
+              <Link
+                key={item.key}
+                href={item.href}
+                className={linkClass(active)}
+                aria-current={active ? "page" : undefined}
+              >
                 <item.icon className={cn("size-5", active && "stroke-[2.25]")} />
                 {t(item.key)}
               </Link>

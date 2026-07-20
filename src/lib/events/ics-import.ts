@@ -119,7 +119,8 @@ export function parseIcs(text: string, limit = 500): ImportedEvent[] {
     const idx = line.indexOf(":")
     if (idx < 1) continue
     const rawName = line.slice(0, idx)
-    const name = rawName.split(";")[0].toUpperCase()
+    // idx >= 1, so rawName is non-empty and split yields at least one part.
+    const name = (rawName.split(";")[0] ?? rawName).toUpperCase()
     // first wins — ignores overridden recurrence instances (RECURRENCE-ID)
     if (!(name in cur)) cur[name] = line.slice(idx + 1)
   }

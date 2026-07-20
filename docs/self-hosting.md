@@ -27,8 +27,12 @@ Database migrations run automatically on startup.
 
 ### Image versions
 
-`docker-compose.yml` uses `:latest` by default. For reproducible deploys, pin a
-version in `.env`:
+`docker-compose.yml` tracks the current **major** version (`1`) by default, so
+`docker compose pull` picks up fixes and features but never a major upgrade —
+those can apply irreversible database migrations on first start and should be a
+deliberate step (read the release notes, back up, then raise the number).
+
+For fully reproducible deploys, pin a full version in `.env`:
 
 ```bash
 STUDYHELPER_VERSION=1.0.0
@@ -73,6 +77,19 @@ Everything else is configured in **Admin → Settings**:
 | Email         | SMTP for password resets and reminders, test email                                                                                                                                                                                  |
 | Branding      | app name, max upload size                                                                                                                                                                                                           |
 
+### AI spending limits
+
+Each user gets **5,000,000 tokens per month** by default. That is far more than
+a semester of normal study uses, and it exists so that one account cannot run up
+unbounded cost on the provider key you configured for everyone. User-initiated
+AI actions are additionally rate limited per user.
+
+Raise the limit under **Admin → AI**, or set it to `0` for no limit — only do
+that when every user brings their own API key (Settings → AI), or you are the
+only user. If you upgraded from an earlier version and never opened the AI
+settings, the new default now applies to you; an explicitly saved `0` is left
+alone.
+
 A small dot next to the version number in the sidebar (visible to admins)
 shows when a newer release is available on GitHub — checked once a day —
 and links to the release. Installing it is a manual
@@ -83,10 +100,11 @@ and links to the release. Installing it is a manual
 | Variable              | Required | Description                                                                                                                                                                         |
 | --------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`        | yes      | Postgres connection string (pgvector image)                                                                                                                                         |
+| `POSTGRES_PASSWORD`   | yes      | Password for the bundled database container. Only applied when the database is **first created** — see the note below                                                                |
 | `APP_URL`             | yes      | Public base URL (auth callbacks, emails, push)                                                                                                                                      |
 | `BETTER_AUTH_SECRET`  | yes      | Session signing secret (32+ random bytes)                                                                                                                                           |
 | `ENCRYPTION_KEY`      | yes      | Encrypts stored secrets (API keys, SMTP, notes)                                                                                                                                     |
-| `STUDYHELPER_VERSION` | no       | Image tag to run (default `latest`); pin e.g. `1.0.0` for reproducible deploys                                                                                                      |
+| `STUDYHELPER_VERSION` | no       | Image tag to run (default `1`, the current major line); pin e.g. `1.0.0` for reproducible deploys                                                                                   |
 | `DATA_DIR`            | no       | Host directory for the database + uploads volumes (default `./data`, next to `docker-compose.yml`) — see [Where data is stored](#where-data-is-stored)                              |
 | `UPLOAD_DIR`          | no       | Upload path **inside the container** (default `/data/uploads`) — only relevant for non-Docker deployments; Docker users should set `DATA_DIR` instead                               |
 | `TUS_DIR`             | no       | Staging dir for resumable (tus) uploads of very large files (default `<cwd>/data/tus-incoming`); use a persistent volume so interrupted uploads resume after a restart              |
@@ -95,6 +113,22 @@ and links to the release. Installing it is a manual
 | `SEED_TEST_DATA`      | no       | `true` seeds demo accounts (admin@example.com / admin-test-1234, user@example.com / user-test-1234) with sample study content on startup — for evaluation only, never in production |
 
 **Do not lose `ENCRYPTION_KEY`** — encrypted settings (AI keys, SMTP, OIDC secrets) become unreadable without it.
+
+`BETTER_AUTH_SECRET` and `ENCRYPTION_KEY` must not keep the `change-me`
+placeholder from `.env.example`: the app refuses to start with it, since that
+value is public. Both should be 32+ random characters
+(`openssl rand -base64 32`).
+
+**Changing `POSTGRES_PASSWORD` later has no effect on its own.** PostgreSQL only
+reads it when it initializes an empty data directory; afterwards the password
+lives in the database. If you started with the old default and want to rotate it,
+change it in both places:
+
+```bash
+docker compose exec db psql -U study -d study -c "ALTER USER study WITH PASSWORD 'new-password';"
+# then set POSTGRES_PASSWORD=new-password in .env
+docker compose up -d
+```
 
 ## Troubleshooting
 
@@ -164,6 +198,18 @@ study.example.com {
 
 Set `APP_URL=https://study.example.com` accordingly.
 
+The compose file publishes port 3000 on `127.0.0.1` only, so the proxy (running
+on the same host) can reach it while the outside world cannot talk to the app
+directly — otherwise the same instance would also be served unencrypted on
+port 3000, past the proxy and past your firewall, since Docker's port publishing
+writes its own iptables rules and is not filtered by UFW.
+
+If the proxy runs in another container, put it on the same compose network and
+let it target `app:3000` instead of publishing a host port at all. If you
+deliberately want direct LAN access without a reverse proxy, change the mapping
+to `"3000:3000"` — and restrict the port at your network firewall, not with UFW
+on the host.
+
 ## OIDC quick notes
 
 Create a confidential client in your IdP with redirect URI
@@ -174,8 +220,35 @@ Admin → Sign-in & SSO.
 
 ## Backup
 
-Back up the data directory (`DATA_DIR`, or `./data` if unset — database +
-uploads) and your `.env`. To move data to a new `DATA_DIR`:
+Back up three things: the **database**, the **uploaded files**, and your
+**`.env`** (it holds `ENCRYPTION_KEY`, without which every stored secret is
+unreadable).
+
+Do **not** simply copy `./data/db` while the stack is running. That directory is
+PostgreSQL's live data directory; copying it mid-write produces an inconsistent
+snapshot that may refuse to start when you need it (`invalid checkpoint
+record`). Dump the database instead:
+
+```bash
+# Database — consistent, works while the app is running
+docker compose exec -T db pg_dump -U study -Fc study > studyhelper-$(date +%F).dump
+
+# Uploaded files (skip if you use S3 — back up the bucket instead)
+tar czf studyhelper-uploads-$(date +%F).tar.gz -C ./data uploads
+```
+
+Restore into an empty database:
+
+```bash
+docker compose up -d db
+docker compose exec -T db pg_restore -U study -d study --clean --if-exists < studyhelper-2026-01-31.dump
+docker compose up -d
+```
+
+A plain file copy of `./data` is fine too, but only with the stack stopped
+(`docker compose down` first) — that is what the `DATA_DIR` move below does.
+
+To move data to a new `DATA_DIR`:
 
 ```bash
 docker compose down

@@ -89,7 +89,8 @@ export type ScheduleResult = {
 
 function toMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number)
-  return h * 60 + m
+  // "HH:mm" is the stored format; a malformed value still yields NaN as before.
+  return (h ?? NaN) * 60 + (m ?? NaN)
 }
 
 function toHHmm(minutes: number): string {
@@ -348,7 +349,7 @@ export function computeSchedule(input: ScheduleInput): ScheduleResult {
       let used = 0
       let i = 0
       while (i < chosen.queue.length) {
-        const t = chosen.queue[i]
+        const t = chosen.queue[i]! // i < queue.length is the loop condition
         if (!isPlaceable(chosen, t, date)) {
           i++
           continue
@@ -475,7 +476,7 @@ function selectModule(
       const db = dueOf.get(b)!
       if (da !== db) return da < db ? -1 : 1
       return tieBreak(a, b)
-    })[0]
+    })[0]! // deadline.length > 0 checked above
   }
 
   // Non-deadline: lowest active phase, weekday preference respected.
@@ -491,7 +492,7 @@ function selectModule(
     const shareB = b.assignedMinutes / b.input.weight
     if (shareA !== shareB) return shareA - shareB
     return tieBreak(a, b)
-  })[0]
+  })[0]! // eligible.length > 0 checked above
 }
 
 function hasWeekCapacity(state: ModuleState, weekKey: string, min: number): boolean {

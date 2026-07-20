@@ -145,6 +145,7 @@ export async function createGoal(moduleId: string, input: unknown) {
     columns: { sortOrder: true },
   })
   const nextOrder = existing.reduce((max, g) => Math.max(max, g.sortOrder), -1) + 1
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(moduleGoal)
     .values({ ...goalValues(data), moduleId, sortOrder: nextOrder })
@@ -152,7 +153,7 @@ export async function createGoal(moduleId: string, input: unknown) {
   // A3 exam-event sync + A2 staleness/auto-replan when a dated exam is added.
   await syncExamEvent({
     userId: session.user.id,
-    goalId: created.id,
+    goalId: created!.id,
     type: data.type,
     dueDate: data.dueDate ?? null,
     title: data.title ?? null,
@@ -164,7 +165,7 @@ export async function createGoal(moduleId: string, input: unknown) {
   }
   revalidatePath(`/studies/${mod.semester.programId}/${moduleId}`)
   revalidatePath("/", "layout")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 export async function updateGoal(goalId: string, input: unknown) {

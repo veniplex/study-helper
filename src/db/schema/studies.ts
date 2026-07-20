@@ -303,6 +303,8 @@ export const studyEvent = pgTable(
     index("event_userId_idx").on(t.userId),
     index("event_startsAt_idx").on(t.startsAt),
     index("event_goalId_idx").on(t.goalId),
+    // Cascade target (ON DELETE SET NULL) when a module is deleted.
+    index("event_moduleId_idx").on(t.moduleId),
   ]
 )
 

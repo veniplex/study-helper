@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { ChevronRight } from "lucide-react"
 import { eq } from "drizzle-orm"
@@ -5,7 +6,7 @@ import { Link } from "@/i18n/navigation"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { studyModule } from "@/db/schema"
-import { requireSession } from "@/lib/auth/session"
+import { getSession, requireSession } from "@/lib/auth/session"
 import { isAiAvailable } from "@/lib/ai/registry"
 import { enabledTools } from "@/config/module-tabs"
 import { formatGrade, moduleGrade } from "@/lib/grades"
@@ -20,6 +21,29 @@ const statusVariant = {
   passed: "default",
   failed: "destructive",
 } as const
+
+/**
+ * Names the tab after the module. This is the segment where it matters most:
+ * students keep several modules open at once, and every tab used to read
+ * "StudyHelper". Ownership is re-checked in the layout below — this lookup only
+ * decides a title, so it deliberately doesn't 404 on its own.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ moduleId: string }>
+}): Promise<Metadata> {
+  const { moduleId } = await params
+  const session = await getSession()
+  if (!session) return {}
+  const mod = await db.query.studyModule.findFirst({
+    where: eq(studyModule.id, moduleId),
+    columns: { name: true },
+    with: { semester: { with: { program: { columns: { userId: true } } } } },
+  })
+  if (!mod || mod.semester.program.userId !== session.user.id) return {}
+  return { title: mod.name }
+}
 
 export default async function ModuleWorkspaceLayout({
   children,

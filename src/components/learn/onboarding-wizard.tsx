@@ -62,7 +62,7 @@ export function OnboardingWizard({
         </CardHeader>
         <CardContent className="space-y-1">
           {steps.map((step, i) => {
-            const isCurrent = step.key === current.key && !step.done
+            const isCurrent = step.key === current?.key && !step.done
             return (
               <div
                 key={step.key}

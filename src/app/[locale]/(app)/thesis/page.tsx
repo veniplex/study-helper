@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { and, asc, desc, eq } from "drizzle-orm"
 import { GraduationCap } from "lucide-react"
 import { getTranslations } from "next-intl/server"
@@ -12,6 +13,11 @@ import {
   WritingWorkspace,
   type WritingProjectData,
 } from "@/components/writing/writing-workspace"
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("nav")
+  return { title: t("thesis") }
+}
 
 export default async function ThesisPage() {
   const session = await requireSession()

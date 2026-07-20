@@ -1,4 +1,5 @@
-import { asc, eq, ne, and, isNotNull, inArray, gte, lte } from "drizzle-orm"
+import type { Metadata } from "next"
+import { asc, eq, ne, and, isNotNull, isNull, or, inArray, gte, lte } from "drizzle-orm"
 import { getTranslations } from "next-intl/server"
 import { db } from "@/db"
 import { toIsoDate } from "@/lib/events/recurrence"
@@ -23,6 +24,11 @@ function toLocalInputValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("nav")
+  return { title: t("calendar") }
+}
+
 export default async function CalendarPage({
   searchParams,
 }: {
@@ -45,8 +51,28 @@ export default async function CalendarPage({
   const sessionTo = toIsoDate(new Date(now.getTime() + 365 * 86400000))
 
   const [allEvents, prefs, programs, planSessions, dueAssignments] = await Promise.all([
+    // Same window as the plan sessions above — this used to load every event the
+    // user had ever created, with the full module relation, and serialize all of
+    // it into the client payload. Recurring series are kept regardless of when
+    // they started, as long as they haven't ended: their occurrences are
+    // expanded client-side and would otherwise disappear from the calendar.
     db.query.studyEvent.findMany({
-      where: eq(studyEvent.userId, session.user.id),
+      where: and(
+        eq(studyEvent.userId, session.user.id),
+        or(
+          and(
+            gte(studyEvent.startsAt, new Date(now.getTime() - 60 * 86400000)),
+            lte(studyEvent.startsAt, new Date(now.getTime() + 365 * 86400000))
+          ),
+          and(
+            ne(studyEvent.recurrence, "none"),
+            or(
+              isNull(studyEvent.recurrenceUntil),
+              gte(studyEvent.recurrenceUntil, sessionFrom)
+            )
+          )
+        )
+      ),
       orderBy: [asc(studyEvent.startsAt)],
       with: { module: true },
     }),

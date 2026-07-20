@@ -9,7 +9,7 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core"
-import { relations } from "drizzle-orm"
+import { relations, sql } from "drizzle-orm"
 import { user } from "./auth"
 import { moduleGoal, studyModule } from "./studies"
 import { material } from "./materials"
@@ -54,7 +54,17 @@ export const assignment = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
-  (t) => [index("assignment_module_idx").on(t.moduleId), index("assignment_user_idx").on(t.userId)]
+  (t) => [
+    index("assignment_module_idx").on(t.moduleId),
+    index("assignment_user_idx").on(t.userId),
+    // Cascade target (ON DELETE SET NULL) when a learning goal is deleted.
+    index("assignment_goal_idx").on(t.goalId),
+    // Serves the 5-minute reminder cron, which scans across all users for open
+    // assignments due around today — no existing index covered that predicate.
+    index("assignment_due_open_idx")
+      .on(t.dueDate)
+      .where(sql`${t.status} <> 'graded' AND ${t.dueDate} IS NOT NULL`),
+  ]
 )
 
 /** Links assignments to module materials (task sheets, solutions, …). */

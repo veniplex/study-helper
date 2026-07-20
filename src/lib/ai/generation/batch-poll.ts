@@ -1,5 +1,5 @@
 import "server-only"
-import { and, eq, inArray, isNotNull, lt } from "drizzle-orm"
+import { and, eq, inArray, isNotNull, lt, notLike } from "drizzle-orm"
 import { db } from "@/db"
 import { generationJob, outlineTopic } from "@/db/schema"
 import { getSetting } from "@/lib/settings"
@@ -17,6 +17,7 @@ import {
   persistCards,
   persistQuestions,
   questionSchema,
+  SUBMIT_MARKER_PREFIX,
   upsertCoverage,
 } from "./generate"
 
@@ -33,6 +34,8 @@ type JobRow = typeof generationJob.$inferSelect
  */
 /** How long an "applying" claim may go untouched before it counts as crashed. */
 const STALE_CLAIM_MS = 15 * 60 * 1000
+/** Topics between heartbeats that keep a long apply's claim from going stale. */
+const HEARTBEAT_EVERY = 5
 
 export async function pollPendingBatches(): Promise<void> {
   // Reclaim jobs whose applier died mid-way (claim stale) so they aren't stuck.
@@ -48,7 +51,13 @@ export async function pollPendingBatches(): Promise<void> {
     )
 
   const jobs = await db.query.generationJob.findMany({
-    where: and(isNotNull(generationJob.batchRef), eq(generationJob.status, "running")),
+    // A `submitting:` batchRef is a submit-attempt marker, not a vendor batch id
+    // — polling it would only produce errors until the generate job clears it.
+    where: and(
+      isNotNull(generationJob.batchRef),
+      notLike(generationJob.batchRef, `${SUBMIT_MARKER_PREFIX}%`),
+      eq(generationJob.status, "running")
+    ),
   })
   for (const job of jobs) {
     try {
@@ -191,6 +200,17 @@ async function applyBatchResults(job: JobRow, results: BatchResult[]): Promise<v
 
     topicsDone++
     producedTotal += produced
+
+    // This loop otherwise only writes generationCoverage, so the job's updatedAt
+    // would stay at claim time — a legitimately slow apply (many topics, each
+    // with embedding calls) would cross STALE_CLAIM_MS and get reclaimed and
+    // ingested a second time, duplicating items. Touch the row as we go.
+    if (topicsDone % HEARTBEAT_EVERY === 0) {
+      await db
+        .update(generationJob)
+        .set({ updatedAt: new Date() })
+        .where(eq(generationJob.id, job.id))
+    }
   }
 
   await db

@@ -33,7 +33,8 @@ export function computeReadiness({
 export function windowMinutes(from: string, to: string): number {
   const [fh, fm] = from.split(":").map(Number)
   const [th, tm] = to.split(":").map(Number)
-  return Math.max(0, th * 60 + tm - (fh * 60 + fm))
+  // "HH:mm" is the stored format; a malformed value still yields NaN as before.
+  return Math.max(0, (th ?? NaN) * 60 + (tm ?? NaN) - ((fh ?? NaN) * 60 + (fm ?? NaN)))
 }
 
 const MS_PER_DAY = 86_400_000

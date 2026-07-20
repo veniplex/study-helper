@@ -38,7 +38,8 @@ export function truncateUtf8(buffer: Buffer, maxBytes: number): string {
   let end = maxBytes
   // Back up past any continuation bytes (10xxxxxx) so the cut lands on a
   // character boundary instead of producing a replacement char.
-  while (end > 0 && (buffer[end] & 0b1100_0000) === 0b1000_0000) end--
+  // end starts at maxBytes < buffer.length and only shrinks, so buffer[end] exists.
+  while (end > 0 && (buffer[end]! & 0b1100_0000) === 0b1000_0000) end--
   return buffer.subarray(0, end).toString("utf8")
 }
 

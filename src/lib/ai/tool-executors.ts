@@ -58,13 +58,19 @@ async function runTool(
     case "createDeckWithCards": {
       const input = writeToolSchemas.createDeckWithCards.parse(rawInput)
       const mod = await resolveModule(input.moduleId, userId)
-      const [created] = await db
-        .insert(deck)
-        .values({ userId, moduleId: mod?.id ?? null, name: input.name, aiGenerated: true })
-        .returning({ id: deck.id })
-      await db.insert(flashcard).values(
-        input.cards.map((c) => ({ deckId: created.id, front: c.front, back: c.back }))
-      )
+      // One transaction: a failure between the two inserts would otherwise leave
+      // an empty AI-created deck behind — with no audit entry, since that is
+      // written by the caller only on success.
+      const created = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(deck)
+          .values({ userId, moduleId: mod?.id ?? null, name: input.name, aiGenerated: true })
+          .returning({ id: deck.id })
+        await tx
+          .insert(flashcard)
+          .values(input.cards.map((c) => ({ deckId: row!.id, front: c.front, back: c.back })))
+        return row! // INSERT ... returning() yields exactly one row unless it throws
+      })
       return {
         ok: true,
         label: `${input.name} (${input.cards.length})`,
@@ -76,22 +82,25 @@ async function runTool(
     case "createQuizWithQuestions": {
       const input = writeToolSchemas.createQuizWithQuestions.parse(rawInput)
       const mod = await resolveModule(input.moduleId, userId)
-      const [created] = await db
-        .insert(quiz)
-        .values({ userId, moduleId: mod?.id ?? null, title: input.title, aiGenerated: true })
-        .returning({ id: quiz.id })
-      await db.insert(question).values(
-        input.questions.map((q, i) => ({
-          quizId: created.id,
-          kind: q.kind,
-          prompt: q.prompt,
-          options: q.kind === "multiple_choice" ? (q.options ?? []) : null,
-          correctIndex: q.kind === "multiple_choice" ? (q.correctIndex ?? 0) : null,
-          referenceAnswer: q.referenceAnswer ?? null,
-          explanation: q.explanation ?? null,
-          sortOrder: i,
-        }))
-      )
+      const created = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(quiz)
+          .values({ userId, moduleId: mod?.id ?? null, title: input.title, aiGenerated: true })
+          .returning({ id: quiz.id })
+        await tx.insert(question).values(
+          input.questions.map((q, i) => ({
+            quizId: row!.id,
+            kind: q.kind,
+            prompt: q.prompt,
+            options: q.kind === "multiple_choice" ? (q.options ?? []) : null,
+            correctIndex: q.kind === "multiple_choice" ? (q.correctIndex ?? 0) : null,
+            referenceAnswer: q.referenceAnswer ?? null,
+            explanation: q.explanation ?? null,
+            sortOrder: i,
+          }))
+        )
+        return row! // INSERT ... returning() yields exactly one row unless it throws
+      })
       return {
         ok: true,
         label: `${input.title} (${input.questions.length})`,
@@ -129,7 +138,8 @@ async function runTool(
         label: input.title,
         href: "/calendar",
         entityType: "event",
-        entityId: created.id,
+        // INSERT ... returning() yields exactly one row unless it throws.
+        entityId: created!.id,
       }
     }
     case "createAssignment": {
@@ -164,7 +174,8 @@ async function runTool(
         label: input.title,
         href: `/studies/${mod.semester.programId}/${mod.id}/assignments`,
         entityType: "assignment",
-        entityId: created.id,
+        // INSERT ... returning() yields exactly one row unless it throws.
+        entityId: created!.id,
       }
     }
   }

@@ -69,6 +69,7 @@ export async function ensureModulePlan(moduleId: string) {
     where: eq(modulePlan.moduleId, moduleId),
   })
   if (existing) return existing
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(modulePlan)
     .values({ moduleId })
@@ -265,6 +266,7 @@ export async function createPlanTask(moduleId: string, input: unknown) {
     columns: { sortOrder: true },
   })
   const maxSort = existing.reduce((m, t) => Math.max(m, t.sortOrder), -1)
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(planTask)
     .values({
@@ -280,7 +282,7 @@ export async function createPlanTask(moduleId: string, input: unknown) {
     .returning({ id: planTask.id })
   await markStale(mod)
   revalidateModule(mod)
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 const updateSchema = z.object({
@@ -339,9 +341,9 @@ export async function reorderPlanTasks(moduleId: string, orderedIds: string[]) {
   })
   const ownedIds = new Set(owned.map((t) => t.id))
   await db.transaction(async (tx) => {
-    for (let i = 0; i < ids.length; i++) {
-      if (!ownedIds.has(ids[i])) continue
-      await tx.update(planTask).set({ sortOrder: i }).where(eq(planTask.id, ids[i]))
+    for (const [i, id] of ids.entries()) {
+      if (!ownedIds.has(id)) continue
+      await tx.update(planTask).set({ sortOrder: i }).where(eq(planTask.id, id))
     }
   })
   await markStale(mod)

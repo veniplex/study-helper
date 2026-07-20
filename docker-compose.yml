@@ -3,15 +3,34 @@
 # 1. Download docker-compose.yml and .env.example (rename to .env)
 # 2. Fill in .env, then: docker compose up -d
 name: study-helper
+
+# Without a limit Docker keeps json-file logs forever. A crash loop (e.g.
+# pg-boss retrying against a dead database) can then fill the root partition
+# and take the whole host down with it.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   app:
     # Prebuilt image from GitHub Container Registry.
-    # Pin a version (e.g. :1.0.0) for reproducible deploys; :latest tracks releases.
-    image: ghcr.io/veniplex/study-helper:${STUDYHELPER_VERSION:-latest}
+    # Defaults to the current major version: patch and minor updates arrive via
+    # `docker compose pull`, but a major release (which may apply irreversible
+    # database migrations on first start) never lands unintentionally.
+    # Pin a full version (e.g. :1.0.0) for fully reproducible deploys.
+    image: ghcr.io/veniplex/study-helper:${STUDYHELPER_VERSION:-1}
     ports:
-      - "3000:3000"
+      # Bound to loopback: the documented setup terminates TLS in a reverse
+      # proxy, and a published port would expose the app unencrypted next to it
+      # — Docker's port publishing bypasses UFW rules, so the firewall would not
+      # catch it. To reach the app directly from the LAN (no reverse proxy),
+      # change this to "3000:3000" and firewall the port yourself.
+      - "127.0.0.1:3000:3000"
+    logging: *default-logging
     environment:
-      DATABASE_URL: postgres://study:${POSTGRES_PASSWORD:-study}@db:5432/study
+      DATABASE_URL: postgres://study:${POSTGRES_PASSWORD:?set in .env}@db:5432/study
       APP_URL: ${APP_URL:-http://localhost:3000}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set in .env}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set in .env}
@@ -31,6 +50,25 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      # restart: unless-stopped only reacts to a process exit — a server that is
+      # up but wedged would keep serving errors forever. start_period is
+      # generous because database migrations run before the first request.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    # Give in-process jobs time to finish on `docker stop`/redeploy. Docker's
+    # 10s default would SIGKILL mid-job, leaving the job "active" in pg-boss
+    # until its lease expires (up to an hour).
+    stop_grace_period: 30s
+    # Uploads, ZIP extraction and embedding run in-process by default, so a
+    # single large module can balloon the app's memory. Without a limit the
+    # kernel's OOM killer may pick the database container instead of the app.
+    # Commented out because a sane value depends on your hardware — too tight a
+    # limit gets the app killed outright mid-import rather than slowed down.
+    # mem_limit: 2g
     # To move background jobs (embedding, summarization, coverage generation) off
     # the web tier, set WORKERS_IN_PROCESS: "false" here and run the worker
     # service below. By default (unset) the app runs workers in-process — no
@@ -55,10 +93,10 @@ services:
   # checkout, or a custom image built from the repo). The default prebuilt
   # standalone image runs jobs in-process instead, so this service is opt-in.
   # worker:
-  #   image: ghcr.io/veniplex/study-helper:${STUDYHELPER_VERSION:-latest}
+  #   image: ghcr.io/veniplex/study-helper:${STUDYHELPER_VERSION:-1}
   #   command: ["npm", "run", "worker"]
   #   environment:
-  #     DATABASE_URL: postgres://study:${POSTGRES_PASSWORD:-study}@db:5432/study
+  #     DATABASE_URL: postgres://study:${POSTGRES_PASSWORD:?set in .env}@db:5432/study
   #     UPLOAD_DIR: /data/uploads
   #     # The worker finalizes resumable (tus) uploads, so it needs the staging dir.
   #     TUS_DIR: /data/tus-incoming
@@ -75,7 +113,7 @@ services:
     image: pgvector/pgvector:pg17
     environment:
       POSTGRES_USER: study
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-study}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
       POSTGRES_DB: study
     volumes:
       - ${DATA_DIR:-./data}/db:/var/lib/postgresql/data
@@ -85,3 +123,8 @@ services:
       timeout: 3s
       retries: 10
     restart: unless-stopped
+    logging: *default-logging
+    # See the note on the app service. Postgres degrades gracefully under a
+    # tight limit (it spills to disk), but sizing it too small still hurts
+    # query performance, so pick a value that fits your host.
+    # mem_limit: 1g

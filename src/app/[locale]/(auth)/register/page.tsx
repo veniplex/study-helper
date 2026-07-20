@@ -33,10 +33,12 @@ export default async function RegisterPage({
     )
   }
 
-  const [sso, [{ value: userCount }]] = await Promise.all([
+  const [sso, userCountRows] = await Promise.all([
     getSsoOptions(),
     db.select({ value: count() }).from(user),
   ])
+  // count() over the whole table always yields exactly one row.
+  const userCount = userCountRows[0]!.value
   return (
     <RegisterForm
       sso={sso}

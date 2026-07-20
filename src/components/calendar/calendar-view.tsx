@@ -470,7 +470,8 @@ export function CalendarView({
             }
             if (arg.event.id.startsWith("recur:")) {
               // Instances open the base event (edits apply to the whole series).
-              editById(arg.event.id.split(":")[1])
+              // guarded by the `recur:` prefix above, so part 1 is the base id
+              editById(arg.event.id.split(":")[1]!)
               return
             }
             if (arg.event.id.includes(":")) return
@@ -486,7 +487,8 @@ export function CalendarView({
             if (info.event.id.includes(":") && !isInstance) return
             // recur id shape: `recur:${baseId}:${occurrenceDate}`.
             const parts = info.event.id.split(":")
-            const baseId = isInstance ? parts[1] : info.event.id
+            // isInstance means the id matched `recur:`, so part 1 exists
+            const baseId = isInstance ? parts[1]! : info.event.id
             const occurrenceDate = isInstance ? parts[2] : undefined
             info.el.addEventListener("contextmenu", (e) => {
               e.preventDefault()

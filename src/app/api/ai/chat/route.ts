@@ -10,6 +10,7 @@ import {
   userHasUsableKeyForModel,
 } from "@/lib/ai/registry"
 import { assertWithinLimit, isOverLimit } from "@/lib/ai/usage"
+import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit"
 import { normalizeUsage, recordAiAudit, recordAiUsage } from "@/lib/ai/run"
 import { searchChunks, searchChunksInMaterials } from "@/lib/ai/rag"
 import { MODE_PROMPTS, type ChatMode } from "@/lib/ai/modes"
@@ -74,6 +75,14 @@ export async function POST(request: Request) {
   const session = await getSession()
   if (!session) return new Response("Unauthorized", { status: 401 })
 
+  // The monthly token cap is unlimited by default and only checked against
+  // already-recorded usage, so it cannot bound a scripted loop of turns against
+  // the shared provider key. Cap the burst per user; generous enough that no
+  // real conversation reaches it.
+  if (!checkRateLimit(`ai-chat:${session.user.id}`, 60, 5 * 60_000)) {
+    return tooManyRequests()
+  }
+
   try {
     await assertWithinLimit(session.user.id)
   } catch (error) {
@@ -133,7 +142,14 @@ export async function POST(request: Request) {
   try {
     model = await getLanguageModel(body.model, session.user.id)
   } catch (error) {
-    return new Response(error instanceof Error ? error.message : "Invalid model", {
+    // Raw messages here leak internals (a rotated ENCRYPTION_KEY surfaces as
+    // Node's "Unsupported state or unable to authenticate data"), so map onto
+    // the same stable AI_ERROR codes the client already translates. An
+    // undecryptable BYOK key is its own case — only re-entering it helps.
+    console.error("[chat] model init failed", error)
+    const message = error instanceof Error ? error.message : String(error)
+    const undecryptable = /unable to authenticate data|unsupported state|decrypt/i.test(message)
+    return new Response(undecryptable ? "AI_ERROR:key-decrypt" : "AI_ERROR:model", {
       status: 400,
     })
   }
@@ -190,11 +206,13 @@ export async function POST(request: Request) {
     if (totalChars > MAX_USER_MESSAGE_CHARS) {
       return new Response("Message too long", { status: 413 })
     }
+    // insert().returning() yields exactly one row unless it throws.
     const [inserted] = await db
       .insert(aiMessage)
       .values({ conversationId: conversation.id, role: "user", parts: textParts })
       .returning({ id: aiMessage.id })
-    history.push({ id: inserted.id, role: "user", parts: textParts })
+    // insert().returning() yields exactly one row unless it throws.
+    history.push({ id: inserted!.id, role: "user", parts: textParts })
 
     // Derive a placeholder title from the first user message; upgraded to an
     // AI-written title after the first exchange completes (see onFinish).

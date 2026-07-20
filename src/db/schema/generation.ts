@@ -88,6 +88,9 @@ export const generationCoverage = pgTable(
   (t) => [
     uniqueIndex("generation_coverage_target_topic_idx").on(t.targetId, t.topicId),
     index("generation_coverage_job_idx").on(t.jobId),
+    // topicId is only the *second* column of the unique index above, so it can't
+    // serve the cascade when an outline rebuild deletes its old topics.
+    index("generation_coverage_topic_idx").on(t.topicId),
   ]
 )
 

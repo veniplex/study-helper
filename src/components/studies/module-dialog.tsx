@@ -193,7 +193,7 @@ export function ModuleDialog({
                       ? "border-primary bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-accent border-transparent"
                   )}
-                  aria-label={key}
+                  aria-label={tDialog("chooseIcon", { name: key })}
                   aria-pressed={icon === key}
                 >
                   <IconGlyph iconKey={key} className="size-4" />
@@ -211,7 +211,7 @@ export function ModuleDialog({
                     getModuleColorClasses(key).dot,
                     color === key && "ring-foreground ring-2"
                   )}
-                  aria-label={key}
+                  aria-label={tDialog("chooseColor", { name: key })}
                   aria-pressed={color === key}
                 />
               ))}

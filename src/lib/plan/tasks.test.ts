@@ -52,10 +52,10 @@ describe("buildTaskDrafts — exam consolidation window", () => {
 
     const topicTasks = drafts.filter((d) => d.source.kind === "outline_topic")
     expect(topicTasks).toHaveLength(2)
-    expect(topicTasks[0].source.refId).toBe("top1")
-    expect(topicTasks[0].category).toBe("learn")
+    expect(topicTasks[0]!.source.refId).toBe("top1")
+    expect(topicTasks[0]!.category).toBe("learn")
     expect(topicTasks.every((t) => t.dueDate === windowStart)).toBe(true)
-    expect(topicTasks[0].estimatedMinutes).toBeGreaterThan(topicTasks[1].estimatedMinutes)
+    expect(topicTasks[0]!.estimatedMinutes).toBeGreaterThan(topicTasks[1]!.estimatedMinutes)
   })
 
   it("emits a spaced review series (+cards) sized by reviewDays, plus one mock", () => {
@@ -79,14 +79,14 @@ describe("buildTaskDrafts — exam consolidation window", () => {
     expect(mocks).toHaveLength(1)
     expect(reviews.every((r) => r.category === "review")).toBe(true)
     expect(cards.every((c) => c.category === "cards")).toBe(true)
-    expect(mocks[0].category).toBe("review")
+    expect(mocks[0]!.category).toBe("review")
 
     // Every review/cards task lands inside [exam−rd, exam]; mock the day before.
     const start = new Date(Date.parse(`${exam}T00:00:00Z`) - rd * 86400000).toISOString().slice(0, 10)
     for (const d of [...reviews, ...cards]) {
       expect(d.dueDate! >= start && d.dueDate! <= exam).toBe(true)
     }
-    expect(daysBetween(mocks[0].dueDate!, exam)).toBe(1)
+    expect(daysBetween(mocks[0]!.dueDate!, exam)).toBe(1)
   })
 
   it("series count is clamped to [2,5]", () => {
@@ -108,10 +108,10 @@ describe("buildTaskDrafts — exam consolidation window", () => {
       TODAY
     )
     expect(drafts).toHaveLength(1)
-    expect(drafts[0].source.refId).toBe("study-g1")
-    expect(drafts[0].category).toBe("learn")
+    expect(drafts[0]!.source.refId).toBe("study-g1")
+    expect(drafts[0]!.category).toBe("learn")
     const rd = reviewDays(exam, TODAY)
-    expect(daysBetween(drafts[0].dueDate!, exam)).toBe(rd)
+    expect(daysBetween(drafts[0]!.dueDate!, exam)).toBe(rd)
   })
 })
 
@@ -129,8 +129,8 @@ describe("buildTaskDrafts — other goal types", () => {
     )
     expect(drafts).toHaveLength(2)
     expect(drafts.map((d) => d.source.refId)).toEqual(["a1", "a2"])
-    expect(drafts[0].dueDate).toBe("2026-08-10")
-    expect(drafts[0].goalId).toBe("g2")
+    expect(drafts[0]!.dueDate).toBe("2026-08-10")
+    expect(drafts[0]!.goalId).toBe("g2")
     expect(drafts.every((d) => d.category === "learn")).toBe(true)
   })
 
@@ -156,7 +156,7 @@ describe("buildTaskDrafts — other goal types", () => {
       TODAY
     )
     expect(withMilestones).toHaveLength(1)
-    expect(withMilestones[0].source).toEqual({ kind: "milestone", refId: "m1" })
+    expect(withMilestones[0]!.source).toEqual({ kind: "milestone", refId: "m1" })
 
     const noMilestones = buildTaskDrafts(
       base({
@@ -168,7 +168,7 @@ describe("buildTaskDrafts — other goal types", () => {
     )
     expect(noMilestones.length).toBeGreaterThan(0)
     expect(noMilestones.every((d) => d.source.kind === "ai")).toBe(true)
-    expect(noMilestones[noMilestones.length - 1].dueDate).toBe("2026-09-30")
+    expect(noMilestones[noMilestones.length - 1]!.dueDate).toBe("2026-09-30")
   })
 
   it("presentation goal → prep + rehearsal tasks", () => {

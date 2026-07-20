@@ -62,22 +62,22 @@ async function setStatus(
  * Extraction always runs (feeds search); embedding only when a default embedding
  * model is configured.
  */
-export async function processMaterial(materialId: string): Promise<void> {
+export async function processMaterial(materialId: string): Promise<"ready" | "skipped"> {
   const row = await db.query.material.findFirst({ where: eq(material.id, materialId) })
-  if (!row || row.kind !== "file" || !row.storagePath) return
+  if (!row || row.kind !== "file" || !row.storagePath) return "skipped"
 
   try {
     const { text, skipReason } = await ensureExtractedText(row)
     if (text == null) {
       await setStatus(materialId, "skipped", { extractionError: skipReason ?? null })
-      return
+      return "skipped"
     }
 
     const ai = await getSetting("ai")
     const embeddingRef = ai?.defaultEmbeddingModel
     if (!embeddingRef) {
       await setStatus(materialId, "ready")
-      return
+      return "ready"
     }
 
     // Gate the (paid) embedding pass on the user's monthly AI cap. Ingest is
@@ -89,7 +89,7 @@ export async function processMaterial(materialId: string): Promise<void> {
         extractionError:
           "Monthly AI usage limit reached — embedding skipped. Retry when under the limit.",
       })
-      return
+      return "skipped"
     }
 
     // Contextual retrieval: situate each chunk in its document (title + summary
@@ -97,6 +97,7 @@ export async function processMaterial(materialId: string): Promise<void> {
     const contextHeader = [row.name, row.summary].filter(Boolean).join(" — ").slice(0, 500)
     await embedMaterialText(row.userId, materialId, text, embeddingRef, contextHeader)
     await setStatus(materialId, "ready")
+    return "ready"
   } catch (error) {
     console.error("[rag] processMaterial failed", materialId, error)
     await setStatus(materialId, "failed", {
@@ -226,7 +227,7 @@ async function embedMaterialText(
     for (let i = start; i < Math.min(start + EMBED_BATCH, chunks.length); i++) {
       if (done.has(i)) continue
       idxs.push(i)
-      values.push(chunks[i])
+      values.push(chunks[i]!) // i is bounded by chunks.length
     }
     if (values.length === 0) continue
 
@@ -251,8 +252,9 @@ async function embedMaterialText(
       idxs.map((idx, k) => ({
         materialId,
         chunkIndex: idx,
-        content: chunks[idx],
-        embedding: embeddings[k],
+        // idxs holds in-range chunk indices; embedMany returns one vector per input.
+        content: chunks[idx]!,
+        embedding: embeddings[k]!,
         embeddingModel: embeddingRef,
         level: 0,
         contextualHeader: contextHeader || null,
@@ -485,13 +487,13 @@ async function rerankHits(
     for (const i of object.ranking) {
       if (Number.isInteger(i) && i >= 0 && i < candidates.length && !seen.has(i)) {
         seen.add(i)
-        ranked.push(candidates[i])
+        ranked.push(candidates[i]!) // range-checked in the condition above
         if (ranked.length === limit) break
       }
     }
     // Fill up from the RRF order if the model returned too few valid indices.
     for (let i = 0; ranked.length < limit && i < candidates.length; i++) {
-      if (!seen.has(i)) ranked.push(candidates[i])
+      if (!seen.has(i)) ranked.push(candidates[i]!) // i < candidates.length
     }
     return ranked
   } catch (error) {

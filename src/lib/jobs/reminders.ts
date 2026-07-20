@@ -87,14 +87,42 @@ async function notify(
   }
 }
 
-/** Race-safe dedup for non-event notifications. Returns true if we own the send. */
-async function claimNotification(userId: string, key: string): Promise<boolean> {
+/** Race-safe dedup for non-event notifications. Returns the claim id, or null. */
+async function claimNotification(userId: string, key: string): Promise<string | null> {
   const inserted = await db
     .insert(notificationSent)
     .values({ userId, key })
     .onConflictDoNothing()
     .returning({ id: notificationSent.id })
-  return inserted.length > 0
+  return inserted[0]?.id ?? null
+}
+
+/**
+ * Delivers a claimed notification, releasing the claim again if delivery fails.
+ *
+ * The claim row is written before the send — that is what makes the 5-minute
+ * cron race-safe — so a throwing send would otherwise burn it: the reminder is
+ * lost for good, because the next run sees it as already sent. Worse, the error
+ * escaped the surrounding loop, so a single dead SMTP server or one bad address
+ * silenced every remaining reminder in that run.
+ *
+ * Isolating the failure and releasing the claim turns both problems into a
+ * retry on the next cron tick.
+ */
+async function deliverClaimed(
+  userId: string,
+  channels: { email: boolean; push: boolean },
+  payload: { title: string; body: string; url: string },
+  release: () => Promise<unknown>
+): Promise<void> {
+  try {
+    await notify(userId, channels, payload)
+  } catch (error) {
+    console.error("[reminders] delivery failed, releasing claim", userId, payload.title, error)
+    await release().catch((releaseError) =>
+      console.error("[reminders] could not release claim", releaseError)
+    )
+  }
 }
 
 /**
@@ -137,7 +165,8 @@ export async function sendDueReminders(): Promise<void> {
           })
           .onConflictDoNothing()
           .returning({ id: reminderSent.id })
-        if (inserted.length === 0) continue
+        const claimId = inserted[0]?.id
+        if (!claimId) continue
 
         const channels = await getChannels(event.userId)
         const locale = await reminderLocale(event.userId)
@@ -146,13 +175,18 @@ export async function sendDueReminders(): Promise<void> {
           dateStyle: "medium",
           timeStyle: event.allDay ? undefined : "short",
         }).format(occ.startsAt)
-        await notify(event.userId, channels.events, {
-          title: t("eventTitle", { title: event.title }),
-          body: event.location
-            ? t("eventBodyLocation", { when, location: event.location })
-            : t("eventBody", { when }),
-          url: "/calendar",
-        })
+        await deliverClaimed(
+          event.userId,
+          channels.events,
+          {
+            title: t("eventTitle", { title: event.title }),
+            body: event.location
+              ? t("eventBodyLocation", { when, location: event.location })
+              : t("eventBody", { when }),
+            url: "/calendar",
+          },
+          () => db.delete(reminderSent).where(eq(reminderSent.id, claimId))
+        )
       }
     }
   }
@@ -180,7 +214,8 @@ async function sendAssignmentReminders(now: Date): Promise<void> {
     const due = new Date(`${row.dueDate}T23:59`)
     const triggerAt = new Date(due.getTime() - 24 * 60 * 60 * 1000)
     if (triggerAt > now || due < now) continue
-    if (!(await claimNotification(row.userId, `assignment:${row.id}:1440`))) continue
+    const claimId = await claimNotification(row.userId, `assignment:${row.id}:1440`)
+    if (!claimId) continue
 
     const channels = await getChannels(row.userId)
     const locale = await reminderLocale(row.userId)
@@ -188,11 +223,16 @@ async function sendAssignmentReminders(now: Date): Promise<void> {
     const dueLabel = new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
       new Date(row.dueDate!)
     )
-    await notify(row.userId, channels.assignments, {
-      title: t("assignmentTitle", { title: row.title }),
-      body: t("assignmentBody", { module: row.module.name, due: dueLabel }),
-      url: "/calendar",
-    })
+    await deliverClaimed(
+      row.userId,
+      channels.assignments,
+      {
+        title: t("assignmentTitle", { title: row.title }),
+        body: t("assignmentBody", { module: row.module.name, due: dueLabel }),
+        url: "/calendar",
+      },
+      () => db.delete(notificationSent).where(eq(notificationSent.id, claimId))
+    )
   }
 }
 
@@ -214,14 +254,20 @@ export async function sendDailyPlanReminders(): Promise<void> {
 
   const appName = await getAppName()
   for (const [userId, count] of byUser) {
-    if (!(await claimNotification(userId, `dailyplan:${today}`))) continue
+    const claimId = await claimNotification(userId, `dailyplan:${today}`)
+    if (!claimId) continue
     const channels = await getChannels(userId)
     const locale = await reminderLocale(userId)
     const t = await notificationsTranslator(locale)
-    await notify(userId, channels.dailyPlan, {
-      title: t("dailyPlanTitle", { appName }),
-      body: t("dailyPlanBody", { count }),
-      url: "/",
-    })
+    await deliverClaimed(
+      userId,
+      channels.dailyPlan,
+      {
+        title: t("dailyPlanTitle", { appName }),
+        body: t("dailyPlanBody", { count }),
+        url: "/",
+      },
+      () => db.delete(notificationSent).where(eq(notificationSent.id, claimId))
+    )
   }
 }

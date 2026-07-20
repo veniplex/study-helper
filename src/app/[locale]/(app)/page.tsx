@@ -24,7 +24,8 @@ export default async function DashboardPage() {
   const programInfo = context.programs.find((p) => p.id === activeProgram?.id) ?? null
 
   const activeModuleIdsEarly = context.tree.flatMap((s) => s.modules.map((m) => m.id))
-  const firstName = session.user.name.split(" ")[0]
+  // split() always yields at least one element, but an empty name would make it "".
+  const firstName = session.user.name.split(" ")[0] || session.user.name
 
   // Brand-new users (no module yet) get a focused onboarding flow instead of a
   // dashboard full of empty widgets.
@@ -49,21 +50,34 @@ export default async function DashboardPage() {
     )
   }
 
-  const stats = await getDashboardStats(session.user.id)
-
   // Mini-calendar: events of the current month (component fetches others on nav).
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-  const monthEvents = await db.query.studyEvent.findMany({
-    where: and(
-      eq(studyEvent.userId, session.user.id),
-      gte(studyEvent.startsAt, monthStart),
-      lte(studyEvent.startsAt, monthEnd)
-    ),
-    orderBy: [asc(studyEvent.startsAt)],
-    with: { module: { columns: { name: true, icon: true, color: true } } },
-  })
+  const today = new Date().toISOString().slice(0, 10)
+  const activeModuleIds = context.tree.flatMap((s) => s.modules.map((m) => m.id))
+
+  // These five don't depend on each other, so they run together. Awaited one by
+  // one they formed a waterfall on the most-visited page — which re-renders in
+  // full after every session toggle (router.refresh).
+  const [stats, monthEvents, finalGrades, preparedness, userPlans] = await Promise.all([
+    getDashboardStats(session.user.id),
+    db.query.studyEvent.findMany({
+      where: and(
+        eq(studyEvent.userId, session.user.id),
+        gte(studyEvent.startsAt, monthStart),
+        lte(studyEvent.startsAt, monthEnd)
+      ),
+      orderBy: [asc(studyEvent.startsAt)],
+      with: { module: { columns: { name: true, icon: true, color: true } } },
+    }),
+    activeProgram ? getModuleFinalGrades(activeProgram.id) : Promise.resolve(new Map()),
+    getPreparednessByModule(session.user.id, activeModuleIds),
+    db.query.semesterPlan.findMany({
+      where: eq(semesterPlan.userId, session.user.id),
+      columns: { id: true },
+    }),
+  ])
   const initialEvents: MiniCalendarEvent[] = monthEvents.map((e) => ({
     id: e.id,
     title: e.title,
@@ -77,18 +91,6 @@ export default async function DashboardPage() {
     moduleColor: e.module?.color ?? null,
   }))
 
-  // Semester overview data (from the active program's tree).
-  const activeModuleIds = context.tree.flatMap((s) => s.modules.map((m) => m.id))
-  const [finalGrades, preparedness] = await Promise.all([
-    activeProgram ? getModuleFinalGrades(activeProgram.id) : Promise.resolve(new Map()),
-    getPreparednessByModule(session.user.id, activeModuleIds),
-  ])
-
-  const today = new Date().toISOString().slice(0, 10)
-  const userPlans = await db.query.semesterPlan.findMany({
-    where: eq(semesterPlan.userId, session.user.id),
-    columns: { id: true },
-  })
   const todayPlanSessions = userPlans.length
     ? await db.query.planSession.findMany({
         where: and(

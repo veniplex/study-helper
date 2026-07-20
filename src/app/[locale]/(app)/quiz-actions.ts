@@ -12,7 +12,7 @@ import { actionError } from "@/lib/action-errors"
 import { requireSession } from "@/lib/auth/session"
 import { getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { searchChunks, getModuleMaterialSample } from "@/lib/ai/rag"
-import { assertWithinLimit } from "@/lib/ai/usage"
+import { assertAiAllowed, assertWithinLimit } from "@/lib/ai/usage"
 import { runAi } from "@/lib/ai/run"
 import { logAudit } from "@/lib/audit"
 import { ownModule } from "@/lib/studies/access"
@@ -39,6 +39,7 @@ export async function createQuiz(input: unknown) {
   const session = await requireSession()
   const data = quizSchema.parse(input)
   if (data.moduleId) await ownModule(data.moduleId, session.user.id)
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(quiz)
     .values({
@@ -52,12 +53,12 @@ export async function createQuiz(input: unknown) {
     userId: session.user.id,
     operation: "create",
     entityType: "quiz",
-    entityId: created.id,
+    entityId: created!.id,
     entityLabel: data.title,
     after: created,
   })
   revalidatePath("/")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 export async function updateQuiz(quizId: string, input: unknown) {
@@ -120,6 +121,7 @@ export async function addQuestion(quizId: string, input: unknown) {
   const session = await requireSession()
   await ownQuiz(quizId, session.user.id)
   const data = questionSchema.parse(input)
+  // insert().returning() yields exactly one row unless it throws.
   const [created] = await db
     .insert(question)
     .values({
@@ -136,7 +138,7 @@ export async function addQuestion(quizId: string, input: unknown) {
     userId: session.user.id,
     operation: "create",
     entityType: "question",
-    entityId: created.id,
+    entityId: created!.id,
     entityLabel: data.prompt.slice(0, 80),
     after: created,
   })
@@ -226,7 +228,7 @@ const generatedQuizSchema = z.object({
 
 export async function generateQuiz(input: unknown) {
   const session = await requireSession()
-  await assertWithinLimit(session.user.id)
+  await assertAiAllowed(session.user.id)
   const data = generateQuizInput.parse(input)
   const moduleRow = data.moduleId ? await ownModule(data.moduleId, session.user.id) : null
 
@@ -274,35 +276,41 @@ Each question gets a short explanation of the correct answer. Write all question
       })
   )
 
-  const [created] = await db
-    .insert(quiz)
-    .values({
-      userId: session.user.id,
-      title: object.title,
-      description: object.description || null,
-      moduleId: data.moduleId || null,
-      aiGenerated: true,
-    })
-    .returning({ id: quiz.id })
-
   const questions = object.questions.slice(0, data.count)
-  if (questions.length > 0) {
-    await db.insert(question).values(
-      questions.map((q, i) => ({
-        quizId: created.id,
-        kind: q.kind,
-        prompt: q.prompt,
-        options: q.kind === "multiple_choice" ? q.options : null,
-        correctIndex: q.kind === "multiple_choice" && q.correctIndex >= 0 ? q.correctIndex : null,
-        referenceAnswer: q.kind === "free_text" ? q.referenceAnswer : null,
-        explanation: q.explanation || null,
-        sortOrder: i,
-      }))
-    )
-  }
+  // Quiz and questions in one transaction — a failure in between would leave an
+  // empty quiz that cost a full generation call to produce.
+  const created = await db.transaction(async (tx) => {
+    // insert().returning() yields exactly one row unless it throws.
+    const [row] = await tx
+      .insert(quiz)
+      .values({
+        userId: session.user.id,
+        title: object.title,
+        description: object.description || null,
+        moduleId: data.moduleId || null,
+        aiGenerated: true,
+      })
+      .returning({ id: quiz.id })
+
+    if (questions.length > 0) {
+      await tx.insert(question).values(
+        questions.map((q, i) => ({
+          quizId: row!.id,
+          kind: q.kind,
+          prompt: q.prompt,
+          options: q.kind === "multiple_choice" ? q.options : null,
+          correctIndex: q.kind === "multiple_choice" && q.correctIndex >= 0 ? q.correctIndex : null,
+          referenceAnswer: q.kind === "free_text" ? q.referenceAnswer : null,
+          explanation: q.explanation || null,
+          sortOrder: i,
+        }))
+      )
+    }
+    return row
+  })
 
   revalidatePath("/")
-  return { ok: true as const, id: created.id }
+  return { ok: true as const, id: created!.id }
 }
 
 // ---- Attempts & grading --------------------------------------------------------
@@ -412,9 +420,18 @@ Reply with correct=true/false and one sentence of feedback in the language of th
       if (q.kind === "multiple_choice") {
         correct = q.correctIndex != null && Number(answer) === q.correctIndex
       } else if (gradeFreeText && q.referenceAnswer) {
-        const result = await gradeFreeText(q.prompt, q.referenceAnswer, answer)
-        correct = result.correct
-        feedback = result.feedback
+        try {
+          const result = await gradeFreeText(q.prompt, q.referenceAnswer, answer)
+          correct = result.correct
+          feedback = result.feedback
+        } catch (error) {
+          // One provider hiccup (429, timeout) must not throw away the whole
+          // attempt: fall back to the same "not graded" path used when no model
+          // is configured, so the answer is still recorded and the rest of the
+          // quiz still scores.
+          console.error("[quiz] free-text grading failed", q.id, error)
+          graded = false
+        }
       } else {
         // No AI available: don't pretend to grade free text — the runner shows
         // the reference answer and excludes the question from the score.
@@ -450,6 +467,7 @@ Reply with correct=true/false and one sentence of feedback in the language of th
       ? null
       : Math.round((gradedResults.filter((r) => r.correct).length / gradedResults.length) * 100)
 
+  // insert().returning() yields exactly one row unless it throws.
   const [attempt] = await db
     .insert(quizAttempt)
     .values({
@@ -463,7 +481,7 @@ Reply with correct=true/false and one sentence of feedback in the language of th
   if (results.length > 0) {
     await db.insert(answerLog).values(
       results.map((r) => ({
-        attemptId: attempt.id,
+        attemptId: attempt!.id,
         questionId: r.questionId,
         answer: r.answer,
         correct: r.correct,
@@ -524,10 +542,12 @@ async function addToMistakesDeck(
     // The deck's identity is `kind === "mistakes"`, so the UI renders a
     // localized label + badge regardless of this stored name (see deck-card).
     const t = await getTranslations("learn.decks")
-    ;[mistakes] = await db
+    const inserted = await db
       .insert(deck)
       .values({ userId, moduleId, name: t("mistakesName"), kind: "mistakes" })
       .returning()
+    // insert().returning() yields exactly one row unless it throws.
+    mistakes = inserted[0]!
   }
   const existing = await db.query.flashcard.findMany({
     where: eq(flashcard.deckId, mistakes.id),

@@ -8,6 +8,7 @@ import { getSetting } from "@/lib/settings"
 import { readStoredText } from "@/lib/storage"
 import { getEmbeddingModel, getLanguageModel, resolveModelForUser } from "@/lib/ai/registry"
 import { recordAiAudit, runAi, type AiUsage } from "@/lib/ai/run"
+import { isOverLimit } from "@/lib/ai/usage"
 import { chunkText } from "@/lib/ai/rag"
 import { populateAnn } from "@/lib/ai/ann"
 
@@ -106,18 +107,43 @@ async function storeSummaryChunks(
   )
 }
 
+/** True when the material still has its retrievable level-1 summary nodes. */
+async function hasSummaryChunks(materialId: string): Promise<boolean> {
+  const [existing] = await db
+    .select({ id: materialChunk.id })
+    .from(materialChunk)
+    .where(and(eq(materialChunk.materialId, materialId), gt(materialChunk.level, 0)))
+    .limit(1)
+  return existing != null
+}
+
 /**
  * Builds a hierarchical (RAPTOR-lite) summary of a material: a summary per
  * section, rolled up into one document summary. Section summaries are stored as
  * level-1 chunks (retrievable); the document summary is stored on
- * `material.summary` and feeds the module outline. Idempotent: skips when a
- * summary already exists (content is immutable per material). Best-effort — a
+ * `material.summary` and feeds the module outline. Idempotent: skips when both
+ * parts already exist (content is immutable per material). Best-effort — a
  * missing language model just means no summary (graceful degradation).
  */
 export async function summarizeMaterial(materialId: string): Promise<void> {
   const row = await db.query.material.findFirst({ where: eq(material.id, materialId) })
   if (!row || row.kind !== "file") return
-  if (row.summary) return // already summarized for this (immutable) content
+
+  // The two halves can go missing independently: an embedding-model switch
+  // deletes every chunk row of the old model (reembed.ts), which takes the
+  // level-1 summary nodes with it while `material.summary` survives. Skipping on
+  // `summary` alone would drop those nodes out of retrieval permanently, so
+  // rebuild them — the doc summary text itself stays valid for this (immutable)
+  // content and needs no second reduce pass.
+  const needsReduce = !row.summary
+  if (!needsReduce && (await hasSummaryChunks(materialId))) return
+
+  // Summarization is the most expensive background pass (one model call per
+  // section plus the reduce rounds), so it has to respect the monthly cap like
+  // embedding/OCR/transcription do. Leave the status untouched: processMaterial
+  // has already recorded why this material stopped short, and the material stays
+  // retryable once the user is back under the limit.
+  if (await isOverLimit(row.userId)) return
 
   const modelRef = await resolveModelForUser(row.userId)
   if (!modelRef) return
@@ -131,7 +157,7 @@ export async function summarizeMaterial(materialId: string): Promise<void> {
     .where(eq(material.id, materialId))
 
   try {
-    await runSummarization(row, materialId, modelRef)
+    await runSummarization(row, materialId, modelRef, needsReduce)
   } catch (error) {
     // Summaries are best-effort — never leave the material stuck in
     // "summarizing" (an eternal spinner in the UI) because of a model error.
@@ -143,7 +169,10 @@ export async function summarizeMaterial(materialId: string): Promise<void> {
 async function runSummarization(
   row: typeof material.$inferSelect,
   materialId: string,
-  modelRef: string
+  modelRef: string,
+  /** False when only the level-1 nodes are being rebuilt — the stored doc
+   *  summary is still valid, so the reduce rounds are skipped (and not paid). */
+  reduce: boolean
 ): Promise<void> {
   const sections = await getSectionTexts(row)
   const model = await getLanguageModel(modelRef, row.userId)
@@ -182,15 +211,22 @@ async function runSummarization(
   await storeSummaryChunks(row, sectionSummaries, embeddingRef, acc)
   if (embeddingRef) await populateAnn(row.id, embeddingRef)
 
+  if (!reduce) {
+    await db.update(material).set({ extractionStatus: "ready" }).where(eq(material.id, materialId))
+    await recordSummaryAudit(row, materialId, modelRef, sections.length, usage)
+    return
+  }
+
   // REDUCE: roll section summaries up into a single document summary.
-  let docSummary = sectionSummaries[0]
+  // sectionSummaries is non-empty (guarded above).
+  let docSummary = sectionSummaries[0]!
   let parts = sectionSummaries
   while (parts.length > 1) {
     const next: string[] = []
     for (let i = 0; i < parts.length; i += REDUCE_FANOUT) {
       const group = parts.slice(i, i + REDUCE_FANOUT)
       if (group.length === 1) {
-        next.push(group[0])
+        next.push(group[0]!) // length checked
         continue
       }
       const { text, aiUsage } = await runAi(
@@ -210,7 +246,8 @@ async function runSummarization(
       next.push(text.trim())
     }
     parts = next
-    docSummary = next[0]
+    // parts.length > 1 means the loop above produced at least one group.
+    docSummary = next[0]!
   }
 
   await db
@@ -218,7 +255,17 @@ async function runSummarization(
     .set({ summary: docSummary.slice(0, DOC_SUMMARY_CHARS), extractionStatus: "ready" })
     .where(eq(material.id, materialId))
 
-  await recordAiAudit(
+  await recordSummaryAudit(row, materialId, modelRef, sections.length, usage)
+}
+
+function recordSummaryAudit(
+  row: typeof material.$inferSelect,
+  materialId: string,
+  modelRef: string,
+  itemCount: number,
+  usage: AiUsage
+): Promise<void> {
+  return recordAiAudit(
     {
       userId: row.userId,
       model: modelRef,
@@ -227,7 +274,7 @@ async function runSummarization(
       entityType: "material",
       entityId: materialId,
       entityLabel: row.name,
-      itemCount: sections.length,
+      itemCount,
     },
     usage
   )
