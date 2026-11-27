@@ -48,7 +48,7 @@ export default async function ModuleChatPage({
         <Card>
           <CardContent className="text-muted-foreground flex flex-col items-center gap-3 py-10 text-center text-sm">
             <Sparkles className="size-6" />
-            {t("notConfigured")}
+            {t("notConfigured.title")}
             {session.user.role === "admin" && (
               <Link
                 href="/admin/ai"
