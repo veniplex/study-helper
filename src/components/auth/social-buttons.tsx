@@ -22,8 +22,9 @@ export function SocialButtons({ options, callbackURL }: { options: SsoOptions; c
     if (error) toast.error(error.message)
   }
 
+  // Generic OAuth/OIDC providers are regular social providers since better-auth 1.7.
   async function oauth2(providerId: string) {
-    const { error } = await authClient.signIn.oauth2({ providerId, callbackURL })
+    const { error } = await authClient.signIn.social({ provider: providerId, callbackURL })
     if (error) toast.error(error.message)
   }
 
