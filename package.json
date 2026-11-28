@@ -54,7 +54,7 @@
     "dexie": "^4.4.4",
     "drizzle-orm": "^0.45.2",
     "fflate": "^0.8.3",
-    "katex": "^0.17.0",
+    "katex": "^0.19.1",
     "lucide-react": "^1.24.0",
     "mammoth": "^1.12.0",
     "next": "16.4.6",
@@ -107,6 +107,7 @@
     "vitest": "^5.1.2"
   },
   "overrides": {
-    "sharp": "^0.35.0"
+    "sharp": "^0.35.0",
+    "katex": "$katex"
   }
 }
