@@ -59,7 +59,8 @@ export function SecuritySettings({
     setPending(true)
     const { data, error } = await authClient.twoFactor.enable({ password })
     setPending(false)
-    if (error || !data) {
+    // We only enroll TOTP (the default method); the OTP-only variant carries no URI.
+    if (error || !data || data.method !== "totp") {
       toast.error(error?.message ?? "Error")
       return
     }

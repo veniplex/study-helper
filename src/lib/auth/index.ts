@@ -10,6 +10,7 @@ import * as schema from "@/db/schema"
 import { env } from "@/lib/env"
 import { sendEmail } from "@/lib/email"
 import { bustSettingsCache, getSetting } from "@/lib/settings"
+import { LEGACY_OAUTH2_CALLBACK_PREFIX } from "./legacy-callback"
 
 type DynamicAuthConfig = {
   registrationMode: "open" | "closed" | "invite"
@@ -140,6 +141,9 @@ function buildAuth(config: DynamicAuthConfig) {
           clientId: p.clientId,
           clientSecret: p.clientSecret,
           scopes: p.scopes,
+          // Keep the pre-1.7 redirect URI registered at the identity provider
+          // valid (see legacy-callback.ts).
+          redirectURI: `${env.APP_URL}${LEGACY_OAUTH2_CALLBACK_PREFIX}${p.providerId}`,
           ...implicitSignup,
         })),
       }),
