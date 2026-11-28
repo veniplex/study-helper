@@ -1,14 +1,16 @@
 /**
- * Runs drizzle-kit migrations under a Postgres advisory lock.
+ * Applies drizzle migrations (drizzle-orm's programmatic migrator, same journal table
+ * as `drizzle-kit migrate`) under a Postgres advisory lock.
  *
  * Every container started from this image migrates on boot, so two app replicas
  * (or an app and a worker) coming up together would otherwise run the same DDL
- * concurrently — drizzle-kit takes no lock of its own. That ends in "relation
+ * concurrently — the migrator takes no lock of its own. That ends in "relation
  * already exists" / duplicate-key errors and a crash loop in the middle of an
  * upgrade. The advisory lock serializes them: the first process migrates, the
  * others wait and then find nothing left to do.
  */
-import { spawnSync } from "node:child_process"
+import { drizzle } from "drizzle-orm/postgres-js"
+import { migrate } from "drizzle-orm/postgres-js/migrator"
 import postgres from "postgres"
 
 /** Arbitrary but fixed — only processes using this same key serialize. */
@@ -25,10 +27,9 @@ let status = 1
 
 try {
   await sql`SELECT pg_advisory_lock(${LOCK_KEY})`
-  status =
-    spawnSync(process.execPath, ["node_modules/drizzle-kit/bin.cjs", "migrate"], {
-      stdio: "inherit",
-    }).status ?? 1
+  await migrate(drizzle(sql), { migrationsFolder: "./drizzle" })
+  console.log("[migrate] done")
+  status = 0
 } catch (error) {
   console.error("[migrate] failed", error)
 } finally {

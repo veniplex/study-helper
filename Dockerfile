@@ -1,5 +1,5 @@
 # ---- Build stage ----
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -10,25 +10,26 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # ---- Runtime stage ----
-FROM node:24-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # su-exec drops root privileges after the entrypoint fixes bind-mount
 # ownership (see docker-entrypoint.sh) — Alpine's lightweight gosu equivalent.
-RUN apk add --no-cache su-exec && addgroup -S app && adduser -S app -G app
+# The runtime only ever executes `node`; npm/npx/corepack/yarn from the base
+# image are unused and carry their own vulnerable bundled dependencies.
+RUN apk add --no-cache su-exec && addgroup -S app && adduser -S app -G app     && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack               /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack               /opt/yarn* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-# Migrations + drizzle-kit for automatic migration on startup
+# Migrations for automatic migration on startup. scripts/migrate.mjs applies
+# them with drizzle-orm's programmatic migrator, so the drizzle-kit CLI (and
+# its bundled esbuild binary) is deliberately not shipped.
 COPY --from=builder /app/drizzle ./drizzle
-COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
-COPY --from=builder /app/node_modules/drizzle-kit ./node_modules/drizzle-kit
 COPY --from=builder /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
 COPY --from=builder /app/node_modules/postgres ./node_modules/postgres
-COPY --from=builder /app/src/db/schema ./src/db/schema
 COPY scripts/migrate.mjs ./scripts/migrate.mjs
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 

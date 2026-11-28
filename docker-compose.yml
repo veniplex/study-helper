@@ -91,7 +91,8 @@ services:
   # Optional dedicated job worker. Runs `npm run worker`, which uses tsx â€” so it
   # needs an image that includes the TS sources + devDependencies (a source
   # checkout, or a custom image built from the repo). The default prebuilt
-  # standalone image runs jobs in-process instead, so this service is opt-in.
+  # standalone image runs jobs in-process instead, so this service is opt-in
+  # (that image also ships without npm/npx — the runtime only needs node).
   # worker:
   #   image: ghcr.io/veniplex/study-helper:${STUDYHELPER_VERSION:-1}
   #   command: ["npm", "run", "worker"]
