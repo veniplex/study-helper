@@ -108,6 +108,9 @@
   },
   "overrides": {
     "sharp": "^0.35.0",
-    "katex": "$katex"
+    "katex": "$katex",
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.12"
+    }
   }
 }
